@@ -1,3 +1,13 @@
+@font-face {
+  font-family: 'DMSans';
+  src: url('../../assets/fonts/DMSans-Bold.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Recoleta';
+  src: url('../../assets/fonts/Recoleta-Bold.ttf') format('truetype');
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -6,9 +16,8 @@
 
 body {
   margin: 0;
-  padding-top: 70px; /* Compense la hauteur de la navbar fixed */
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  background-color: #fefaf5; /* Beige très clair pour le fond de la page */
+  padding-top: 70px; 
+  background-color: #fefaf5; 
 }
 
 .navbar {
@@ -16,12 +25,12 @@ body {
   top: 0;
   left: 0;
   width: 100%;
-  height: 90px; /* Augmenté de 70px à 90px */
+  height: 90px; 
   background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 5%; /* Pourcentage au lieu de rem fixe */
+  padding: 0 2%; 
   box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
   z-index: 1000;
   border-bottom: 1px solid #f5e6d3;
@@ -31,12 +40,11 @@ body {
 .navbarBrand {
   display: flex;
   align-items: center;
-  gap: 15px; /* Augmenté */
   font-weight: 700;
 }
 
 .logo {
-  height: 50px; /* Augmenté de 40px à 50px */
+  height: 100px; 
   width: auto;
   transition: transform 0.3s ease;
 }
@@ -46,16 +54,18 @@ body {
 }
 
 .brandName {
-  font-size: 2rem; /* Augmenté de 1.5rem à 2rem */
-  color: #d4a5a5;
-  font-weight: 700;
+  font-size: 2.2rem; 
+  font-weight: 900;
   letter-spacing: -0.5px;
+  margin-left: -5px;
+  margin-top: 10px;
+  font-family: 'Recoleta', serif;
 }
 
 .navLinks {
   display: flex;
   list-style: none;
-  gap: 3rem; /* Augmenté */
+  gap: 3.6rem; 
   margin: 0;
   padding: 0;
 }
@@ -66,16 +76,17 @@ body {
 
 .navLinks li a {
   text-decoration: none;
-  color: #8b7355;
-  font-weight: 500;
-  font-size: 1.1rem; /* Augmenté de 0.95rem à 1.1rem */
+  color: black;
+  font-weight: bold;
+  font-size: 1.1rem; 
   transition: color 0.3s ease;
   position: relative;
   padding: 0.8rem 0; /* Augmenté */
+  font-family: 'DMSans', sans-serif;
 }
 
 .navLinks li a:hover {
-  color: #d4a5a5;
+  color: #ed6841;
 }
 
 .navLinks li a::after {
@@ -85,7 +96,7 @@ body {
   left: 0;
   width: 0;
   height: 3px; /* Augmenté */
-  background: #d4a5a5;
+  background: #ed6841;
   transition: width 0.3s ease;
 }
 
@@ -96,13 +107,12 @@ body {
 .navActions {
   display: flex;
   align-items: center;
-  gap: 1.5rem; /* Augmenté */
+  gap: 1.4rem;
 }
 
-.iconBtn {
-  background: none;
+.connexionBtn {
+  background: linear-gradient(135deg, #e6ca9b 0%, #fff4e1 100%);
   border: none;
-  padding: 0.8rem; /* Augmenté */
   border-radius: 50%;
   cursor: pointer;
   transition: background-color 0.3s ease;
@@ -113,18 +123,19 @@ body {
   height: 50px;
 }
 
-.iconBtn:hover {
+.connexionBtn img {
+  width: 28px; /* Ajusté pour mieux s'adapter au bouton */
+  height: 28px;
+}
+
+.connexionBtn:hover {
   background-color: #f9f3eb;
 }
 
-.phoneIcon {
-  font-size: 1.5rem; /* Augmenté de 1.2rem à 1.5rem */
-  color: #8b7355;
-}
 
-.donateBtn {
-  background: linear-gradient(135deg, #d4a5a5 0%, #e8c4c4 100%);
-  color: white;
+.inscriptionBtn {
+  background: linear-gradient(135deg, #e6ca9b 0%, #fff4e1 100%);
+  color: black;
   border: none;
   padding: 1rem 2rem; /* Augmenté */
   border-radius: 10px; /* Augmenté */
@@ -133,13 +144,15 @@ body {
   transition: all 0.3s ease;
   font-size: 1.1rem; /* Augmenté de 0.9rem à 1.1rem */
   min-width: 140px; /* Largeur minimale */
+  outline: none;
 }
 
-.donateBtn:hover {
+.inscriptionBtn:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(212, 165, 165, 0.4); /* Ombre augmentée */
   background: linear-gradient(135deg, #c99595 0%, #dcb4b4 100%);
 }
+
 
 /* Responsive avec pourcentages */
 @media (max-width: 1024px) {

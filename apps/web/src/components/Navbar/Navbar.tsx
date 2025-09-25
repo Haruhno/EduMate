@@ -1,5 +1,6 @@
 import React from "react";
 import logo from "../../assets/images/logo.png";
+import user from "../../assets/images/utilisateur.png";
 import styles from "./Navbar.module.css"; // Changement ici
 
 const Navbar: React.FC = () => {
@@ -21,10 +22,10 @@ const Navbar: React.FC = () => {
 
       {/* Actions */}
       <div className={styles.navActions}>
-        <button className={styles.iconBtn} aria-label="Contact">
-          <span className={styles.phoneIcon}>📞</span>
+        <button className={styles.connexionBtn}>
+          <img src={user} alt="Compte utilisateur"/>
         </button>
-        <button className={styles.donateBtn}>Faire un don</button>
+        <button className={styles.inscriptionBtn}>Inscription</button>
       </div>
     </nav>
   );
