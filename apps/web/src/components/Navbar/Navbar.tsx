@@ -1,11 +1,11 @@
 import React from "react";
 import logo from "../../assets/images/logo.png";
 import user from "../../assets/images/utilisateur.png";
-import styles from "./Navbar.module.css"; // Changement ici
+import styles from "./Navbar.module.css"; 
 
 const Navbar: React.FC = () => {
   return (
-    <nav className={styles.navbar}> {/* Utilisation des styles */}
+    <nav className={styles.navbar}> 
       {/* Logo + Nom */}
       <div className={styles.navbarBrand}>
         <img src={logo} alt="EduMate Logo" className={styles.logo} />
