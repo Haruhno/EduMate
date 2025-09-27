@@ -2,42 +2,29 @@ import React from 'react';
 
 const Hero: React.FC = () => {
   return (
-    <section className="relative bg-gradient-to-br from-blue-50 to-indigo-100 py-20 lg:py-28">
+    <section className="relative py-20 lg:py-28">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSIyIi8+PC9nPjwvZz48L3N2Zz4=')] opacity-20"></div>
       
       <div className="container relative z-10">
-        {/* Header Banner */}
-        <div className="flex flex-col lg:flex-row items-center justify-between mb-8 lg:mb-12">
-          <div className="bg-primary text-black px-6 py-3 rounded-full text-sm font-medium mb-4 lg:mb-0">
-            Are you a university or school student for an online tutoring partnership? <span className="font-semibold underline ml-1">Talk to us</span>
-          </div>
-          
-          <div className="bg-green-100 text-green-800 px-6 py-3 rounded-full text-sm font-semibold flex items-center">
-            <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-            100% SATISFACTION GUARANTEE
-          </div>
-        </div>
-
         {/* Main Hero Content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left Content */}
           <div className="space-y-8">
             <div className="space-y-4">
               <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 leading-tight">
-                Find Your<br />
-                <span className="text-primary">Perfect Tutor</span>
+                Trouvez Votre<br />
+                <span className="text-primary">Tuter Idéal</span>
               </h1>
               
               <p className="text-lg lg:text-xl text-gray-600 leading-relaxed max-w-lg">
-                We help you find perfect tutor for 1-on-1 lessons. It is completely free and private.
-              </p>
+                La plateforme nouvelle génération qui connecte lycéens et étudiants avec des tuteurs fiables, sécurisés et accessibles.              </p>
             </div>
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
-              <button className="bg-primary hover:bg-yellow-400 text-black font-semibold py-4 px-8 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
-                Get Started
+              <button className="bg-secondary hover:bg-yellow-400 text-white font-semibold py-4 px-8 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
+                Je cherche un tuteur
               </button>
               
               <button className="border-2 border-gray-300 hover:border-primary text-gray-700 hover:text-primary font-semibold py-4 px-8 rounded-full transition-all duration-300 flex items-center justify-center gap-2">
@@ -45,7 +32,7 @@ const Hero: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                See how it works
+                Devenir tuteur
               </button>
             </div>
 
@@ -76,8 +63,8 @@ const Hero: React.FC = () => {
                     <span className="text-2xl font-bold">👨‍🏫</span>
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg">Dr. Sarah Johnson</h3>
-                    <p className="text-blue-200">Mathematics Professor</p>
+                    <h3 className="font-bold text-lg">Mr. Chibani</h3>
+                    <p className="text-blue-200">Professeur en informatique</p>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -86,9 +73,9 @@ const Hero: React.FC = () => {
                     <span className="text-sm">(128 reviews)</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="font-semibold">$25/hour</span>
+                    <span className="font-semibold">€100/hour</span>
                     <button className="bg-yellow-400 text-black px-4 py-2 rounded-full text-sm font-semibold">
-                      Book Now
+                      Réservez maintenant
                     </button>
                   </div>
                 </div>
@@ -96,7 +83,7 @@ const Hero: React.FC = () => {
               
               {/* Floating Elements */}
               <div className="absolute -top-4 -right-4 bg-green-500 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
-                Available Now
+                Disponible maintenant
               </div>
               
               <div className="absolute -bottom-4 -left-4 bg-primary text-black px-4 py-2 rounded-full text-sm font-semibold shadow-lg">

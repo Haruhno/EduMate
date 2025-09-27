@@ -16,8 +16,7 @@
 
 body {
   margin: 0;
-  padding-top: 70px; 
-  background-color: #fefaf5; 
+  padding-top: 90px;
 }
 
 .navbar {
@@ -25,11 +24,11 @@ body {
   top: 0;
   left: 0;
   width: 100%;
-  height: 90px; 
+  height: 90px;
   background: #ffffff;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: space-between; 
   padding: 0 2%; 
   box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
   z-index: 1000;
@@ -41,10 +40,12 @@ body {
   display: flex;
   align-items: center;
   font-weight: 700;
+  height: 100%;
+  flex-shrink: 0;
 }
 
 .logo {
-  height: 100px; 
+  height: 90px;
   width: auto;
   transition: transform 0.3s ease;
 }
@@ -54,20 +55,25 @@ body {
 }
 
 .brandName {
-  font-size: 2.2rem; 
+  font-size: 2rem;
   font-weight: 900;
   letter-spacing: -0.5px;
-  margin-left: -5px;
-  margin-top: 10px;
+  margin-left: 5px;
   font-family: 'Recoleta', serif;
+  white-space: nowrap;
 }
 
 .navLinks {
   display: flex;
   list-style: none;
-  gap: 3.6rem; 
+  gap: 2.5rem;
   margin: 0;
   padding: 0;
+  height: 100%;
+  align-items: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .navLinks li {
@@ -78,11 +84,12 @@ body {
   text-decoration: none;
   color: black;
   font-weight: bold;
-  font-size: 1.1rem; 
+  font-size: 1rem;
   transition: color 0.3s ease;
   position: relative;
-  padding: 0.8rem 0; /* Augmenté */
+  padding: 0.5rem 0;
   font-family: 'DMSans', sans-serif;
+  white-space: nowrap;
 }
 
 .navLinks li a:hover {
@@ -95,7 +102,7 @@ body {
   bottom: 0;
   left: 0;
   width: 0;
-  height: 3px; /* Augmenté */
+  height: 2px;
   background: #ed6841;
   transition: width 0.3s ease;
 }
@@ -107,7 +114,10 @@ body {
 .navActions {
   display: flex;
   align-items: center;
-  gap: 1.4rem;
+  gap: 1rem;
+  height: 100%;
+  flex-shrink: 0;
+  margin-left: auto; 
 }
 
 .connexionBtn {
@@ -119,146 +129,312 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 50px; /* Taille fixe pour être plus grand */
-  height: 50px;
+  width: 45px;
+  height: 45px;
+  flex-shrink: 0;
 }
 
 .connexionBtn img {
-  width: 28px; /* Ajusté pour mieux s'adapter au bouton */
-  height: 28px;
+  width: 24px;
+  height: 24px;
 }
 
 .connexionBtn:hover {
-  background-color: #f9f3eb;
+  background: linear-gradient(135deg, #d4b98a 0%, #f0e4cc 100%);
+  transform: scale(1.05);
 }
-
 
 .inscriptionBtn {
   background: linear-gradient(135deg, #e6ca9b 0%, #fff4e1 100%);
   color: black;
   border: none;
-  padding: 1rem 2rem; /* Augmenté */
-  border-radius: 10px; /* Augmenté */
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 1.1rem; /* Augmenté de 0.9rem à 1.1rem */
-  min-width: 140px; /* Largeur minimale */
+  font-size: 0.9rem;
+  min-width: 120px;
   outline: none;
+  font-family: 'DMSans', sans-serif;
+  flex-shrink: 0;
 }
 
 .inscriptionBtn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(212, 165, 165, 0.4); /* Ombre augmentée */
-  background: linear-gradient(135deg, #c99595 0%, #dcb4b4 100%);
+  box-shadow: 0 4px 12px rgba(230, 202, 155, 0.4);
+  background: linear-gradient(135deg, #d4b98a 0%, #f0e4cc 100%);
 }
 
+/* ===== STYLES MOBILE POUR LES BOUTONS AUTH ===== */
 
-/* Responsive avec pourcentages */
+.mobileAuth {
+  display: none; 
+}
+
+.mobileConnexion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #f5e6d3 !important;
+  white-space: nowrap;
+}
+
+.mobileUserIcon {
+  width: 20px;
+  height: 20px;
+  margin-left: 8px;
+  display: inline-block; 
+  vertical-align: middle;
+}
+
+.mobileInscription {
+  background: linear-gradient(135deg, #e6ca9b 0%, #fff4e1 100%);
+  color: black !important;
+  text-align: center;
+  padding: 1rem !important;
+  border-radius: 8px;
+  margin: 0.5rem 1rem !important;
+  display: block;
+  font-weight: 600 !important;
+  border: none !important;
+}
+
+.mobileInscription:hover {
+  background: linear-gradient(135deg, #d4b98a 0%, #f0e4cc 100%) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(230, 202, 155, 0.4);
+}
+
+.mobileInscription::after {
+  display: none !important;
+}
+
+/* ===== RESPONSIVE ===== */
+
+/* Tablettes */
 @media (max-width: 1024px) {
-  .navbar {
-    padding: 0 4%;
-    height: 85px;
-  }
-  
-  .navLinks {
-    gap: 2.5rem;
-  }
-}
-
-@media (max-width: 768px) {
   body {
-    padding-top: 80px;
-    font-size: 14px;
+    padding-top: 90px;
   }
   
   .navbar {
-    padding: 0 3%;
-    height: 80px;
+    height: 90px;
   }
   
   .logo {
-    height: 45px;
+    height: 70px;
   }
   
   .brandName {
     font-size: 1.8rem;
+    margin-left: 6px;
   }
   
   .navLinks {
     gap: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
   }
   
   .navLinks li a {
-    font-size: 1rem;
-    padding: 0.6rem 0;
+    font-size: 0.95rem;
   }
   
-  .donateBtn {
-    padding: 0.8rem 1.5rem;
-    font-size: 1rem;
-    min-width: 120px;
+  .inscriptionBtn {
+    padding: 0.7rem 1.2rem;
+    font-size: 0.85rem;
+    min-width: 110px;
   }
   
-  .iconBtn {
-    width: 45px;
-    height: 45px;
-    padding: 0.6rem;
+  .connexionBtn {
+    width: 42px;
+    height: 42px;
   }
   
-  .phoneIcon {
-    font-size: 1.3rem;
+  .connexionBtn img {
+    width: 22px;
+    height: 22px;
   }
 }
 
-@media (max-width: 480px) {
+/* Mobiles grands */
+@media (max-width: 768px) {
   body {
-    padding-top: 70px;
+    padding-top: 90px;
+  }
+  
+  .logo {
+    height: 60px;
+  }
+  
+  .brandName {
+    font-size: 1.6rem;
+    margin-left: 4px;
+  }
+  
+  .navLinks {
+    gap: 1.5rem;
+    position: static;
+    transform: none;
+    display: none; 
+  }
+  
+  .navLinks.active {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 90px;
+    left: 0;
+    width: 100%;
+    background: white;
+    gap: 0;
+    padding: 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+  
+  .navLinks li a {
+    font-size: 0.9rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #f5e6d3;
+    display: block;
+  }
+  
+  .inscriptionBtn {
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+    min-width: 100px;
+  }
+  
+  .navActions {
+    gap: 0.8rem;
+  }
+  
+  .connexionBtn {
+    width: 38px;
+    height: 38px;
+  }
+  
+  .connexionBtn img {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Mobiles petits - Menu hamburger */
+@media (max-width: 640px) {
+  body {
+    padding-top: 90px;
   }
   
   .navbar {
-    flex-wrap: wrap;
-    height: auto;
-    min-height: 70px;
-    padding: 1rem 3%;
+    flex-wrap: nowrap;
+    padding: 0 4%;
+  }
+  
+  .navActions {
+    display: none;
+  }
+  
+  .mobileAuth {
+    display: block;
+    width: 100%;
+  }
+  
+  /* Menu hamburger */
+  .navLinks {
+    position: fixed;
+    top: 90px;
+    left: 0;
+    width: 100%;
+    background: white;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    display: none;
+  }
+  
+  .navLinks.active {
+    display: flex;
+  }
+  
+  .navLinks li {
+    width: 100%;
+    text-align: left;
+  }
+  
+  .navLinks li a {
+    display: block;
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    border-bottom: 1px solid #f5e6d3;
+    font-family: 'DMSans', sans-serif;
+  }
+  
+  .navLinks li:last-child a {
+    border-bottom: none;
+  }
+  
+  /* Bouton hamburger */
+  .hamburger {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    width: 30px;
+    height: 25px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+  
+  .hamburger span {
+    width: 100%;
+    height: 3px;
+    background: black;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+  }
+  
+  .hamburger.active span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+  }
+  
+  .hamburger.active span:nth-child(2) {
+    opacity: 0;
+  }
+  
+  .hamburger.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -6px);
+  }
+}
+
+/* Très petits mobiles */
+@media (max-width: 480px) {
+  body {
+    padding-top: 120px;
+  }
+  
+  .navbar {
+    padding: 0 3%;
+  }
+  
+  .brandName {
+    font-size: 1.4rem;
   }
   
   .logo {
     height: 40px;
   }
   
-  .brandName {
-    font-size: 1.6rem;
-  }
-  
-  .navLinks {
-    order: 3;
-    width: 100%;
-    justify-content: center;
-    gap: 1.5rem;
-    margin-top: 0.8rem;
-  }
-  
   .navLinks li a {
+    padding: 0.9rem 1.2rem;
     font-size: 0.9rem;
   }
   
-  .navActions {
-    gap: 1rem;
-  }
-  
-  .donateBtn {
-    padding: 0.7rem 1.2rem;
-    font-size: 0.9rem;
-    min-width: 110px;
-  }
-  
-  .iconBtn {
-    width: 40px;
-    height: 40px;
-  }
-  
-  .phoneIcon {
-    font-size: 1.2rem;
+  .mobileInscription {
+    margin: 0.5rem 0.8rem !important;
+    padding: 0.8rem !important;
   }
 }
