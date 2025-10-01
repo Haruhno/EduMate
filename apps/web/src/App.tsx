@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage/LoginPage';
 import SignupPage from './pages/SignupPage/SignupPage';
 import authService from './services/authService';
 import "./App.css";
+import HowItWorks from "./components/HowItWorks/HowItWorks";
 
 // Composant pour la page d'accueil
 const HomePage: React.FC = () => {
@@ -18,6 +19,7 @@ const HomePage: React.FC = () => {
       <Hero />
       <Statistics />
       <WhyChooseUs />
+      <HowItWorks />
     </div>
   );
 };

@@ -1,3 +1,5 @@
+const { th } = require('framer-motion/client');
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -9,6 +11,7 @@ module.exports = {
       colors: {
         primary: '#ffcf3a',
         secondary: '#297bff',
+        third: '#e6ca9b',
       },
       container: {
         center: true,

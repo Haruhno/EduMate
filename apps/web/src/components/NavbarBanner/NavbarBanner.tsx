@@ -2,7 +2,7 @@ import React from 'react';
 
 const NavbarBanner: React.FC = () => {
   return (
-    <div className="w-full bg-primary py-3 border-b border-yellow-400">
+    <div className="w-full bg-gradient-to-r from-yellow-400 to-orange-400 py-3 border-b border-third">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-center">      
           <p className="text-black text-sm font-medium text-center leading-tight">
