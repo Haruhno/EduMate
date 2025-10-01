@@ -16,7 +16,7 @@
 
 body {
   margin: 0;
-  padding-top: 90px;
+  padding-top: 70px;
 }
 
 .navbar {
@@ -24,7 +24,7 @@ body {
   top: 0;
   left: 0;
   width: 100%;
-  height: 90px;
+  height: 70px;
   background: #ffffff;
   display: flex;
   align-items: center;
