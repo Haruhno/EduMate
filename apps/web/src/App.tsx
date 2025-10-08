@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage/LoginPage';
 import SignupPage from './pages/SignupPage/SignupPage';
 import authService from './services/authService';
 import "./App.css";
+import RoleSelectionPage from './pages/RoleSelectionPage/RoleSelectionPage';
 import HowItWorks from "./components/HowItWorks/HowItWorks";
 
 // Composant pour la page d'accueil
@@ -20,6 +21,7 @@ const HomePage: React.FC = () => {
     </div>
   );
 };
+
 
 // Composant pour protéger les routes d'authentification
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -40,6 +42,15 @@ const App: React.FC = () => {
         <Navbar />
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route 
+            path="/choix-role" 
+            element={
+              <PublicRoute>
+                <RoleSelectionPage />
+              </PublicRoute>
+            } 
+          />
+          <Route path="/" element={<Home />} />
           <Route 
             path="/connexion" 
             element={
