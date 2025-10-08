@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage/LoginPage';
 import SignupPage from './pages/SignupPage/SignupPage';
 import authService from './services/authService';
 import "./App.css";
+import RoleSelectionPage from './pages/RoleSelectionPage/RoleSelectionPage';
 import HowItWorks from "./components/HowItWorks/HowItWorks";
 
 // Composant pour la page d'accueil
@@ -44,6 +45,14 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route 
+            path="/choix-role" 
+            element={
+              <PublicRoute>
+                <RoleSelectionPage />
+              </PublicRoute>
+            } 
+          />
+          <Route 
             path="/connexion" 
             element={
               <PublicRoute>
@@ -59,15 +68,6 @@ const App: React.FC = () => {
               </PublicRoute>
             } 
           />
-          {/* Exemple de route protégée - à adapter selon vos besoins */}
-          {/* <Route 
-            path="/profile" 
-            element={
-              <PrivateRoute>
-                <ProfilePage />
-              </PrivateRoute>
-            } 
-          /> */}
         </Routes>
       </div>
     </Router>

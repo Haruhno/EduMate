@@ -87,12 +87,8 @@ const Navbar: React.FC = () => {
               </Link>
             </li>
             <li className={styles.mobileAuth}>
-              <Link 
-                to="/inscription" 
-                onClick={closeMenu}
-                className={styles.mobileInscriptionLink}
-              >
-                Inscription
+              <Link to="/choix-role" className={styles.signupButton}>
+                S'inscrire
               </Link>
             </li>
           </>

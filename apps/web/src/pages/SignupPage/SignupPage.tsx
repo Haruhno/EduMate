@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import styles from './SignupPage.module.css';
 import authService from '../../services/authService';
 
@@ -9,18 +9,29 @@ const SignupPage: React.FC = () => {
     lastName: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    role: 'student' // Valeur par défaut
   });
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Rediriger vers l'accueil si déjà connecté
+  // Récupérer le rôle depuis la navigation
+  useEffect(() => {
+    if (location.state?.role) {
+      setFormData(prev => ({ ...prev, role: location.state.role }));
+    }
+  }, [location.state]);
+
+  // Rediriger vers la sélection du rôle si aucun rôle n'est défini
   useEffect(() => {
     if (authService.isAuthenticated()) {
       navigate('/');
+    } else if (!location.state?.role) {
+      navigate('/choix-role');
     }
-  }, [navigate]);
+  }, [navigate, location.state]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -45,10 +56,10 @@ const SignupPage: React.FC = () => {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        role: formData.role as 'student' | 'tutor'
       });
 
-      // Recharger la page pour mettre à jour la navbar et l'état d'authentification
       window.location.href = '/';
     } catch (error: any) {
       setError(error.message || 'Une erreur est survenue lors de l\'inscription');
@@ -57,9 +68,20 @@ const SignupPage: React.FC = () => {
     }
   };
 
+  const handleBackToRoleSelection = () => {
+    navigate('/choix-role');
+  };
+
   return (
     <div className={styles.pageContainer}>
       <div className={styles.authContainer}>
+        <button 
+          onClick={handleBackToRoleSelection}
+          className={styles.backButton}
+        >
+          ← Retour au choix du profil
+        </button>
+
         <h2>Inscription</h2>
         
         {error && <div className={styles.error}>{error}</div>}
@@ -116,7 +138,7 @@ const SignupPage: React.FC = () => {
             disabled={loading} 
             className={styles.submitButton}
           >
-            {loading ? 'Chargement...' : 'Créer un compte'}
+            {loading ? 'Chargement...' : `Créer mon compte ${formData.role === 'student' ? 'étudiant' : 'tuteur'}`}
           </button>
         </form>
         
