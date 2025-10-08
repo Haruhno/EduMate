@@ -6,26 +6,8 @@ import LoginPage from './pages/LoginPage/LoginPage';
 import SignupPage from './pages/SignupPage/SignupPage';
 import authService from './services/authService';
 import "./App.css";
+import HomePage from './pages/Home';
 import RoleSelectionPage from './pages/RoleSelectionPage/RoleSelectionPage';
-import HowItWorks from "./components/HowItWorks/HowItWorks";
-import NavbarBanner from "./components/NavbarBanner/NavbarBanner";
-import Hero from "./components/Hero/Hero";
-import Statistics from "./components/Statistics/Statistics";
-import WhyChooseUs from "./components/WhyChooseUs/WhyChooseUs";
-
-// Composant pour la page d'accueil
-const HomePage: React.FC = () => {
-  return (
-    <div>
-      <NavbarBanner />
-      <Hero />
-      <Statistics />
-      <WhyChooseUs />
-      <HowItWorks />
-    </div>
-  );
-};
-
 
 // Composant pour protéger les routes d'authentification
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
