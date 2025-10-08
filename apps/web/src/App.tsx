@@ -6,7 +6,20 @@ import LoginPage from './pages/LoginPage/LoginPage';
 import SignupPage from './pages/SignupPage/SignupPage';
 import authService from './services/authService';
 import "./App.css";
+import HowItWorks from "./components/HowItWorks/HowItWorks";
 
+// Composant pour la page d'accueil
+const HomePage: React.FC = () => {
+  return (
+    <div>
+      <NavbarBanner />
+      <Hero />
+      <Statistics />
+      <WhyChooseUs />
+      <HowItWorks />
+    </div>
+  );
+};
 
 // Composant pour protéger les routes d'authentification
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -26,7 +39,7 @@ const App: React.FC = () => {
       <div className="App">
         <Navbar />
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<HomePage />} />
           <Route 
             path="/connexion" 
             element={
@@ -43,15 +56,6 @@ const App: React.FC = () => {
               </PublicRoute>
             } 
           />
-          {/* Exemple de route protégée - à adapter selon vos besoins */}
-          {/* <Route 
-            path="/profile" 
-            element={
-              <PrivateRoute>
-                <ProfilePage />
-              </PrivateRoute>
-            } 
-          /> */}
         </Routes>
       </div>
     </Router>

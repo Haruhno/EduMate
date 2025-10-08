@@ -61,6 +61,8 @@ class AuthService {
     return !!this.getToken();
   }
 
+  
+
   async getProfile(): Promise<User> {
     const token = this.getToken();
     if (!token) {

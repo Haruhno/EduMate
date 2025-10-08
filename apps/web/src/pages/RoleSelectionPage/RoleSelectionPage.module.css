@@ -1,0 +1,112 @@
+.pageContainer {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #fffaf6;
+  padding: 2rem;
+}
+
+.roleContainer {
+  text-align: center;
+  max-width: 800px;
+  width: 100%;
+}
+
+h1 {
+  font-family: 'Recoleta', serif;
+  font-size: 2.5rem;
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+.subtitle {
+  font-size: 1.2rem;
+  color: #666;
+  margin-bottom: 3rem;
+  line-height: 1.6;
+}
+
+.roleCards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+@media (min-width: 768px) {
+  .roleCards {
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+  }
+}
+
+.roleCard {
+  background: white;
+  padding: 2.5rem 2rem;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  position: relative;
+  text-align: center;
+}
+
+.roleCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+  border-color: #d4af37;
+}
+
+.iconContainer {
+  margin-bottom: 1.5rem;
+}
+
+.studentIcon,
+.tutorIcon {
+  font-size: 3rem;
+  margin: 0 auto;
+}
+
+.roleCard h3 {
+  font-size: 1.5rem;
+  color: #333;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.roleCard p {
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+.arrow {
+  color: #d4af37;
+  font-size: 1.5rem;
+  font-weight: bold;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.roleCard:hover .arrow {
+  opacity: 1;
+}
+
+.loginLink {
+  margin-top: 2rem;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.link {
+  color: #d4af37;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.link:hover {
+  color: #b8941f;
+  text-decoration: underline;
+}
