@@ -1,5 +1,5 @@
 .section {
-  padding: 5rem 1rem;
+  padding: 4rem 1rem;
 }
 
 .container {
@@ -9,7 +9,7 @@
 
 .header {
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 2rem;
 }
 
 .title {
@@ -34,6 +34,7 @@
   max-width: 600px;
   margin: 0 auto;
   line-height: 1.6;
+  font-family: 'DMSans', sans-serif;
 }
 
 .content {

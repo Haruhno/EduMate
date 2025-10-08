@@ -74,7 +74,7 @@ const HowItWorks: React.FC = () => {
           <h2 className={styles.title}>Comment ça marche ?</h2>
           <div className={styles.divider}></div>
           <p className={styles.subtitle}>
-            En 4 étapes simples, rejoins la communauté EduMate et transforme ton apprentissage
+            En 4 étapes simples, rejoins la communauté EduMate et transforme votre apprentissage
           </p>
         </div>
 

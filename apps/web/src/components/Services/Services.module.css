@@ -1,0 +1,231 @@
+.section {
+    position: relative;
+    padding: 80px 20px 20px 0px;
+    background-color: white;
+    overflow: hidden;
+}
+
+.backgroundElements {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 288px;
+    height: 288px;
+    background-color: #dbeafe;
+    border-radius: 50%;
+    mix-blend-mode: multiply;
+    filter: blur(64px);
+    opacity: 0.2;
+    animation: pulse 4s ease-in-out infinite;
+}
+
+.backgroundElements:nth-child(2) {
+    top: auto;
+    bottom: 0;
+    right: 0;
+    left: auto;
+    width: 384px;
+    height: 384px;
+    background-color: #e9d5ff;
+    animation-delay: 1s;
+}
+
+.backgroundElements:nth-child(3) {
+    top: 50%;
+    left: 25%;
+    width: 256px;
+    height: 256px;
+    background-color: #d1fae5;
+    animation-delay: 0.5s;
+}
+
+.container {
+    position: relative;
+    z-index: 10;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 64px;
+}
+
+.title {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 24px;
+    font-family: 'Recoleta', serif;
+}
+
+.titleGradient {
+    background: linear-gradient(120deg, #facc15 0%, #fb923c 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.divider {
+    width: 96px;
+    height: 4px;
+    background: linear-gradient(90deg, #facc15, #fb923c);
+    margin: 0 auto 24px;
+    border-radius: 2px;
+}
+
+.subtitle {
+    font-size: 1.25rem;
+    color: #6b7280;
+    max-width: 768px;
+    margin: 0 auto;
+    line-height: 1.6;
+    font-family: 'DMSans', sans-serif;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 32px;
+    margin-bottom: 64px;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.card {
+    position: relative;
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border: 1px solid #f3f4f6;
+    transition: all 0.5s ease;
+}
+
+.card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 18px;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    z-index: -1;
+}
+
+.card:hover::before {
+    opacity: 1;
+}
+
+.card1 { background: linear-gradient(135deg, #d3f7ff 0%, #eff6ff 100%); }
+.card2 { background: linear-gradient(135deg, #d7f1df 0%, #ecfdf5 100%); }
+.card3 { background: linear-gradient(135deg, #ffd199 0%, #f9f5ff 100%); }
+.card4 { background: linear-gradient(135deg, #faf3c7 0%, #fffbeb 100%); }
+.card5 { background: linear-gradient(135deg, #e9d5ff 0%, #faf5ff 100%); }
+.card6 { background: linear-gradient(135deg, #ffe4e0 0%, #fef2f2 100%); }
+
+.card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #facc15, #fb923c);
+    border-radius: 0 0 18px 18px;
+    transition: width 0.5s ease;
+}
+
+.card:hover::after {
+    width: 100%;
+}
+
+
+.card:hover .decoration {
+    opacity: 1;
+}
+
+.iconContainer {
+    margin-bottom: 24px;
+    position: relative;
+}
+
+.icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease;
+    background-color: white;
+}
+
+.card:hover .icon {
+    transform: scale(1.1);
+}
+
+.iconLine {
+    width: 60px;
+    height: 2px;
+    border-radius: 1px;
+    margin-top: 16px;
+}  
+
+.iconLine1 { background: linear-gradient(90deg, #3b82f6, transparent);}
+.iconLine2 { background: linear-gradient(90deg, #059565, transparent);}
+.iconLine3 { background: linear-gradient(90deg, #df7f0b, transparent); }
+.iconLine4 { background: linear-gradient(90deg, #ffcc00, transparent);}
+.iconLine5 { background: linear-gradient(90deg, #8128e1, transparent);}
+.iconLine6 { background: linear-gradient(90deg, #f87171, transparent);}
+
+.cardTitle {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 16px;
+    transition: color 0.3s ease;
+    font-family: 'DMSans', sans-serif;
+}
+
+.card:hover .cardTitle {
+    color: #374151;
+}
+
+.cardDescription {
+    color: #6b7280;
+    line-height: 1.6;
+    transition: color 0.3s ease;
+    font-family: 'DMRegular', sans-serif;
+}
+
+.card:hover .cardDescription {
+    color: #4b5563;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(1.05);
+  }
+}

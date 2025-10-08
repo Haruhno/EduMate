@@ -1,28 +1,12 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar/Navbar";
-import NavbarBanner from "./components/NavbarBanner/NavbarBanner";
-import Hero from "./components/Hero/Hero";
-import Statistics from "./components/Statistics/Statistics";
-import WhyChooseUs from "./components/WhyChooseUs/WhyChooseUs";
+import Home from "./pages/Home";
 import LoginPage from './pages/LoginPage/LoginPage';
 import SignupPage from './pages/SignupPage/SignupPage';
 import authService from './services/authService';
 import "./App.css";
-import HowItWorks from "./components/HowItWorks/HowItWorks";
 
-// Composant pour la page d'accueil
-const HomePage: React.FC = () => {
-  return (
-    <div>
-      <NavbarBanner />
-      <Hero />
-      <Statistics />
-      <WhyChooseUs />
-      <HowItWorks />
-    </div>
-  );
-};
 
 // Composant pour protéger les routes d'authentification
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -42,7 +26,7 @@ const App: React.FC = () => {
       <div className="App">
         <Navbar />
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<Home />} />
           <Route 
             path="/connexion" 
             element={

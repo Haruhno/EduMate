@@ -215,11 +215,11 @@ body {
 /* Tablettes */
 @media (max-width: 1024px) {
   body {
-    padding-top: 90px;
+    padding-top: 70px;
   }
   
   .navbar {
-    height: 90px;
+    height: 70px;
   }
   
   .logo {
@@ -261,7 +261,7 @@ body {
 /* Mobiles grands */
 @media (max-width: 768px) {
   body {
-    padding-top: 90px;
+    padding-top: 70px;
   }
   
   .logo {
@@ -284,7 +284,7 @@ body {
     display: flex;
     flex-direction: column;
     position: fixed;
-    top: 90px;
+    top: 70px;
     left: 0;
     width: 100%;
     background: white;
@@ -324,7 +324,7 @@ body {
 /* Mobiles petits - Menu hamburger */
 @media (max-width: 640px) {
   body {
-    padding-top: 90px;
+    padding-top: 70px;
   }
   
   .navbar {
@@ -344,7 +344,7 @@ body {
   /* Menu hamburger */
   .navLinks {
     position: fixed;
-    top: 90px;
+    top: 70px;
     left: 0;
     width: 100%;
     background: white;
