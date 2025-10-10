@@ -60,7 +60,16 @@ const SignupPage: React.FC = () => {
         role: formData.role as 'student' | 'tutor'
       });
 
-      window.location.href = '/';
+      // ✅ MODIFICATION ICI : Redirection vers la complétion du profil
+      navigate('/completer-profil', { 
+        state: { 
+          role: formData.role,
+          email: formData.email,
+          firstName: formData.firstName,
+          lastName: formData.lastName
+        } 
+      });
+      
     } catch (error: any) {
       setError(error.message || 'Une erreur est survenue lors de l\'inscription');
     } finally {

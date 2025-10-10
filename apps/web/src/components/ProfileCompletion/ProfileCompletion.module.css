@@ -1,0 +1,565 @@
+.container {
+  min-height: 100vh;
+  background: #f8f9fa;
+}
+
+.header {
+  background: #fffaf6;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e9ecef;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  top: 0;
+  z-index: 100;
+}
+
+.steps {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  position: relative;
+}
+
+.step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 60%;
+  right: -40%;
+  height: 2px;
+  background: #e9ecef;
+  z-index: 1;
+}
+
+.step.active:not(:last-child)::after {
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+}
+
+.stepNumber {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+
+.step.active .stepNumber {
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  transform: scale(1.1);
+}
+
+.step.current .stepNumber {
+  box-shadow: 0 0 0 3px #ffe29a;
+}
+
+.stepTitle {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6c757d;
+  text-align: center;
+}
+
+.step.active .stepTitle {
+  color: #FB923C;
+  font-weight: 600;
+}
+
+/* Split Screen - Layout normal */
+.splitContainer {
+  display: grid;
+  grid-template-columns: 1fr 450px;
+  min-height: calc(100vh - 120px);
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+/* Split Screen - Pleine largeur pour Finalisation */
+.splitContainer.fullWidth {
+  grid-template-columns: 1fr;
+}
+
+.formSection {
+  background: white;
+  border-right: 1px solid #e9ecef;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+/* Formulaire en pleine largeur pour Finalisation */
+.formSection.fullWidthForm {
+  border-right: none;
+  max-width: none;
+  padding: 2rem 4rem;
+}
+
+.formContent {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Pour la Finalisation, on élargit le contenu */
+.splitContainer.fullWidth .formContent {
+  max-width: 1000px;
+}
+
+/* Conteneur centré pour la finalisation */
+.centeredFinalStep {
+  max-width: 800px !important;
+  margin: 0 auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 2rem 0;
+}
+
+/* Style pour le conteneur de preview en finalisation */
+.centeredFinalStep :global(.container) {
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
+}
+
+/* Header de preview en finalisation */
+.centeredFinalStep :global(.previewHeader) {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid #f1f3f4;
+}
+
+.centeredFinalStep :global(.previewHeader h3) {
+  font-size: 1.75rem;
+  color: #333;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.centeredFinalStep :global(.previewSubtitle) {
+  color: #666;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+/* Profile header en finalisation */
+.centeredFinalStep :global(.profileHeader) {
+  text-align: center;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.centeredFinalStep :global(.photoContainer) {
+  margin: 0 auto 1rem;
+}
+
+.centeredFinalStep :global(.nameContainer) {
+  text-align: left;
+}
+
+.centeredFinalStep :global(.profileName) {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.centeredFinalStep :global(.roleBadge) {
+  display: inline-block;
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  padding: 0.5rem 1.5rem;
+  border-radius: 25px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+/* Sections en finalisation */
+.centeredFinalStep :global(.section) {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border-left: 4px solid #FBBF24;
+}
+
+.centeredFinalStep :global(.sectionTitle) {
+  color: #333;
+  font-size: 1.2rem;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Grille d'information en finalisation */
+.centeredFinalStep :global(.infoGrid) {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  text-align: center;
+}
+
+.centeredFinalStep :global(.infoItem) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.centeredFinalStep :global(.infoLabel) {
+  font-weight: 600;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.centeredFinalStep :global(.infoValue) {
+  color: #333;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* Tags et badges en finalisation */
+.centeredFinalStep :global(.tags) {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.centeredFinalStep :global(.tag) {
+  background: #e9ecef;
+  color: #333;
+  padding: 0.4rem 0.8rem;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.centeredFinalStep :global(.availability) {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.centeredFinalStep :global(.availabilityBadge) {
+  background: #007bff;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Séparateurs en finalisation */
+.centeredFinalStep :global(.separator) {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e9ecef, transparent);
+  margin: 2rem auto;
+  width: 80%;
+}
+
+/* Navigation spéciale pour la finalisation */
+.finalNavigation {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e9ecef;
+  width: 100%;
+  max-width: 400px;
+}
+
+.finalNavigation .backButton {
+  padding: 0.75rem 1.5rem;
+  border: 1px solid #6c757d;
+  background: white;
+  color: #6c757d;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  min-width: 120px;
+}
+
+.finalNavigation .backButton:hover {
+  background: #6c757d;
+  color: white;
+}
+
+.finalNavigation .nextButton {
+  padding: 0.75rem 2rem;
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: transform 0.2s;
+  min-width: 120px;
+}
+
+.finalNavigation .nextButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+.previewSection {
+  background: #f8f9fa;
+  padding: 2rem;
+  overflow-y: auto;
+  position: sticky;
+  top: 120px;
+  height: calc(100vh - 120px);
+}
+
+.previewContent {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  padding: 2rem;
+  height: fit-content;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+/* Navigation normale (pas en finalisation) */
+.navigation {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.backButton {
+  padding: 0.75rem 1.5rem;
+  border: 1px solid #6c757d;
+  background: white;
+  color: #6c757d;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.backButton:not(:disabled):hover {
+  background: #6c757d;
+  color: white;
+}
+
+.backButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nextButton {
+  padding: 0.75rem 2rem;
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: transform 0.2s;
+}
+
+.nextButton:hover {
+  transform: translateY(-1px);
+}
+
+/* Animation d'apparition pour la finalisation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.centeredFinalStep {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* État vide en finalisation */
+.centeredFinalStep :global(.emptyState) {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #666;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 2px dashed #e9ecef;
+}
+
+.centeredFinalStep :global(.emptyState p) {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+/* Bio text en finalisation */
+.centeredFinalStep :global(.bioText) {
+  text-align: center;
+  line-height: 1.6;
+  color: #333;
+  margin: 0;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .splitContainer {
+    grid-template-columns: 1fr;
+  }
+  
+  .previewSection {
+    display: none;
+  }
+  
+  .steps {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  .step {
+    flex: none;
+    min-width: 120px;
+  }
+  
+  .step:not(:last-child)::after {
+    display: none;
+  }
+  
+  .formSection.fullWidthForm {
+    padding: 2rem;
+  }
+  
+  .centeredFinalStep {
+    max-width: 100% !important;
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 1rem;
+  }
+  
+  .formSection {
+    padding: 1rem;
+  }
+  
+  .formSection.fullWidthForm {
+    padding: 1rem;
+  }
+  
+  .centeredFinalStep {
+    min-height: 50vh;
+    padding: 1rem 0;
+  }
+  
+  .centeredFinalStep :global(.container) {
+    padding: 1.5rem;
+    margin: 0 1rem;
+  }
+  
+  .centeredFinalStep :global(.section) {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .centeredFinalStep :global(.profileName) {
+    font-size: 1.3rem;
+  }
+  
+  .centeredFinalStep :global(.previewHeader h3) {
+    font-size: 1.5rem;
+  }
+  
+  .navigation {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .navigation .backButton,
+  .navigation .nextButton {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .finalNavigation {
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 100%;
+  }
+  
+  .finalNavigation .backButton,
+  .finalNavigation .nextButton {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .step {
+    min-width: 100px;
+  }
+  
+  .stepTitle {
+    font-size: 0.8rem;
+  }
+  
+  .centeredFinalStep :global(.container) {
+    padding: 1rem;
+    margin: 0 0.5rem;
+  }
+  
+  .centeredFinalStep :global(.infoItem) {
+    padding: 0.75rem;
+  }
+  
+  .centeredFinalStep :global(.tags) {
+    gap: 0.3rem;
+  }
+  
+  .centeredFinalStep :global(.tag) {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+  }
+}

@@ -8,6 +8,7 @@ import authService from './services/authService';
 import "./App.css";
 import HomePage from './pages/Home';
 import RoleSelectionPage from './pages/RoleSelectionPage/RoleSelectionPage';
+import ProfileCompletion from './components/ProfileCompletion/ProfileCompletion';
 
 // Composant pour protéger les routes d'authentification
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -53,6 +54,8 @@ const App: React.FC = () => {
               </PublicRoute>
             } 
           />
+          <Route path="/completer-profil" element={<ProfileCompletion />} />
+
         </Routes>
       </div>
     </Router>
