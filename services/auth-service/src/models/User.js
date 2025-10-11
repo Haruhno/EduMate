@@ -37,8 +37,8 @@ const User = sequelize.define('User', {
     defaultValue: false
   }
 }, {
-  tableName: 'users',      // <-- force Sequelize à utiliser 'users'
-  timestamps: true,        // Sequelize gère createdAt et updatedAt
+  tableName: 'users',      
+  timestamps: true,        
   hooks: {
     beforeCreate: async (user) => {
       user.password = await bcrypt.hash(user.password, 12);
