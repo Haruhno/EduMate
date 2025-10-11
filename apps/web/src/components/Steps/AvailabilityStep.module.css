@@ -1,0 +1,212 @@
+@font-face {
+    font-family: 'DMSans';
+    src: url('../../assets/fonts/DMSans-Regular.ttf') format('truetype');
+}
+
+.container {
+  padding: 1rem 0;
+}
+
+h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: #666;
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  text-align: center;
+  font-family: 'DMSans', sans-serif;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.formGroup.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.label {
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 0.5rem;
+  font-family: 'DMSans', sans-serif;
+  font-size: 1rem;
+}
+
+.availabilityTypes {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+  flex: 1;
+  min-width: 140px;
+}
+
+.checkboxLabel:hover {
+  border-color: #667eea;
+}
+
+.checkboxLabel:has(.checkbox:checked) {
+  border-color: #667eea;
+  background: #f8f9ff;
+  color: #667eea;
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #dee2e6;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.checkbox:checked {
+  background: #667eea;
+  border-color: #667eea;
+}
+
+.checkboxText {
+  color: inherit;
+  font-weight: 500;
+}
+
+.calendar {
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.calendarHeader {
+  display: grid;
+  grid-template-columns: 80px repeat(7, 1fr);
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.timeColumn {
+  padding: 1rem;
+  font-weight: 500;
+  color: #333;
+  font-size: 0.8rem;
+}
+
+.dayHeader {
+  padding: 1rem 0.5rem;
+  text-align: center;
+  font-weight: 500;
+  color: #333;
+  font-size: 0.8rem;
+  border-left: 1px solid #e9ecef;
+}
+
+.calendarBody {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.timeRow {
+  display: grid;
+  grid-template-columns: 80px repeat(7, 1fr);
+  border-bottom: 1px solid #e9ecef;
+}
+
+.timeRow:last-child {
+  border-bottom: none;
+}
+
+.timeSlot {
+  padding: 0.75rem 1rem;
+  font-size: 0.8rem;
+  color: #666;
+  display: flex;
+  align-items: center;
+  background: #f8f9fa;
+}
+
+.calendarCell {
+  border-left: 1px solid #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.calendarCell:hover {
+  background: #f8f9ff;
+}
+
+.timeCheckbox {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #dee2e6;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.timeCheckbox:checked {
+  background: #667eea;
+  border-color: #667eea;
+}
+
+.helpText {
+  color: #6c757d;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .calendarHeader,
+  .timeRow {
+    grid-template-columns: 60px repeat(7, 1fr);
+  }
+  
+  .timeColumn,
+  .dayHeader {
+    padding: 0.5rem;
+    font-size: 0.7rem;
+  }
+  
+  .timeSlot {
+    padding: 0.5rem;
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .availabilityTypes {
+    flex-direction: column;
+  }
+  
+  .calendar {
+    font-size: 0.7rem;
+  }
+}
