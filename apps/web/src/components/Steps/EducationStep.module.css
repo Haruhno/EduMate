@@ -60,8 +60,8 @@ h2 {
 .input:focus,
 .select:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #FBBF24;
+  box-shadow: 0 0 0 4px #fff4d8;
 }
 
 .fileUpload {
@@ -90,13 +90,13 @@ h2 {
 }
 
 .uploadButton:hover {
-  background: #e9ecef;
-  border-color: #667eea;
-  color: #667eea;
+  background: #fff8e6;
+  border-color: #FBBF24;
+  color: #FBBF24;
 }
 
 .fileName {
-  color: #28a745;
+  color: #FBBF24;
   font-size: 0.9rem;
   font-weight: 500;
 }

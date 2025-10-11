@@ -219,7 +219,7 @@ h2 {
 .phoneField:focus {
   outline: none;
   border-color: #FBBF24;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  box-shadow: 0 0 0 4px #fff4d8;
 }
 
 .phoneInput {

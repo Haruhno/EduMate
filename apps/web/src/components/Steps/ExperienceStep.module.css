@@ -1,10 +1,11 @@
 @font-face {
-    font-family: 'DMSans';
-    src: url('../../assets/fonts/DMSans-Regular.ttf') format('truetype');
+  font-family: 'DMSans';
+  src: url('../../assets/fonts/DMSans-Regular.ttf') format('truetype');
 }
 
 .container {
   padding: 1rem 0;
+  font-family: 'DMSans', sans-serif;
 }
 
 h2 {
@@ -20,7 +21,6 @@ h2 {
   font-size: 0.9rem;
   line-height: 1.5;
   text-align: center;
-  font-family: 'DMSans', sans-serif;
 }
 
 .formGrid {
@@ -43,7 +43,6 @@ h2 {
   color: #333;
   margin-bottom: 0.5rem;
   font-size: 1rem;
-  font-family: 'DMSans', sans-serif;
 }
 
 .select,
@@ -59,8 +58,8 @@ h2 {
 .select:focus,
 .textarea:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #FBBF24;
+  box-shadow: 0 0 0 4px #fff4d8;
 }
 
 .textarea {
@@ -76,6 +75,7 @@ h2 {
   margin-bottom: 0;
 }
 
+/* --- Spécialités --- */
 .specialtiesGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -87,45 +87,53 @@ h2 {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem;
+  padding: 0.75rem 1rem;
   border: 2px solid #e9ecef;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
   font-size: 0.9rem;
+  background: #fff;
 }
 
 .checkboxLabel:hover {
-  border-color: #667eea;
-  background: #f8f9ff;
+  border-color: #FBBF24;
+  box-shadow: 0 0 0 3px rgba(255, 186, 8, 0.2);
 }
 
+.checkboxLabel:has(.checkbox:checked) {
+  background-color: #fff8e1;
+  border-color: #ffca28;
+  color: #ffa200;
+  font-weight: 600;
+}
+
+/* --- Checkbox (natif + accent-color jaune/orangé) --- */
 .checkbox {
   width: 18px;
   height: 18px;
-  border: 2px solid #dee2e6;
-  border-radius: 4px;
+  accent-color: #fbbf24; /* couleur jaune/orangée */
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform 0.15s ease;
 }
 
-.checkbox:checked {
-  background: #667eea;
-  border-color: #667eea;
+.checkbox:hover {
+  transform: scale(1.1);
 }
 
+/* Texte à côté de la case */
 .checkboxText {
   color: #333;
   font-weight: 500;
 }
 
-/* Responsive */
+/* --- Responsive --- */
 @media (max-width: 768px) {
   .formGrid {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .specialtiesGrid {
     grid-template-columns: 1fr 1fr;
   }

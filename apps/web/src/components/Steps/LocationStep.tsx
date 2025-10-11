@@ -7,7 +7,7 @@ interface LocationStepProps {
   role: string;
 }
 
-// Composant Slider Material UI
+// Slider jaune
 const MaterialSlider: React.FC<{
   value: number;
   min: number;
@@ -24,14 +24,8 @@ const MaterialSlider: React.FC<{
   return (
     <div className={styles.sliderContainer}>
       <div className={styles.sliderBackground}></div>
-      <div 
-        className={styles.sliderProgress} 
-        style={{ width: `${percentage}%` }}
-      ></div>
-      <div 
-        className={styles.sliderThumb}
-        style={{ left: `${percentage}%` }}
-      ></div>
+      <div className={styles.sliderProgress} style={{ width: `${percentage}%` }}></div>
+      <div className={styles.sliderThumb} style={{ left: `${percentage}%` }}></div>
       <input
         type="range"
         min={min}
@@ -45,11 +39,7 @@ const MaterialSlider: React.FC<{
   );
 };
 
-const LocationStep: React.FC<LocationStepProps> = ({
-  profileData,
-  setProfileData,
-  role
-}) => {
+const LocationStep: React.FC<LocationStepProps> = ({ profileData, setProfileData, role }) => {
   const mapRef = useRef<HTMLDivElement>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -61,9 +51,7 @@ const LocationStep: React.FC<LocationStepProps> = ({
         [name]: value
       }
     }));
-    window.dispatchEvent(
-      new CustomEvent('profileFieldUpdated', { detail: { field: name } })
-    );
+    window.dispatchEvent(new CustomEvent('profileFieldUpdated', { detail: { field: name } }));
   };
 
   const handleRadiusChange = (value: number) => {
@@ -74,12 +62,10 @@ const LocationStep: React.FC<LocationStepProps> = ({
         radius: value
       }
     }));
-    window.dispatchEvent(
-      new CustomEvent('profileFieldUpdated', { detail: { field: 'radius' } })
-    );
+    window.dispatchEvent(new CustomEvent('profileFieldUpdated', { detail: { field: 'radius' } }));
   };
 
-  // Simulation de carte avec canvas
+  // Dessin de la carte en jaune
   useEffect(() => {
     if (mapRef.current && role === 'tutor') {
       const canvas = document.createElement('canvas');
@@ -95,11 +81,11 @@ const LocationStep: React.FC<LocationStepProps> = ({
 
       if (ctx) {
         // Fond de carte
-        ctx.fillStyle = '#f8f9fa';
+        ctx.fillStyle = '#fffdf5';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         // Grille
-        ctx.strokeStyle = '#e9ecef';
+        ctx.strokeStyle = '#fff0c2';
         ctx.lineWidth = 1;
         for (let i = 0; i < canvas.width; i += 20) {
           ctx.beginPath();
@@ -114,41 +100,41 @@ const LocationStep: React.FC<LocationStepProps> = ({
           ctx.stroke();
         }
         
-        // Cercle de rayon
+        // Cercle jaune du rayon
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         const radiusPixels = (profileData.location.radius || 5) * 4;
         
         ctx.beginPath();
         ctx.arc(centerX, centerY, radiusPixels, 0, 2 * Math.PI);
-        ctx.fillStyle = 'rgba(0, 123, 255, 0.1)';
+        ctx.fillStyle = 'rgba(251, 191, 36, 0.2)'; // jaune clair
         ctx.fill();
-        ctx.strokeStyle = '#007bff';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#FBBF24'; // jaune
+        ctx.lineWidth = 3;
         ctx.stroke();
         
         // Point central
         ctx.beginPath();
         ctx.arc(centerX, centerY, 5, 0, 2 * Math.PI);
-        ctx.fillStyle = '#007bff';
+        ctx.fillStyle = '#FB923C'; // orange
         ctx.fill();
         
         // Texte du rayon
-        ctx.fillStyle = '#007bff';
-        ctx.font = 'bold 14px Arial';
+        ctx.fillStyle = '#F59E0B';
+        ctx.font = 'bold 14px DMSans, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(`${profileData.location.radius || 5} km`, centerX, centerY - radiusPixels - 10);
         
         // Légende
-        ctx.fillStyle = '#333';
-        ctx.font = '12px Arial';
-        ctx.fillText('Votre zone d\'intervention', centerX, 20);
+        ctx.fillStyle = '#FB923C';
+        ctx.font = '12px DMSans, sans-serif';
+        ctx.fillText("Votre zone d'intervention", centerX, 20);
       }
     }
   }, [profileData.location.radius, role]);
 
   const cities = [
-    'L\'Hay-les-Roses, France',
+    "L'Hay-les-Roses, France",
     'Paris, France',
     'Lyon, France',
     'Marseille, France',
@@ -164,7 +150,7 @@ const LocationStep: React.FC<LocationStepProps> = ({
     <div className={styles.container}>
       <h2>Votre localisation</h2>
       <p className={styles.subtitle}>
-        Indiquez votre lieu de résidence {role === 'tutor' ? 'et votre zone d\'intervention' : ''}
+        Indiquez votre lieu de résidence {role === 'tutor' ? "et votre zone d'intervention" : ''}
       </p>
 
       <div className={styles.formGrid}>
@@ -204,9 +190,11 @@ const LocationStep: React.FC<LocationStepProps> = ({
             <div className={`${styles.formGroup} ${styles.fullWidth}`}>
               <div className={styles.radiusHeader}>
                 <label className={styles.label}>Rayon d'intervention</label>
-                <span className={styles.radiusValue}>{profileData.location.radius || 5} km</span>
+                <span className={styles.radiusValue}>
+                  {profileData.location.radius || 5} km
+                </span>
               </div>
-              
+
               <div className={styles.rangeContainer}>
                 <MaterialSlider
                   value={profileData.location.radius || 5}
@@ -228,12 +216,10 @@ const LocationStep: React.FC<LocationStepProps> = ({
             <div className={`${styles.formGroup} ${styles.fullWidth}`}>
               <label className={styles.label}>Carte de votre zone d'intervention</label>
               <div className={styles.mapContainer}>
-                <div ref={mapRef} className={styles.mapPlaceholder}>
-                  {/* La carte sera injectée ici via useEffect */}
-                </div>
+                <div ref={mapRef} className={styles.mapPlaceholder}></div>
               </div>
               <p className={styles.helpText}>
-                Le cercle bleu représente votre zone d'intervention de {profileData.location.radius || 5} km
+                Le cercle jaune représente votre zone d'intervention de {profileData.location.radius || 5} km
               </p>
             </div>
           </>
