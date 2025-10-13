@@ -86,12 +86,12 @@ const Hero: React.FC = () => {
           {/* Left Content */}
           <div className="space-y-8">
             <div className="space-y-4 flex flex-col items-start">
-              <h1 className="text-5xl lg:text-7xl font-bold text-gray-900 leading-tight">
-                <span className="block mb-6">Trouvez Votre</span>
+              <h1 className="text-5xl lg:text-7xl font-bold text-gray-900 leading-tight font-poppins">
+                <span className="block mb-6 tracking-tight">Trouvez Votre</span>
                 <span className="text-primary block mb-4 bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">              
                   Tuteur Idéal
                 </span>
-                </h1>
+              </h1>
 
               <p className="text-lg lg:text-xl text-gray-600 leading-relaxed max-w-lg">
                 La plateforme nouvelle génération qui connecte lycéens et étudiants avec des tuteurs fiables, sécurisés et accessibles.

@@ -23,6 +23,9 @@ module.exports = {
           '2xl': '6rem',
         },
       },
+       fontFamily: {
+        poppins: ['Poppins', 'sans-serif'],
+      },
     },
   },
   plugins: [],

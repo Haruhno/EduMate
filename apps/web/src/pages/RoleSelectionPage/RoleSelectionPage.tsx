@@ -1,6 +1,8 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from './RoleSelectionPage.module.css';
+import student from '../../assets/images/student.png';
+import tutor from '../../assets/images/mentor.png';
 
 const RoleSelectionPage: React.FC = () => {
   const navigate = useNavigate();
@@ -24,7 +26,7 @@ const RoleSelectionPage: React.FC = () => {
             onClick={() => handleRoleSelection('student')}
           >
             <div className={styles.iconContainer}>
-              <div className={styles.studentIcon}>📚</div>
+              <img className={styles.studentIcon} src={student} alt="Tuteur" />
             </div>
             <h3>Je suis étudiant</h3>
             <p>Trouvez le tuteur idéal pour progresser dans vos études</p>
@@ -36,7 +38,7 @@ const RoleSelectionPage: React.FC = () => {
             onClick={() => handleRoleSelection('tutor')}
           >
             <div className={styles.iconContainer}>
-              <div className={styles.tutorIcon}>👨‍🏫</div>
+              <img className={styles.tutorIcon} src={tutor} alt="Tuteur" />
             </div>
             <h3>Je suis tuteur</h3>
             <p>Partagez vos connaissances et augmentez vos revenus</p>
