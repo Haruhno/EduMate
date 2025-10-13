@@ -1,11 +1,48 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { MapContainer, TileLayer, Circle, Marker, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import styles from './LocationStep.module.css';
+
+// Fix pour les icônes Leaflet dans React
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 interface LocationStepProps {
   profileData: any;
   setProfileData: (data: any) => void;
   role: string;
 }
+
+interface Suggestion {
+  display_name: string;
+  lat: string;
+  lon: string;
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    municipality?: string;
+    country?: string;
+  };
+}
+
+// Composant pour mettre à jour la carte quand le rayon change
+const MapUpdater: React.FC<{ center: [number, number]; radius: number }> = ({ center, radius }) => {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (center && center[0] !== 0 && center[1] !== 0) {
+      map.setView(center, Math.max(10, 13 - Math.log(radius)));
+    }
+  }, [center, radius, map]);
+
+  return null;
+};
 
 // Slider jaune
 const MaterialSlider: React.FC<{
@@ -40,7 +77,94 @@ const MaterialSlider: React.FC<{
 };
 
 const LocationStep: React.FC<LocationStepProps> = ({ profileData, setProfileData, role }) => {
-  const mapRef = useRef<HTMLDivElement>(null);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([48.7769, 2.3445]); // L'Hay-les-Roses par défaut
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Fermer les suggestions quand on clique ailleurs
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        suggestionsRef.current && 
+        !suggestionsRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Fonction pour rechercher des suggestions d'adresses
+  const searchAddressSuggestions = async (query: string) => {
+    if (!query || query.length < 3) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5&countrycodes=`
+      );
+      const data = await response.json();
+      setSuggestions(data);
+      setShowSuggestions(true);
+    } catch (error) {
+      console.error('Erreur de recherche d\'adresses:', error);
+      setSuggestions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fonction pour sélectionner une suggestion
+  const handleSuggestionSelect = (suggestion: Suggestion) => {
+    const newCenter: [number, number] = [parseFloat(suggestion.lat), parseFloat(suggestion.lon)];
+    setMapCenter(newCenter);
+    
+    // Mettre à jour les données de localisation
+    setProfileData((prev: any) => ({
+      ...prev,
+      location: {
+        ...prev.location,
+        address: suggestion.display_name,
+        city: suggestion.address?.city || suggestion.address?.town || suggestion.address?.village || suggestion.address?.municipality || '',
+        latitude: suggestion.lat,
+        longitude: suggestion.lon
+      }
+    }));
+
+    setShowSuggestions(false);
+    setSuggestions([]);
+  };
+
+  // Gérer le changement de l'adresse avec debounce
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    
+    setProfileData((prev: any) => ({
+      ...prev,
+      location: {
+        ...prev.location,
+        address: value
+      }
+    }));
+
+    // Rechercher des suggestions après un délai
+    const timeoutId = setTimeout(() => {
+      searchAddressSuggestions(value);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -65,74 +189,6 @@ const LocationStep: React.FC<LocationStepProps> = ({ profileData, setProfileData
     window.dispatchEvent(new CustomEvent('profileFieldUpdated', { detail: { field: 'radius' } }));
   };
 
-  // Dessin de la carte en jaune
-  useEffect(() => {
-    if (mapRef.current && role === 'tutor') {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = 400;
-      canvas.height = 300;
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.borderRadius = '8px';
-      
-      mapRef.current.innerHTML = '';
-      mapRef.current.appendChild(canvas);
-
-      if (ctx) {
-        // Fond de carte
-        ctx.fillStyle = '#fffdf5';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Grille
-        ctx.strokeStyle = '#fff0c2';
-        ctx.lineWidth = 1;
-        for (let i = 0; i < canvas.width; i += 20) {
-          ctx.beginPath();
-          ctx.moveTo(i, 0);
-          ctx.lineTo(i, canvas.height);
-          ctx.stroke();
-        }
-        for (let i = 0; i < canvas.height; i += 20) {
-          ctx.beginPath();
-          ctx.moveTo(0, i);
-          ctx.lineTo(canvas.width, i);
-          ctx.stroke();
-        }
-        
-        // Cercle jaune du rayon
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const radiusPixels = (profileData.location.radius || 5) * 4;
-        
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radiusPixels, 0, 2 * Math.PI);
-        ctx.fillStyle = 'rgba(251, 191, 36, 0.2)'; // jaune clair
-        ctx.fill();
-        ctx.strokeStyle = '#FBBF24'; // jaune
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        
-        // Point central
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, 5, 0, 2 * Math.PI);
-        ctx.fillStyle = '#FB923C'; // orange
-        ctx.fill();
-        
-        // Texte du rayon
-        ctx.fillStyle = '#F59E0B';
-        ctx.font = 'bold 14px DMSans, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${profileData.location.radius || 5} km`, centerX, centerY - radiusPixels - 10);
-        
-        // Légende
-        ctx.fillStyle = '#FB923C';
-        ctx.font = '12px DMSans, sans-serif';
-        ctx.fillText("Votre zone d'intervention", centerX, 20);
-      }
-    }
-  }, [profileData.location.radius, role]);
-
   const cities = [
     "L'Hay-les-Roses, France",
     'Paris, France',
@@ -156,14 +212,46 @@ const LocationStep: React.FC<LocationStepProps> = ({ profileData, setProfileData
       <div className={styles.formGrid}>
         <div className={`${styles.formGroup} ${styles.fullWidth}`}>
           <label htmlFor="address" className={styles.label}>Adresse principale</label>
-          <input
-            id="address"
-            name="address"
-            value={profileData.location.address || ''}
-            onChange={handleInputChange}
-            className={styles.input}
-            placeholder="96 Rue de Chevilly, 94240 L'Hay-les-Roses, France"
-          />
+          <div className={styles.autocompleteContainer}>
+            <input
+              ref={inputRef}
+              id="address"
+              name="address"
+              value={profileData.location.address || ''}
+              onChange={handleAddressChange}
+              onFocus={() => {
+                if (suggestions.length > 0) {
+                  setShowSuggestions(true);
+                }
+              }}
+              className={styles.input}
+              placeholder="Commencez à taper votre adresse (rue, ville, pays)..."
+              autoComplete="off"
+            />
+            {isLoading && (
+              <div className={styles.loadingSpinner}>
+                <div className={styles.spinner}></div>
+              </div>
+            )}
+            {showSuggestions && suggestions.length > 0 && (
+              <div ref={suggestionsRef} className={styles.suggestionsDropdown}>
+                {suggestions.map((suggestion, index) => (
+                  <div
+                    key={index}
+                    className={styles.suggestionItem}
+                    onClick={() => handleSuggestionSelect(suggestion)}
+                  >
+                    <div className={styles.suggestionText}>
+                      {suggestion.display_name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <p className={styles.helpText}>
+            Tapez au moins 3 caractères pour voir les suggestions d'adresses internationales
+          </p>
         </div>
 
         <div className={`${styles.formGroup} ${styles.fullWidth}`}>
@@ -175,7 +263,7 @@ const LocationStep: React.FC<LocationStepProps> = ({ profileData, setProfileData
             value={profileData.location.city || ''}
             onChange={handleInputChange}
             className={styles.input}
-            placeholder="L'Hay-les-Roses"
+            placeholder="La ville sera automatiquement remplie"
             list="cities"
           />
           <datalist id="cities">
@@ -216,7 +304,29 @@ const LocationStep: React.FC<LocationStepProps> = ({ profileData, setProfileData
             <div className={`${styles.formGroup} ${styles.fullWidth}`}>
               <label className={styles.label}>Carte de votre zone d'intervention</label>
               <div className={styles.mapContainer}>
-                <div ref={mapRef} className={styles.mapPlaceholder}></div>
+                <MapContainer
+                  center={mapCenter}
+                  zoom={13}
+                  style={{ height: '100%', width: '100%' }}
+                  scrollWheelZoom={true}
+                >
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://wikimedia.org/">Wikimedia</a>'
+                    url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png"
+                  />
+                  <Marker position={mapCenter} />
+                  <Circle
+                    center={mapCenter}
+                    radius={(profileData.location.radius || 5) * 1000} // Conversion en mètres
+                    pathOptions={{
+                      fillColor: '#FBBF24',
+                      fillOpacity: 0.2,
+                      color: '#FB923C',
+                      weight: 2
+                    }}
+                  />
+                  <MapUpdater center={mapCenter} radius={profileData.location.radius || 5} />
+                </MapContainer>
               </div>
               <p className={styles.helpText}>
                 Le cercle jaune représente votre zone d'intervention de {profileData.location.radius || 5} km
@@ -229,10 +339,19 @@ const LocationStep: React.FC<LocationStepProps> = ({ profileData, setProfileData
           <div className={`${styles.formGroup} ${styles.fullWidth}`}>
             <label className={styles.label}>Votre localisation</label>
             <div className={styles.mapContainer}>
-              <div className={styles.studentMap}>
-                🗺️ Carte interactive - Localisation étudiante
-                <div className={styles.mapPin}>📍</div>
-              </div>
+              <MapContainer
+                center={mapCenter}
+                zoom={13}
+                style={{ height: '100%', width: '100%' }}
+                scrollWheelZoom={true}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://wikimedia.org/">Wikimedia</a>'
+                  url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png"
+                />
+                <Marker position={mapCenter} />
+                <MapUpdater center={mapCenter} radius={5} />
+              </MapContainer>
             </div>
             <p className={styles.helpText}>
               Votre position sera affichée sur la carte
