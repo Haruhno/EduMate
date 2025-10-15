@@ -34,7 +34,7 @@ const User = sequelize.define('User', {
   },
   isVerified: {
     type: DataTypes.BOOLEAN,
-    defaultValue: false
+    defaultValue: true // MODIFIÉ: true par défaut au lieu de false
   }
 }, {
   tableName: 'users',      

@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const { User, ProfileTutor, ProfileStudent } = require('../models/associations');
 
 class AuthService {
   async register(userData) {
@@ -11,9 +11,23 @@ class AuthService {
 
       const user = await User.create(userData);
       
-      // Retourner l'utilisateur sans le mot de passe
+      // Générer le token
+      const token = jwt.sign(
+        { 
+          id: user.id, 
+          email: user.email, 
+          role: user.role 
+        },
+        process.env.JWT_SECRET || 'votre_secret_jwt',
+        { expiresIn: '24h' }
+      );
+
       const { password, ...userWithoutPassword } = user.toJSON();
-      return userWithoutPassword;
+
+      return {
+        user: userWithoutPassword,
+        token
+      };
     } catch (error) {
       throw new Error(`Erreur lors de l'inscription: ${error.message}`);
     }
@@ -55,6 +69,7 @@ class AuthService {
   async validateToken(token) {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'votre_secret_jwt');
+      
       const user = await User.findByPk(decoded.id, {
         attributes: { exclude: ['password'] }
       });
@@ -66,6 +81,16 @@ class AuthService {
       return user;
     } catch (error) {
       throw new Error('Token invalide');
+    }
+  }
+
+  // Vérifier l'email
+  async verifyEmail(userId) {
+    try {
+      await User.update({ isVerified: true }, { where: { id: userId } });
+      return true;
+    } catch (error) {
+      throw new Error(`Erreur lors de la vérification de l'email: ${error.message}`);
     }
   }
 }

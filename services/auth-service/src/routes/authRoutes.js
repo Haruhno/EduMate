@@ -11,4 +11,7 @@ router.post('/login', authController.login);
 // Route pour récupérer le profil utilisateur
 router.get('/profile', authController.getProfile);
 
+// Route pour vérifier l'authentification
+router.get('/check', authController.checkAuth);
+
 module.exports = router;

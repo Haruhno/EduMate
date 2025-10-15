@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styles from './ProfileCompletion.module.css';
+import profileService from '../../services/profileService';
+import authService from '../../services/authService';
+import type { ProfileData } from '../../services/profileService';
 
 // Composants d'étapes
 import GeneralInfoStep from '../Steps/GeneralInfoStep';
@@ -10,57 +13,15 @@ import AvailabilityStep from '../Steps/AvailabilityStep';
 import LocationStep from '../Steps/LocationStep';
 import PreviewStep from '../Steps/PreviewStep';
 
-interface ProfileData {
-  // Informations générales
-  profilePicture: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  countryCode: string;
-  gender: string;
-  birthDate: string;
-  address: string;
-
-  // Éducation
-  educationLevel: string;
-  school: string;
-  field: string;
-  year: string;
-  diplomaFile?: File;
-
-  // Expérience (tuteur)
-  experience: string;
-  bio: string;
-  specialties: string[];
-
-  // Disponibilité
-  availability: {
-    online: boolean;
-    inPerson: boolean;
-  };
-  schedule: any[];
-
-  // Localisation
-  location: {
-    address: string;
-    radius: number;
-    city: string;
-    coordinates: {
-      lat: number;
-      lng: number;
-    };
-  };
-}
-
 const ProfileCompletion: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const role = location.state?.role || 'student';
   const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
-
   const [currentStep, setCurrentStep] = useState(0);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [completionPercentage, setCompletionPercentage] = useState(0);
 
   const [profileData, setProfileData] = useState<ProfileData>({
     profilePicture: '/assets/images/avatar.jpg',
@@ -92,6 +53,45 @@ const ProfileCompletion: React.FC = () => {
     },
   });
 
+  // Charger uniquement les données de l'utilisateur (nom, prénom, email)
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const user = authService.getCurrentUser();
+        if (user) {
+          setProfileData((prev) => ({
+            ...prev,
+            firstName: user.firstName || prev.firstName,
+            lastName: user.lastName || prev.lastName,
+            email: user.email || prev.email,
+          }));
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des données utilisateur:', error);
+      }
+    };
+
+    if (authService.isAuthenticated()) {
+      loadUserData();
+    }
+  }, []); // ← vide pour ne le lancer qu'une fois
+
+  // Sauvegarder automatiquement à chaque étape
+  useEffect(() => {
+    const saveProgress = async () => {
+      if (currentStep >= 0 && authService.isAuthenticated()) {
+        try {
+          await profileService.saveProfile(profileData, currentStep);
+        } catch (error) {
+          console.error('Erreur de sauvegarde automatique:', error);
+        }
+      }
+    };
+
+    const timeoutId = setTimeout(saveProgress, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [profileData, currentStep]);
+
   // Étapes selon le rôle
   const steps = role === 'student'
     ? [
@@ -112,22 +112,38 @@ const ProfileCompletion: React.FC = () => {
   const CurrentStepComponent = steps[currentStep].component;
   const isFinalStep = currentStep === steps.length - 1;
 
-  // Validation simple avant passage à l’étape suivante
-  const eNext = () => {
+  // Validation - SEULEMENT les informations générales sont obligatoires
+  const validateCurrentStep = () => {
     const newErrors: { [key: string]: string } = {};
 
+    // Seulement la première étape (Informations générales) est obligatoire
     if (steps[currentStep].title === 'Informations générales') {
-      if (!profileData.firstName.trim())
+      if (!profileData.firstName?.trim())
         newErrors.firstName = 'Le prénom est obligatoire.';
-      if (!profileData.lastName.trim())
+      if (!profileData.lastName?.trim())
         newErrors.lastName = 'Le nom est obligatoire.';
-      if (!profileData.email.trim())
-        newErrors.email = "L’adresse e-mail est obligatoire.";
+      if (!profileData.email?.trim())
+        newErrors.email = "L'adresse e-mail est obligatoire.";
+      else if (!/\S+@\S+\.\S+/.test(profileData.email))
+        newErrors.email = "L'adresse e-mail n'est pas valide.";
+      
+      // Date de naissance obligatoire
+      if (!profileData.birthDate)
+        newErrors.birthDate = 'La date de naissance est obligatoire.';
+      else {
+        const birthDate = new Date(profileData.birthDate);
+        const today = new Date();
+        const age = today.getFullYear() - birthDate.getFullYear();
+        if (age < 16) newErrors.birthDate = 'Vous devez avoir au moins 16 ans.';
+      }
 
-      // Validation du téléphone uniquement si le champ est rempli
+      // Genre obligatoire
+      if (!profileData.gender)
+        newErrors.gender = 'Le genre est obligatoire.';
+
+      // Validation du téléphone (optionnel mais doit être valide si rempli)
       setTouched({ ...touched, phone: true });
       const phoneValue = profileData.phone?.trim() || '';
-
       if (phoneValue !== '') {
         const digitsOnly = phoneValue.replace(/\D/g, '');
         if (
@@ -140,46 +156,128 @@ const ProfileCompletion: React.FC = () => {
       }
     }
 
+    // Les autres étapes (Études, Localisation, etc.) ne sont PAS obligatoires
+    // L'utilisateur peut passer directement à l'étape suivante
+
+    return newErrors;
+  };
+
+  const eNext = () => {
+    const newErrors = validateCurrentStep();
     setErrors(newErrors);
 
-    //Laisse passer si pas d’erreurs
     if (Object.keys(newErrors).length === 0) {
-      if (!isFinalStep) setCurrentStep((prev) => prev + 1);
-      else eSubmit();
+      if (!isFinalStep) {
+        setCurrentStep((prev) => prev + 1);
+        // Scroll vers le haut quand on change d'étape
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        eSubmit();
+      }
+    } else {
+      // Scroll vers la première erreur
+      const firstErrorField = Object.keys(newErrors)[0];
+      const errorElement = document.getElementById(firstErrorField);
+      if (errorElement) {
+        errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }
   };
 
   const eBack = () => {
-    if (currentStep > 0) setCurrentStep((prev) => prev - 1);
-  };
-
-  const eSubmit = async () => {
-    try {
-      console.log('Profil complet :', profileData);
-      navigate('/dashboard');
-    } catch (error) {
-      console.error('Erreur lors de la soumission du profil :', error);
+    if (currentStep > 0) {
+      setCurrentStep((prev) => prev - 1);
+      // Scroll vers le haut quand on revient en arrière
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
+  const eSubmit = async () => {
+    setIsLoading(true);
+    try {
+      // Sauvegarder une dernière fois
+      await profileService.saveProfile(profileData, currentStep);
+
+      // Finaliser le profil
+      const response = await profileService.completeProfile();
+
+      if (response.success) {
+        console.log('Profil complété avec succès:', response.data);
+        navigate('/dashboard');
+      }
+    } catch (error: any) {
+      console.error('Erreur lors de la soumission du profil:', error);
+      setErrors(prev => ({
+        ...prev,
+        submit: error.response?.data?.message || 'Erreur lors de la soumission du profil',
+      }));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Calcul du pourcentage de complétion en temps réel - SIMPLIFIÉ
+  useEffect(() => {
+    const calculateCompletion = () => {
+      let completedFields = 0;
+      const totalFields = 5; // Seulement les champs obligatoires des informations générales
+
+      // Vérifier seulement les champs obligatoires des informations générales
+      if (profileData.firstName?.trim()) completedFields++;
+      if (profileData.lastName?.trim()) completedFields++;
+      if (profileData.email?.trim()) completedFields++;
+      if (profileData.birthDate) completedFields++;
+      if (profileData.gender) completedFields++;
+
+      const percentage = Math.round((completedFields / totalFields) * 100);
+      setCompletionPercentage(percentage);
+    };
+
+    calculateCompletion();
+  }, [profileData]);
+
   return (
     <div className={styles.container}>
-      {/* Header avec progression */}
+      {/* Header avec progression et pourcentage */}
       <div className={styles.header}>
-        <div className={styles.steps}>
-          {steps.map((step, index) => (
-            <div
-              key={index}
-              className={`${styles.step} ${
-                index <= currentStep ? styles.active : ''
-              } ${index === currentStep ? styles.current : ''}`}
-            >
-              <div className={styles.stepNumber}>{index + 1}</div>
-              <span className={styles.stepTitle}>{step.title}</span>
-            </div>
-          ))}
+        <div className={styles.headerContent}>
+          {/* Pourcentage de complétion à gauche */}
+          <div className={styles.completionBadge}>
+            <span className={styles.completionText}>
+              {completionPercentage}% complété
+            </span>
+          </div>
+          
+          <div className={styles.steps}>
+            {steps.map((step, index) => (
+              <div
+                key={index}
+                className={`${styles.step} ${
+                  index <= currentStep ? styles.active : ''
+                } ${index === currentStep ? styles.current : ''}`}
+              >
+                <div className={styles.stepNumber}>{index + 1}</div>
+                <span className={styles.stepTitle}>{step.title}</span>
+              </div>
+            ))}
+          </div>
+          
+          {/* Statut "Modification en cours" toujours affiché */}
+          <div className={styles.profileStatus}>
+            ✓ Modification en cours
+          </div>
         </div>
       </div>
+
+      {/* Message d'erreur global */}
+      {errors.submit && (
+        <div className={styles.errorBanner}>
+          <div className={styles.errorContent}>
+            <span className={styles.errorIcon}>⚠️</span>
+            <span>{errors.submit}</span>
+          </div>
+        </div>
+      )}
 
       {/* Split screen principal */}
       <div
@@ -215,7 +313,7 @@ const ProfileCompletion: React.FC = () => {
                 </button>
 
                 <button onClick={eNext} className={styles.nextButton}>
-                  Continuer
+                  {currentStep === steps.length - 2 ? 'Voir l\'aperçu' : 'Continuer'}
                 </button>
               </div>
             )}
@@ -226,8 +324,12 @@ const ProfileCompletion: React.FC = () => {
                 <button onClick={eBack} className={styles.backButton}>
                   Retour
                 </button>
-                <button onClick={eNext} className={styles.nextButton}>
-                  Terminer mon profil
+                <button 
+                  onClick={eSubmit} 
+                  className={styles.nextButton}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Traitement...' : 'Terminer mon profil'}
                 </button>
               </div>
             )}

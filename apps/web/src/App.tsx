@@ -56,7 +56,7 @@ const App: React.FC = () => {
             } 
           />
           <Route path="/completer-profil" element={<ProfileCompletion />} />
-          <Route path="/tutor-search" element={<TutorSearchPage />} />
+
         </Routes>
       </div>
     </Router>
