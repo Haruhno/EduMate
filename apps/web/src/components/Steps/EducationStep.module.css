@@ -120,3 +120,99 @@ h2 {
     align-items: flex-start;
   }
 }
+
+.manualInput {
+  margin-top: 0.5rem;
+}
+
+.manualInput .input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.manualInput .input:focus {
+  outline: none;
+  border-color: #FBBF24;
+  box-shadow: 0 0 0 4px #fff4d8;
+}
+
+.helpText {
+  color: #6c757d;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+  font-style: italic;
+}
+
+.searchContainer {
+  position: relative;
+  width: 100%;
+}
+
+.suggestionsDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e9ecef;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.suggestionItem {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.suggestionItem:hover {
+  background-color: #fff8e6;
+}
+
+.suggestionItem:last-child {
+  border-bottom: none;
+}
+
+.universityName {
+  font-weight: 500;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.universityLocation {
+  font-size: 0.8rem;
+  color: #666;
+  font-style: italic;
+}
+
+.suggestionHint {
+  font-size: 0.8rem;
+  color: #FBBF24;
+  font-style: italic;
+}
+
+.noResults {
+  padding: 0.75rem 1rem;
+  color: #666;
+  font-size: 0.9rem;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Fermer les suggestions quand on clique en dehors */
+.suggestionsDropdown:focus-within {
+  display: block;
+}

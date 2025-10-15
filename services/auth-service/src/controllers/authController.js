@@ -12,7 +12,7 @@ class AuthController {
         });
       }
 
-      const user = await authService.register({
+      const result = await authService.register({
         email,
         password,
         firstName,
@@ -23,7 +23,7 @@ class AuthController {
       res.status(201).json({
         success: true,
         message: 'Utilisateur créé avec succès',
-        data: user
+        data: result
       });
     } catch (error) {
       res.status(400).json({
@@ -72,12 +72,54 @@ class AuthController {
 
       const user = await authService.validateToken(token);
 
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Utilisateur non trouvé'
+        });
+      }
+
       res.json({
         success: true,
+        message: 'Profil récupéré avec succès',
         data: user
       });
     } catch (error) {
       res.status(401).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  // Nouvelle route pour vérifier l'authentification
+  async checkAuth(req, res) {
+    try {
+      const token = req.headers.authorization?.split(' ')[1];
+      
+      if (!token) {
+        return res.json({
+          success: false,
+          message: 'Non authentifié'
+        });
+      }
+
+      const user = await authService.validateToken(token);
+      
+      if (!user) {
+        return res.json({
+          success: false,
+          message: 'Token invalide'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Authentifié',
+        data: user
+      });
+    } catch (error) {
+      res.json({
         success: false,
         message: error.message
       });

@@ -3,19 +3,31 @@
   background: #f8f9fa;
 }
 
+/* Header amélioré avec pourcentage */
 .header {
-  background: #fffaf6;
+  background: white;
   padding: 1.5rem 2rem;
   border-bottom: 1px solid #e9ecef;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: relative;
   top: 0;
   z-index: 100;
+}
+
+.headerContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .steps {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex: 1;
+  max-width: 800px;
 }
 
 .step {
@@ -78,6 +90,65 @@
   font-weight: 600;
 }
 
+/* Badge de pourcentage de complétion */
+.completionBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  margin-left: 2rem;
+}
+
+.completionText {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #FB923C;
+  background: #fff8e6;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  border: 1px solid #ffe29a;
+}
+
+.profileStatus {
+  font-size: 0.75rem;
+  color: #28a745;
+  background: #d4edda;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+}
+
+/* Bannière d'erreur */
+.errorBanner {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 2rem;
+  animation: slideDown 0.3s ease;
+}
+
+.errorContent {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #721c24;
+}
+
+.errorIcon {
+  font-size: 1.2rem;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Split Screen - Layout normal */
 .splitContainer {
   display: grid;
@@ -129,164 +200,68 @@
   padding: 2rem 0;
 }
 
-/* Style pour le conteneur de preview en finalisation */
-.centeredFinalStep :global(.container) {
-  text-align: center;
-  max-width: 600px;
-  margin: 0 auto;
+.previewSection {
+  background: #f8f9fa;
   padding: 2rem;
+  overflow-y: auto;
+  position: sticky;
+  top: 120px;
+  height: calc(100vh - 120px);
+}
+
+.previewContent {
   background: white;
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  padding: 2rem;
+  height: fit-content;
+  max-height: 100%;
+  overflow-y: auto;
 }
 
-/* Header de preview en finalisation */
-.centeredFinalStep :global(.previewHeader) {
-  text-align: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 2px solid #f1f3f4;
+/* Navigation */
+.navigation {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e9ecef;
 }
 
-.centeredFinalStep :global(.previewHeader h3) {
-  font-size: 1.75rem;
-  color: #333;
-  margin-bottom: 0.5rem;
-  font-weight: 700;
+.backButton {
+  padding: 0.75rem 1.5rem;
+  border: 1px solid #6c757d;
+  background: white;
+  color: #6c757d;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
 }
 
-.centeredFinalStep :global(.previewSubtitle) {
-  color: #666;
-  font-size: 1.1rem;
-  margin: 0;
+.backButton:not(:disabled):hover {
+  background: #6c757d;
+  color: white;
 }
 
-/* Profile header en finalisation */
-.centeredFinalStep :global(.profileHeader) {
-  text-align: center;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 2rem;
+.backButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.centeredFinalStep :global(.photoContainer) {
-  margin: 0 auto 1rem;
-}
-
-.centeredFinalStep :global(.nameContainer) {
-  text-align: left;
-}
-
-.centeredFinalStep :global(.profileName) {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
-  text-align: center;
-}
-
-.centeredFinalStep :global(.roleBadge) {
-  display: inline-block;
+.nextButton {
+  padding: 0.75rem 2rem;
   background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
   color: white;
-  padding: 0.5rem 1.5rem;
-  border-radius: 25px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-align: left !important;
-  margin-left: 0 !important;
-  margin-right: auto !important;
-}
-
-/* Sections en finalisation */
-.centeredFinalStep :global(.section) {
-  text-align: center;
-  margin-bottom: 2rem;
-  padding: 1.5rem;
-  background: #f8f9fa;
-  border-radius: 12px;
-  border-left: 4px solid #FBBF24;
-}
-
-.centeredFinalStep :global(.sectionTitle) {
-  color: #333;
-  font-size: 1.2rem;
-  margin-bottom: 1.5rem;
-  font-weight: 600;
-  text-align: center;
-}
-
-/* Grille d'information en finalisation */
-.centeredFinalStep :global(.infoGrid) {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  text-align: center;
-}
-
-.centeredFinalStep :global(.infoItem) {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem;
-  background: white;
+  border: none;
   border-radius: 8px;
-  border: 1px solid #e9ecef;
-}
-
-.centeredFinalStep :global(.infoLabel) {
-  font-weight: 600;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.centeredFinalStep :global(.infoValue) {
-  color: #333;
-  font-size: 1rem;
+  cursor: pointer;
   font-weight: 500;
+  transition: transform 0.2s;
 }
 
-/* Tags et badges en finalisation */
-.centeredFinalStep :global(.tags) {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-.centeredFinalStep :global(.tag) {
-  background: #e9ecef;
-  color: #333;
-  padding: 0.4rem 0.8rem;
-  border-radius: 16px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.centeredFinalStep :global(.availability) {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  align-items: center;
-  margin-top: 1rem;
-}
-
-.centeredFinalStep :global(.availabilityBadge) {
-  background: #007bff;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-/* Séparateurs en finalisation */
-.centeredFinalStep :global(.separator) {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, #e9ecef, transparent);
-  margin: 2rem auto;
-  width: 80%;
+.nextButton:hover {
+  transform: translateY(-1px);
 }
 
 /* Navigation spéciale pour la finalisation */
@@ -335,70 +310,6 @@
   box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
 }
 
-.previewSection {
-  background: #f8f9fa;
-  padding: 2rem;
-  overflow-y: auto;
-  position: sticky;
-  top: 120px;
-  height: calc(100vh - 120px);
-}
-
-.previewContent {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  padding: 2rem;
-  height: fit-content;
-  max-height: 100%;
-  overflow-y: auto;
-}
-
-/* Navigation normale (pas en finalisation) */
-.navigation {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 1px solid #e9ecef;
-}
-
-.backButton {
-  padding: 0.75rem 1.5rem;
-  border: 1px solid #6c757d;
-  background: white;
-  color: #6c757d;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.backButton:not(:disabled):hover {
-  background: #6c757d;
-  color: white;
-}
-
-.backButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.nextButton {
-  padding: 0.75rem 2rem;
-  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: transform 0.2s;
-}
-
-.nextButton:hover {
-  transform: translateY(-1px);
-}
-
 /* Animation d'apparition pour la finalisation */
 @keyframes fadeInUp {
   from {
@@ -415,33 +326,6 @@
   animation: fadeInUp 0.6s ease-out;
 }
 
-/* État vide en finalisation */
-.centeredFinalStep :global(.emptyState) {
-  text-align: center;
-  padding: 3rem 2rem;
-  color: #666;
-  background: #f8f9fa;
-  border-radius: 12px;
-  border: 2px dashed #e9ecef;
-}
-
-.centeredFinalStep :global(.emptyState p) {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-/* Bio text en finalisation */
-.centeredFinalStep :global(.bioText) {
-  text-align: center;
-  line-height: 1.6;
-  color: #333;
-  margin: 0;
-  padding: 1rem;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
-}
-
 /* Responsive */
 @media (max-width: 1024px) {
   .splitContainer {
@@ -450,6 +334,16 @@
   
   .previewSection {
     display: none;
+  }
+  
+  .headerContent {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .completionBadge {
+    align-items: center;
+    margin-left: 0;
   }
   
   .steps {
@@ -494,24 +388,6 @@
     padding: 1rem 0;
   }
   
-  .centeredFinalStep :global(.container) {
-    padding: 1.5rem;
-    margin: 0 1rem;
-  }
-  
-  .centeredFinalStep :global(.section) {
-    padding: 1rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .centeredFinalStep :global(.profileName) {
-    font-size: 1.3rem;
-  }
-  
-  .centeredFinalStep :global(.previewHeader h3) {
-    font-size: 1.5rem;
-  }
-  
   .navigation {
     flex-direction: column;
     gap: 1rem;
@@ -545,21 +421,8 @@
     font-size: 0.8rem;
   }
   
-  .centeredFinalStep :global(.container) {
-    padding: 1rem;
-    margin: 0 0.5rem;
-  }
-  
-  .centeredFinalStep :global(.infoItem) {
-    padding: 0.75rem;
-  }
-  
-  .centeredFinalStep :global(.tags) {
-    gap: 0.3rem;
-  }
-  
-  .centeredFinalStep :global(.tag) {
-    padding: 0.3rem 0.6rem;
-    font-size: 0.75rem;
+  .completionText {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
   }
 }

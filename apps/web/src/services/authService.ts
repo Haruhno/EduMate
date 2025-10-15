@@ -1,88 +1,121 @@
-import type { User, LoginResponse, RegisterData } from './authService.types';
+import api from './api';
+import type { User } from './authService.types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+export interface LoginResponse {
+  success: boolean;
+  message: string;
+  data: {
+    user: User;
+    token: string;
+  };
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  role?: 'student' | 'tutor';
+}
 
 class AuthService {
-  async register(userData: RegisterData): Promise<User> {
-    const response = await fetch(`${API_URL}/auth/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
-    });
+  private tokenKey = 'token';
+  private userKey = 'user';
 
-    const data: { success: boolean; message: string; data: User } = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message);
+  // Inscription
+  async register(userData: RegisterData): Promise<LoginResponse> {
+    const response = await api.post('/auth/register', userData);
+    
+    if (response.data.success) {
+      this.setToken(response.data.data.token);
+      this.setUser(response.data.data.user);
     }
-
-    return data.data;
+    
+    return response.data;
   }
 
+  // Connexion
   async login(email: string, password: string): Promise<LoginResponse> {
-    const response = await fetch(`${API_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const data: { success: boolean; message: string; data: LoginResponse } = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message);
+    const response = await api.post('/auth/login', { email, password });
+    
+    if (response.data.success) {
+      this.setToken(response.data.data.token);
+      this.setUser(response.data.data.user);
     }
-
-    // Stocker le token et l'utilisateur dans le localStorage
-    localStorage.setItem('token', data.data.token);
-    localStorage.setItem('user', JSON.stringify(data.data.user));
-
-    return data.data;
+    
+    return response.data;
   }
 
+  // Déconnexion
   logout(): void {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem(this.userKey);
   }
 
-  getCurrentUser(): User | null {
-    const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
-  }
-
-  getToken(): string | null {
-    return localStorage.getItem('token');
-  }
-
+  // Vérifier si l'utilisateur est connecté
   isAuthenticated(): boolean {
     return !!this.getToken();
   }
 
-  
-
-  async getProfile(): Promise<User> {
-    const token = this.getToken();
-    if (!token) {
-      throw new Error('Utilisateur non connecté');
+  // Récupérer l'utilisateur courant - CORRIGÉ
+  getCurrentUser(): User | null {
+    try {
+      const user = localStorage.getItem(this.userKey);
+      if (!user || user === 'undefined' || user === 'null') {
+        return null;
+      }
+      return JSON.parse(user) as User;
+    } catch (error) {
+      console.error('Erreur lors de la récupération de l\'utilisateur:', error);
+      // Nettoyer les données corrompues
+      localStorage.removeItem(this.userKey);
+      return null;
     }
+  }
 
-    const response = await fetch(`${API_URL}/auth/profile`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  // Récupérer le token
+  getToken(): string | null {
+    const token = localStorage.getItem(this.tokenKey);
+    return token && token !== 'undefined' ? token : null;
+  }
 
-    const data: { success: boolean; message: string; data: User } = await response.json();
+  // Définir le token
+  private setToken(token: string): void {
+    localStorage.setItem(this.tokenKey, token);
+  }
 
-    if (!data.success) {
+  // Définir l'utilisateur
+  private setUser(user: User): void {
+    localStorage.setItem(this.userKey, JSON.stringify(user));
+  }
+
+  // Vérifier le token (optionnel - pour valider côté serveur)
+  async validateToken(): Promise<User | null> {
+    try {
+      const token = this.getToken();
+      if (!token) return null;
+
+      const response = await api.get('/auth/profile');
+      if (response.data.success) {
+        this.setUser(response.data.data);
+        return response.data.data;
+      }
+      return null;
+    } catch (error) {
       this.logout();
-      throw new Error(data.message);
+      return null;
     }
+  }
 
-    return data.data;
+  // Vérifier l'email
+  async verifyEmail(userId: string): Promise<boolean> {
+    try {
+      const response = await api.post('/auth/verify-email', { userId });
+      return response.data.success;
+    } catch (error) {
+      console.error('Erreur vérification email:', error);
+      return false;
+    }
   }
 }
 

@@ -54,8 +54,14 @@ const App: React.FC = () => {
               </PublicRoute>
             } 
           />
-          <Route path="/completer-profil" element={<ProfileCompletion />} />
-
+          <Route 
+            path="/completer-profil" 
+            element={
+              <PrivateRoute>
+                <ProfileCompletion />
+              </PrivateRoute>
+            } 
+          />
         </Routes>
       </div>
     </Router>

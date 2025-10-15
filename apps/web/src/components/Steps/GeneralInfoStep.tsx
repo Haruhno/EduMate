@@ -147,12 +147,8 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
             [name]: value,
         }));
 
-        // Supprimer l'erreur si corrigé
-        setErrors((prev) => {
-            const updated = { ...prev };
-            delete updated[name];
-            return updated;
-        });
+        // Validation en temps réel
+        validateField(name, value);
 
         // Marquer comme touché
         setTouched((prev) => ({
@@ -166,31 +162,68 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         );
     };
 
+    const validateField = (name: string, value: any) => {
+        let error = '';
+
+        switch (name) {
+            case 'firstName':
+                if (!value?.trim()) error = 'Le prénom est obligatoire.';
+                break;
+            case 'lastName':
+                if (!value?.trim()) error = 'Le nom est obligatoire.';
+                break;
+            case 'email':
+                if (!value?.trim()) {
+                    error = 'L\'adresse e-mail est obligatoire.';
+                } else if (!/\S+@\S+\.\S+/.test(value)) {
+                    error = 'L\'adresse e-mail n\'est pas valide.';
+                }
+                break;
+            case 'birthDate':
+                if (!value) {
+                    error = 'La date de naissance est obligatoire.';
+                } else {
+                    const birthDate = new Date(value);
+                    const today = new Date();
+                    const age = today.getFullYear() - birthDate.getFullYear();
+                    if (age < 16) error = 'Vous devez avoir au moins 16 ans.';
+                }
+                break;
+            case 'gender':
+                if (!value) error = 'Le genre est obligatoire.';
+                break;
+            case 'phone':
+                if (value && value.trim() !== '') {
+                    const digitsOnly = value.replace(/\D/g, '');
+                    if ((value.match(/\+/g)?.length || 0) > 1 || digitsOnly.length < 8 || digitsOnly.length > 15) {
+                        error = 'Numéro de téléphone invalide';
+                    }
+                }
+                break;
+        }
+
+        setErrors((prev) => {
+            const updated = { ...prev };
+            if (error) {
+                updated[name] = error;
+            } else {
+                delete updated[name];
+            }
+            return updated;
+        });
+    };
+
     const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         const cleaned = value.replace(/[^\d+]/g, '');
-        const digitsOnly = cleaned.replace(/\D/g, '');
-
-        // Validation
-        if (cleaned !== '' && 
-            ((cleaned.match(/\+/g)?.length || 0) > 1 || digitsOnly.length < 8 || digitsOnly.length > 15)
-        ) {
-            setErrors((prev) => ({
-                ...prev,
-                phone: 'Numéro de téléphone invalide',
-            }));
-        } else {
-            setErrors((prev) => {
-                const updated = { ...prev };
-                delete updated.phone;
-                return updated;
-            });
-        }
-
+        
         setProfileData((prev: any) => ({ 
             ...prev, 
             [name]: cleaned 
         }));
+
+        // Validation
+        validateField(name, cleaned);
 
         setTouched((prev) => ({
             ...prev,
@@ -231,12 +264,27 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         }
     };
 
+    // Validation des champs au chargement
+    useEffect(() => {
+        // Valider tous les champs obligatoires quand le composant est monté
+        validateField('firstName', profileData.firstName);
+        validateField('lastName', profileData.lastName);
+        validateField('email', profileData.email);
+        validateField('birthDate', profileData.birthDate);
+        validateField('gender', profileData.gender);
+    }, []);
+
     return (
         <div className={styles.container}>
             <h2>Informations générales</h2>
             <p className={styles.subtitle}>
                 Renseignez vos informations personnelles pour compléter votre profil
             </p>
+
+            {/* Indication des champs obligatoires */}
+            <div className={styles.requiredNote}>
+                <span className={styles.requiredMarker}>*</span> Indique un champ obligatoire
+            </div>
 
             {/* --- Photo de profil --- */}
             <div className={styles.photoSection}>
@@ -327,7 +375,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                                 showGrid={false}
                                 style={{
                                     containerStyle: {
-                                        backgroundColor: '#f8f9fa' // Fond gris clair au lieu de noir
+                                        backgroundColor: '#f8f9fa'
                                     }
                                 }}
                             />
@@ -377,7 +425,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                 {/* Prénom */}
                 <div className={styles.formGroup}>
                     <label htmlFor="firstName" className={styles.label}>
-                        Prénom <span>*</span>
+                        Prénom <span className={styles.requiredMarker}>*</span>
                     </label>
                     <input
                         type="text"
@@ -386,7 +434,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         placeholder="Entrez votre prénom"
                         value={profileData.firstName}
                         onChange={handleInputChange}
-                        className={`${styles.input} ${errors.firstName ? styles.inputError : ''}`}
+                        className={`${styles.input} ${errors.firstName ? styles.inputError : ''} ${touched.firstName ? styles.touched : ''}`}
                     />
                     {errors.firstName && <p className={styles.errorText}>{errors.firstName}</p>}
                 </div>
@@ -394,7 +442,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                 {/* Nom */}
                 <div className={styles.formGroup}>
                     <label htmlFor="lastName" className={styles.label}>
-                        Nom <span>*</span>
+                        Nom <span className={styles.requiredMarker}>*</span>
                     </label>
                     <input
                         type="text"
@@ -403,7 +451,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         placeholder="Entrez votre nom"
                         value={profileData.lastName}
                         onChange={handleInputChange}
-                        className={`${styles.input} ${errors.lastName ? styles.inputError : ''}`}
+                        className={`${styles.input} ${errors.lastName ? styles.inputError : ''} ${touched.lastName ? styles.touched : ''}`}
                     />
                     {errors.lastName && <p className={styles.errorText}>{errors.lastName}</p>}
                 </div>
@@ -411,7 +459,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                 {/* Email */}
                 <div className={styles.formGroup}>
                     <label htmlFor="email" className={styles.label}>
-                        Email <span>*</span>
+                        Email <span className={styles.requiredMarker}>*</span>
                     </label>
                     <input
                         type="email"
@@ -420,7 +468,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         placeholder="exemple@mail.com"
                         value={profileData.email}
                         onChange={handleInputChange}
-                        className={`${styles.input} ${errors.email ? styles.inputError : ''}`}
+                        className={`${styles.input} ${errors.email ? styles.inputError : ''} ${touched.email ? styles.touched : ''}`}
                     />
                     {errors.email && <p className={styles.errorText}>{errors.email}</p>}
                 </div>
@@ -467,7 +515,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                             placeholder="Numéro de téléphone"
                             value={profileData.phone}
                             onChange={handlePhoneChange}
-                            className={`${styles.phoneField} ${errors.phone ? styles.inputError : ''}`}
+                            className={`${styles.phoneField} ${errors.phone ? styles.inputError : ''} ${touched.phone ? styles.touched : ''}`}
                         />
                     </div>
 
@@ -476,13 +524,15 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
 
                 {/* Genre */}
                 <div className={styles.formGroup}>
-                    <label htmlFor="gender" className={styles.label}>Genre</label>
+                    <label htmlFor="gender" className={styles.label}>
+                        Genre <span className={styles.requiredMarker}>*</span>
+                    </label>
                     <select
                         id="gender"
                         name="gender"
                         value={profileData.gender}
                         onChange={handleInputChange}
-                        className={styles.select}
+                        className={`${styles.select} ${errors.gender ? styles.inputError : ''} ${touched.gender ? styles.touched : ''}`}
                     >
                         <option value="">Sélectionnez</option>
                         <option value="female">Femme</option>
@@ -490,20 +540,24 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         <option value="other">Autre</option>
                         <option value="prefer_not_to_say">Je préfère ne pas répondre</option>
                     </select>
+                    {errors.gender && <p className={styles.errorText}>{errors.gender}</p>}
                 </div>
 
                 {/* Date de naissance */}
                 <div className={styles.formGroup}>
-                    <label htmlFor="birthDate" className={styles.label}>Date de naissance</label>
+                    <label htmlFor="birthDate" className={styles.label}>
+                        Date de naissance <span className={styles.requiredMarker}>*</span>
+                    </label>
                     <input
                         type="date"
                         id="birthDate"
                         name="birthDate"
                         value={profileData.birthDate}
                         onChange={handleInputChange}
-                        className={styles.input}
+                        className={`${styles.input} ${errors.birthDate ? styles.inputError : ''} ${touched.birthDate ? styles.touched : ''}`}
                         max={new Date().toISOString().split('T')[0]}
                     />
+                    {errors.birthDate && <p className={styles.errorText}>{errors.birthDate}</p>}
                 </div>
 
                 {/* Adresse */}
@@ -519,10 +573,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         placeholder="Rue, ville, code postal..."
                     />
                 </div>
-            </div>
-
-            <div className={styles.requiredInfo}>
-                <span>*</span> Champs obligatoires
             </div>
         </div>
     );
