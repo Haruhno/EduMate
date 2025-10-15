@@ -130,14 +130,6 @@ const HowItWorks: React.FC = () => {
             </div>
           ))}
         </div>
-
-        {/* CTA final */}
-        <div className={styles.finalCta}>
-          <h3 className={styles.finalTitle}>Prêt à commencer votre aventure EduMate ?</h3>
-          <button className={styles.finalButton}>
-            Rejoindre la communauté
-          </button>
-        </div>
       </div>
     </section>
   );
