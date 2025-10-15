@@ -100,7 +100,7 @@ const Hero: React.FC = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
-              <button className="bg-secondary hover:bg-yellow-400 text-white font-semibold py-4 px-8 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
+              <button onClick={() => window.location.href = '/tutor-search'} className="bg-secondary hover:bg-yellow-400 text-white font-semibold py-4 px-8 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
                 Je cherche un tuteur
               </button>
               

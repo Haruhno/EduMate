@@ -79,7 +79,6 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
                         type="checkbox"
                         className={styles.timeCheckbox}
                         onChange={(e) => {
-                          // Gérer la sélection des créneaux
                         }}
                       />
                     </div>

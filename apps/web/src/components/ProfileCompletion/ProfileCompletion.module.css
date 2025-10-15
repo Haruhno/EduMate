@@ -78,7 +78,6 @@
   font-weight: 600;
 }
 
-/* Split Screen - Layout normal */
 .splitContainer {
   display: grid;
   grid-template-columns: 1fr 450px;
@@ -87,7 +86,6 @@
   margin: 0 auto;
 }
 
-/* Split Screen - Pleine largeur pour Finalisation */
 .splitContainer.fullWidth {
   grid-template-columns: 1fr;
 }
@@ -99,7 +97,6 @@
   overflow-y: auto;
 }
 
-/* Formulaire en pleine largeur pour Finalisation */
 .formSection.fullWidthForm {
   border-right: none;
   max-width: none;
@@ -111,12 +108,10 @@
   margin: 0 auto;
 }
 
-/* Pour la Finalisation, on élargit le contenu */
 .splitContainer.fullWidth .formContent {
   max-width: 1000px;
 }
 
-/* Conteneur centré pour la finalisation */
 .centeredFinalStep {
   max-width: 800px !important;
   margin: 0 auto;
@@ -129,7 +124,6 @@
   padding: 2rem 0;
 }
 
-/* Style pour le conteneur de preview en finalisation */
 .centeredFinalStep :global(.container) {
   text-align: center;
   max-width: 600px;
@@ -141,7 +135,6 @@
   border: 1px solid #e9ecef;
 }
 
-/* Header de preview en finalisation */
 .centeredFinalStep :global(.previewHeader) {
   text-align: center;
   margin-bottom: 2rem;
@@ -162,7 +155,6 @@
   margin: 0;
 }
 
-/* Profile header en finalisation */
 .centeredFinalStep :global(.profileHeader) {
   text-align: center;
   flex-direction: column;
@@ -197,7 +189,6 @@
   margin-right: auto !important;
 }
 
-/* Sections en finalisation */
 .centeredFinalStep :global(.section) {
   text-align: center;
   margin-bottom: 2rem;
@@ -215,7 +206,6 @@
   text-align: center;
 }
 
-/* Grille d'information en finalisation */
 .centeredFinalStep :global(.infoGrid) {
   display: flex;
   flex-direction: column;
@@ -246,7 +236,6 @@
   font-weight: 500;
 }
 
-/* Tags et badges en finalisation */
 .centeredFinalStep :global(.tags) {
   display: flex;
   justify-content: center;
@@ -281,7 +270,6 @@
   font-weight: 500;
 }
 
-/* Séparateurs en finalisation */
 .centeredFinalStep :global(.separator) {
   height: 1px;
   background: linear-gradient(90deg, transparent, #e9ecef, transparent);
@@ -289,7 +277,6 @@
   width: 80%;
 }
 
-/* Navigation spéciale pour la finalisation */
 .finalNavigation {
   display: flex;
   justify-content: center;
@@ -354,7 +341,6 @@
   overflow-y: auto;
 }
 
-/* Navigation normale (pas en finalisation) */
 .navigation {
   display: flex;
   justify-content: space-between;
@@ -399,7 +385,6 @@
   transform: translateY(-1px);
 }
 
-/* Animation d'apparition pour la finalisation */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -415,7 +400,6 @@
   animation: fadeInUp 0.6s ease-out;
 }
 
-/* État vide en finalisation */
 .centeredFinalStep :global(.emptyState) {
   text-align: center;
   padding: 3rem 2rem;
@@ -430,7 +414,6 @@
   font-size: 1.1rem;
 }
 
-/* Bio text en finalisation */
 .centeredFinalStep :global(.bioText) {
   text-align: center;
   line-height: 1.6;
@@ -442,7 +425,6 @@
   border: 1px solid #e9ecef;
 }
 
-/* Responsive */
 @media (max-width: 1024px) {
   .splitContainer {
     grid-template-columns: 1fr;

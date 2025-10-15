@@ -63,8 +63,8 @@ const Navbar: React.FC = () => {
       <div className={styles.navbarBrand}>
         <Link to="/" onClick={closeMenu}>
           <img src={logo} alt="EduMate Logo" className={styles.logo} />
+          <span className={styles.brandName}>EduMate</span>
         </Link>
-        <span className={styles.brandName}>EduMate</span>
       </div>
 
       {/* Liens de navigation */}
@@ -128,8 +128,6 @@ const Navbar: React.FC = () => {
           </>
         )}
       </div>
-
-      {/* Hamburger mobile */}
       <button className={`${styles.hamburger} ${isMenuOpen ? styles.active : ""}`} onClick={toggleMenu}>
         <span></span>
         <span></span>

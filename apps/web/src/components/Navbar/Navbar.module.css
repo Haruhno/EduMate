@@ -61,6 +61,7 @@ body {
   margin-left: 5px;
   font-family: 'Recoleta', serif;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .navLinks {
@@ -166,8 +167,6 @@ body {
   background: linear-gradient(135deg, #d4b98a 0%, #f0e4cc 100%);
 }
 
-/* ===== STYLES MOBILE POUR LES BOUTONS AUTH ===== */
-
 .mobileAuth {
   display: none; 
 }
@@ -209,8 +208,6 @@ body {
 .mobileInscription::after {
   display: none !important;
 }
-
-/* ===== RESPONSIVE ===== */
 
 /* Tablettes */
 @media (max-width: 1024px) {
@@ -258,7 +255,6 @@ body {
   }
 }
 
-/* Mobiles grands */
 @media (max-width: 768px) {
   body {
     padding-top: 70px;
@@ -321,7 +317,6 @@ body {
   }
 }
 
-/* Mobiles petits - Menu hamburger */
 @media (max-width: 640px) {
   body {
     padding-top: 70px;
@@ -341,7 +336,6 @@ body {
     width: 100%;
   }
   
-  /* Menu hamburger */
   .navLinks {
     position: fixed;
     top: 70px;
@@ -376,7 +370,6 @@ body {
     border-bottom: none;
   }
   
-  /* Bouton hamburger */
   .hamburger {
     display: flex;
     flex-direction: column;
@@ -410,7 +403,6 @@ body {
   }
 }
 
-/* Très petits mobiles */
 @media (max-width: 480px) {
   body {
     padding-top: 120px;
@@ -438,8 +430,6 @@ body {
     padding: 0.8rem !important;
   }
 }
-
-/* Ajoutez ces styles à la fin du fichier existant */
 
 /* Styles pour les liens de navigation */
 .navbarBrand a {
@@ -490,8 +480,6 @@ body {
   border-bottom: 1px solid #f5e6d3 !important;
   white-space: nowrap;
 }
-
-/* Ajoutez ces styles à votre fichier Navbar.module.css */
 
 .userMenu {
   display: flex;

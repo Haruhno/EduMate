@@ -9,6 +9,7 @@ import "./App.css";
 import HomePage from './pages/Home';
 import RoleSelectionPage from './pages/RoleSelectionPage/RoleSelectionPage';
 import ProfileCompletion from './components/ProfileCompletion/ProfileCompletion';
+import TutorSearchPage from './pages/TutorSearchPage/TutorSearchPage';
 
 // Composant pour protéger les routes d'authentification
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -55,7 +56,7 @@ const App: React.FC = () => {
             } 
           />
           <Route path="/completer-profil" element={<ProfileCompletion />} />
-
+          <Route path="/tutor-search" element={<TutorSearchPage />} />
         </Routes>
       </div>
     </Router>

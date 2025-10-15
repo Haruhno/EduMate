@@ -1,0 +1,167 @@
+.tutorSearchPage {
+  min-height: 100vh;
+  background-color: #fffaf6;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.mainContainer {
+  padding: 2rem 1rem;
+}
+
+.searchHeader {
+  padding: 1rem;
+}
+
+.headerText {
+  text-align: center;
+}
+
+
+.headerText h1 {
+  font-size: 2.5rem;
+  font-weight: bold;
+  background: linear-gradient(90deg, #facc15, #fb923c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  display: inline-block; 
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+}
+
+.headerText p {
+  color: #6b7280;
+  margin: 0.5rem 0 0 0;
+}
+
+.layout {
+  display: flex;
+  gap: 2rem;
+}
+
+.mainContent {
+  flex: 1;
+}
+
+.filterToggle {
+  background: #fbbf24;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: none;
+  margin: 1rem 0;
+  width: 100%;
+}
+
+.mobileFilters {
+  display: none;
+}
+
+.resultsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.resultsCount {
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: #fbbf24;
+  margin: 0;
+  font-family: 'DMSans', sans-serif;
+}
+.resultsSubtitle {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 0.25rem 0 0 0;
+}
+
+.sortSelect {
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.tutorsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 3rem;
+  gap: 0.5rem;
+}
+
+.paginationButton {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.paginationButton.active {
+  background: #fbbf24;
+  color: white;
+}
+
+.skeletonLoader {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+  .layout {
+    flex-direction: column;
+  }
+  
+  .filterToggle {
+    display: block;
+  }
+  
+  .tutorsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .headerText h1 {
+    font-size: 1.8rem;
+  }
+  
+  .tutorsGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .resultsHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .mobileFilters {
+    display: block;
+  }
+}

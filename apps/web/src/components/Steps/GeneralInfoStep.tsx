@@ -154,7 +154,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
             return updated;
         });
 
-        // Marquer comme touché
         setTouched((prev) => ({
             ...prev,
             [name]: true
@@ -327,7 +326,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                                 showGrid={false}
                                 style={{
                                     containerStyle: {
-                                        backgroundColor: '#f8f9fa' // Fond gris clair au lieu de noir
+                                        backgroundColor: '#f8f9fa' 
                                     }
                                 }}
                             />

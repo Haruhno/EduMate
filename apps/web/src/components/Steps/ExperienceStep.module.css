@@ -75,7 +75,6 @@ h2 {
   margin-bottom: 0;
 }
 
-/* --- Spécialités --- */
 .specialtiesGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -108,11 +107,10 @@ h2 {
   font-weight: 600;
 }
 
-/* --- Checkbox (natif + accent-color jaune/orangé) --- */
 .checkbox {
   width: 18px;
   height: 18px;
-  accent-color: #fbbf24; /* couleur jaune/orangée */
+  accent-color: #fbbf24; 
   cursor: pointer;
   transition: transform 0.15s ease;
 }
@@ -121,13 +119,11 @@ h2 {
   transform: scale(1.1);
 }
 
-/* Texte à côté de la case */
 .checkboxText {
   color: #333;
   font-weight: 500;
 }
 
-/* --- Responsive --- */
 @media (max-width: 768px) {
   .formGrid {
     grid-template-columns: 1fr;

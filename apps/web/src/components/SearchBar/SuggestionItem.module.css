@@ -1,0 +1,43 @@
+.suggestionItem {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f8fafc;
+}
+
+.suggestionItem:last-child {
+  border-bottom: none;
+}
+
+.suggestionItem:hover {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  transform: translateX(4px);
+}
+
+.suggestionEmoji {
+  font-size: 18px;
+  flex-shrink: 0;
+  background: #fef3c7;
+  padding: 8px;
+  border-radius: 10px;
+  transition: transform 0.2s ease;
+}
+
+.suggestionItem:hover .suggestionEmoji {
+  transform: scale(1.1);
+}
+
+.suggestionText {
+  color: #374151;
+  font-size: 15px;
+  font-family: 'DMSans', sans-serif;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+}
+
