@@ -21,7 +21,6 @@ const ProfileCompletion: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [completionPercentage, setCompletionPercentage] = useState(0);
 
   const [profileData, setProfileData] = useState<ProfileData>({
     profilePicture: '/assets/images/avatar.jpg',
@@ -74,7 +73,7 @@ const ProfileCompletion: React.FC = () => {
     if (authService.isAuthenticated()) {
       loadUserData();
     }
-  }, []); // ← vide pour ne le lancer qu'une fois
+  }, []);
 
   // Sauvegarder automatiquement à chaque étape
   useEffect(() => {
@@ -127,7 +126,7 @@ const ProfileCompletion: React.FC = () => {
       else if (!/\S+@\S+\.\S+/.test(profileData.email))
         newErrors.email = "L'adresse e-mail n'est pas valide.";
       
-      // Date de naissance obligatoire
+      // Date de naissance OBLIGATOIRE pour tous (tuteurs et étudiants)
       if (!profileData.birthDate)
         newErrors.birthDate = 'La date de naissance est obligatoire.';
       else {
@@ -137,7 +136,7 @@ const ProfileCompletion: React.FC = () => {
         if (age < 16) newErrors.birthDate = 'Vous devez avoir au moins 16 ans.';
       }
 
-      // Genre obligatoire
+      // Genre OBLIGATOIRE pour tous
       if (!profileData.gender)
         newErrors.gender = 'Le genre est obligatoire.';
 
@@ -157,8 +156,6 @@ const ProfileCompletion: React.FC = () => {
     }
 
     // Les autres étapes (Études, Localisation, etc.) ne sont PAS obligatoires
-    // L'utilisateur peut passer directement à l'étape suivante
-
     return newErrors;
   };
 
@@ -169,13 +166,11 @@ const ProfileCompletion: React.FC = () => {
     if (Object.keys(newErrors).length === 0) {
       if (!isFinalStep) {
         setCurrentStep((prev) => prev + 1);
-        // Scroll vers le haut quand on change d'étape
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         eSubmit();
       }
     } else {
-      // Scroll vers la première erreur
       const firstErrorField = Object.keys(newErrors)[0];
       const errorElement = document.getElementById(firstErrorField);
       if (errorElement) {
@@ -187,7 +182,6 @@ const ProfileCompletion: React.FC = () => {
   const eBack = () => {
     if (currentStep > 0) {
       setCurrentStep((prev) => prev - 1);
-      // Scroll vers le haut quand on revient en arrière
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -195,10 +189,7 @@ const ProfileCompletion: React.FC = () => {
   const eSubmit = async () => {
     setIsLoading(true);
     try {
-      // Sauvegarder une dernière fois
       await profileService.saveProfile(profileData, currentStep);
-
-      // Finaliser le profil
       const response = await profileService.completeProfile();
 
       if (response.success) {
@@ -216,56 +207,20 @@ const ProfileCompletion: React.FC = () => {
     }
   };
 
-  // Calcul du pourcentage de complétion en temps réel - SIMPLIFIÉ
-  useEffect(() => {
-    const calculateCompletion = () => {
-      let completedFields = 0;
-      const totalFields = 5; // Seulement les champs obligatoires des informations générales
-
-      // Vérifier seulement les champs obligatoires des informations générales
-      if (profileData.firstName?.trim()) completedFields++;
-      if (profileData.lastName?.trim()) completedFields++;
-      if (profileData.email?.trim()) completedFields++;
-      if (profileData.birthDate) completedFields++;
-      if (profileData.gender) completedFields++;
-
-      const percentage = Math.round((completedFields / totalFields) * 100);
-      setCompletionPercentage(percentage);
-    };
-
-    calculateCompletion();
-  }, [profileData]);
-
   return (
     <div className={styles.container}>
-      {/* Header avec progression et pourcentage */}
+      {/* Header avec progression */}
       <div className={styles.header}>
-        <div className={styles.headerContent}>
-          {/* Pourcentage de complétion à gauche */}
-          <div className={styles.completionBadge}>
-            <span className={styles.completionText}>
-              {completionPercentage}% complété
-            </span>
-          </div>
-          
-          <div className={styles.steps}>
-            {steps.map((step, index) => (
-              <div
-                key={index}
-                className={`${styles.step} ${
-                  index <= currentStep ? styles.active : ''
-                } ${index === currentStep ? styles.current : ''}`}
-              >
-                <div className={styles.stepNumber}>{index + 1}</div>
-                <span className={styles.stepTitle}>{step.title}</span>
-              </div>
-            ))}
-          </div>
-          
-          {/* Statut "Modification en cours" toujours affiché */}
-          <div className={styles.profileStatus}>
-            ✓ Modification en cours
-          </div>
+        <div className={styles.steps}>
+          {steps.map((step, index) => (
+            <div 
+              key={index}
+              className={`${styles.step} ${index <= currentStep ? styles.active : ''}`}
+            >
+              <div className={styles.stepNumber}>{index + 1}</div>
+              <span className={styles.stepTitle}>{step.title}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -280,17 +235,9 @@ const ProfileCompletion: React.FC = () => {
       )}
 
       {/* Split screen principal */}
-      <div
-        className={`${styles.splitContainer} ${
-          isFinalStep ? styles.fullWidth : ''
-        }`}
-      >
+      <div className={`${styles.splitContainer} ${isFinalStep ? styles.fullWidth : ''}`}>
         {/* Section formulaire */}
-        <div
-          className={`${styles.formSection} ${
-            isFinalStep ? styles.fullWidthForm : ''
-          }`}
-        >
+        <div className={`${styles.formSection} ${isFinalStep ? styles.fullWidthForm : ''}`}>
           <div className={`${styles.formContent} ${isFinalStep ? styles.centeredFinalStep : ''}`}>
             <CurrentStepComponent
               profileData={profileData}
@@ -302,6 +249,7 @@ const ProfileCompletion: React.FC = () => {
               setTouched={setTouched}
             />
             
+            {/* Navigation pour les étapes normales */}
             {!isFinalStep && (
               <div className={styles.navigation}>
                 <button
@@ -336,7 +284,7 @@ const ProfileCompletion: React.FC = () => {
           </div>
         </div>
 
-        {/* Section preview */}
+        {/* Section preview (masquée en finalisation) */}
         {!isFinalStep && (
           <div className={styles.previewSection}>
             <div className={styles.previewContent}>

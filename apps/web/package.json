@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@remix-run/router": "^1.23.0",
+    "axios": "^1.12.2",
     "country-telephone-data": "^0.6.3",
     "leaflet": "^1.9.4",
     "react": "^18.3.1",
