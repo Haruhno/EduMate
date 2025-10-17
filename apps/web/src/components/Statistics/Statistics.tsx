@@ -3,7 +3,6 @@ import styles from './Statistics.module.css';
 
 import { IconQuantityQuality, IconFiability, IconProgression, IconSatisfaction } from '../../assets/icons.tsx';
 
-// Importez vos images - adaptez les chemins selon votre structure
 import quantityImage from '../../assets/images/quantity-quality.jpg';
 import fiabilityImage from '../../assets/images/fiabilite.png';
 import progressImage from '../../assets/images/progression.png';

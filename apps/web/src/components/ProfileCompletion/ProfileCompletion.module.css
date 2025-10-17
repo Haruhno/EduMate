@@ -3,31 +3,22 @@
   background: #f8f9fa;
 }
 
-/* Header amélioré avec pourcentage */
 .header {
   background: white;
   padding: 1.5rem 2rem;
   border-bottom: 1px solid #e9ecef;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  position: relative;
+  position: sticky;
   top: 0;
   z-index: 100;
-}
-
-.headerContent {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
 .steps {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex: 1;
-  max-width: 800px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .step {
@@ -71,11 +62,6 @@
 .step.active .stepNumber {
   background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
   color: white;
-  transform: scale(1.1);
-}
-
-.step.current .stepNumber {
-  box-shadow: 0 0 0 3px #ffe29a;
 }
 
 .stepTitle {
@@ -90,33 +76,6 @@
   font-weight: 600;
 }
 
-/* Badge de pourcentage de complétion */
-.completionBadge {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.25rem;
-  margin-left: 2rem;
-}
-
-.completionText {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #FB923C;
-  background: #fff8e6;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  border: 1px solid #ffe29a;
-}
-
-.profileStatus {
-  font-size: 0.75rem;
-  color: #28a745;
-  background: #d4edda;
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-}
-
 /* Bannière d'erreur */
 .errorBanner {
   background: #f8d7da;
@@ -124,7 +83,6 @@
   border-radius: 8px;
   padding: 1rem;
   margin: 1rem 2rem;
-  animation: slideDown 0.3s ease;
 }
 
 .errorContent {
@@ -138,27 +96,13 @@
   font-size: 1.2rem;
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Split Screen - Layout normal */
+/* Split Screen */
 .splitContainer {
   display: grid;
-  grid-template-columns: 1fr 450px;
+  grid-template-columns: 1fr 400px;
   min-height: calc(100vh - 120px);
-  max-width: 1500px;
-  margin: 0 auto;
 }
 
-/* Split Screen - Pleine largeur pour Finalisation */
 .splitContainer.fullWidth {
   grid-template-columns: 1fr;
 }
@@ -170,7 +114,6 @@
   overflow-y: auto;
 }
 
-/* Formulaire en pleine largeur pour Finalisation */
 .formSection.fullWidthForm {
   border-right: none;
   max-width: none;
@@ -182,22 +125,13 @@
   margin: 0 auto;
 }
 
-/* Pour la Finalisation, on élargit le contenu */
 .splitContainer.fullWidth .formContent {
   max-width: 1000px;
 }
 
-/* Conteneur centré pour la finalisation */
 .centeredFinalStep {
   max-width: 800px !important;
   margin: 0 auto;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  padding: 2rem 0;
 }
 
 .previewSection {
@@ -226,6 +160,17 @@
   margin-top: 2rem;
   padding-top: 2rem;
   border-top: 1px solid #e9ecef;
+}
+
+.finalNavigation {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e9ecef;
+  width: 100%;
+  max-width: 400px;
 }
 
 .backButton {
@@ -264,68 +209,6 @@
   transform: translateY(-1px);
 }
 
-/* Navigation spéciale pour la finalisation */
-.finalNavigation {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  margin-top: 3rem;
-  padding-top: 2rem;
-  border-top: 1px solid #e9ecef;
-  width: 100%;
-  max-width: 400px;
-}
-
-.finalNavigation .backButton {
-  padding: 0.75rem 1.5rem;
-  border: 1px solid #6c757d;
-  background: white;
-  color: #6c757d;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s;
-  min-width: 120px;
-}
-
-.finalNavigation .backButton:hover {
-  background: #6c757d;
-  color: white;
-}
-
-.finalNavigation .nextButton {
-  padding: 0.75rem 2rem;
-  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: transform 0.2s;
-  min-width: 120px;
-}
-
-.finalNavigation .nextButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
-}
-
-/* Animation d'apparition pour la finalisation */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.centeredFinalStep {
-  animation: fadeInUp 0.6s ease-out;
-}
-
 /* Responsive */
 @media (max-width: 1024px) {
   .splitContainer {
@@ -336,14 +219,8 @@
     display: none;
   }
   
-  .headerContent {
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .completionBadge {
-    align-items: center;
-    margin-left: 0;
+  .header {
+    padding: 1rem;
   }
   
   .steps {
@@ -363,18 +240,9 @@
   .formSection.fullWidthForm {
     padding: 2rem;
   }
-  
-  .centeredFinalStep {
-    max-width: 100% !important;
-    padding: 1rem;
-  }
 }
 
 @media (max-width: 768px) {
-  .header {
-    padding: 1rem;
-  }
-  
   .formSection {
     padding: 1rem;
   }
@@ -383,18 +251,12 @@
     padding: 1rem;
   }
   
-  .centeredFinalStep {
-    min-height: 50vh;
-    padding: 1rem 0;
-  }
-  
   .navigation {
     flex-direction: column;
     gap: 1rem;
   }
   
-  .navigation .backButton,
-  .navigation .nextButton {
+  .backButton, .nextButton {
     width: 100%;
     text-align: center;
   }
@@ -409,20 +271,5 @@
   .finalNavigation .nextButton {
     width: 100%;
     text-align: center;
-  }
-}
-
-@media (max-width: 480px) {
-  .step {
-    min-width: 100px;
-  }
-  
-  .stepTitle {
-    font-size: 0.8rem;
-  }
-  
-  .completionText {
-    font-size: 0.8rem;
-    padding: 0.4rem 0.8rem;
   }
 }

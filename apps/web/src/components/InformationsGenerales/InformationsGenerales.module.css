@@ -155,7 +155,6 @@ h2 {
   flex: 1;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .formGrid {
     grid-template-columns: 1fr;

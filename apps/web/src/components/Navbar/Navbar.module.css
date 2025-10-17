@@ -61,6 +61,7 @@ body {
   margin-left: 5px;
   font-family: 'Recoleta', serif;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .navLinks {
@@ -175,59 +176,6 @@ body {
   background: linear-gradient(135deg, #d4b98a 0%, #f0e4cc 100%);
 }
 
-/* ===== MENU UTILISATEUR CONNECTÉ DESKTOP ===== */
-
-.userMenu {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.welcomeText {
-  color: #333;
-  font-weight: 500;
-  font-size: 0.9rem;
-  white-space: nowrap;
-}
-
-.profileButton {
-  background: linear-gradient(135deg, #e6ca9b 0%, #fff4e1 100%);
-  color: black;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 0.85rem;
-  font-family: 'DMSans', sans-serif;
-}
-
-.profileButton:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(230, 202, 155, 0.4);
-  background: linear-gradient(135deg, #d4b98a 0%, #f0e4cc 100%);
-}
-
-.logoutButton {
-  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%);
-  color: white;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 0.85rem;
-  font-family: 'DMSans', sans-serif;
-}
-
-.logoutButton:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
-  background: linear-gradient(135deg, #ff5252 0%, #ff7b7b 100%);
-}
-
 /* ===== STYLES MOBILE POUR LES BOUTONS AUTH ===== */
 
 .mobileAuth {
@@ -279,63 +227,6 @@ body {
 
 .mobileInscriptionLink::after {
   display: none !important;
-}
-
-/* ===== BOUTONS MOBILE POUR UTILISATEUR CONNECTÉ ===== */
-
-.profileButtonMobile {
-  background: linear-gradient(135deg, #e6ca9b 0%, #fff4e1 100%);
-  color: black;
-  border: none;
-  padding: 1rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 0.9rem;
-  font-family: 'DMSans', sans-serif;
-  width: 100%;
-  margin: 0.5rem 1rem;
-  text-align: center;
-}
-
-.profileButtonMobile:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(230, 202, 155, 0.4);
-  background: linear-gradient(135deg, #d4b98a 0%, #f0e4cc 100%);
-}
-
-.welcomeTextMobile {
-  color: #333;
-  font-weight: 500;
-  font-size: 0.9rem;
-  padding: 1rem 1.5rem;
-  display: block;
-  border-bottom: 1px solid #f5e6d3;
-  width: 100%;
-  font-family: 'DMSans', sans-serif;
-}
-
-.logoutButtonMobile {
-  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%);
-  color: white;
-  border: none;
-  padding: 1rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 0.9rem;
-  font-family: 'DMSans', sans-serif;
-  width: 100%;
-  margin: 0.5rem 1rem;
-  text-align: center;
-}
-
-.logoutButtonMobile:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
-  background: linear-gradient(135deg, #ff5252 0%, #ff7b7b 100%);
 }
 
 /* ===== RESPONSIVE ===== */
@@ -396,7 +287,6 @@ body {
   }
 }
 
-/* Mobiles grands */
 @media (max-width: 768px) {
   body {
     padding-top: 70px;
@@ -459,7 +349,6 @@ body {
   }
 }
 
-/* Mobiles petits - Menu hamburger */
 @media (max-width: 640px) {
   body {
     padding-top: 70px;
@@ -479,7 +368,6 @@ body {
     width: 100%;
   }
   
-  /* Menu hamburger */
   .navLinks {
     position: fixed;
     top: 70px;
@@ -514,7 +402,6 @@ body {
     border-bottom: none;
   }
   
-  /* Bouton hamburger */
   .hamburger {
     display: flex;
     flex-direction: column;
@@ -548,7 +435,6 @@ body {
   }
 }
 
-/* Très petits mobiles */
 @media (max-width: 480px) {
   body {
     padding-top: 70px;
@@ -575,18 +461,13 @@ body {
     margin: 0.5rem 0.8rem !important;
     padding: 0.8rem !important;
   }
-
-  .profileButtonMobile,
-  .logoutButtonMobile {
-    margin: 0.5rem 0.8rem;
-    padding: 0.8rem;
-  }
 }
 
-/* ===== MENU UTILISATEUR AVEC AVATAR ===== */
+/* Ajoutez ces styles à la fin du fichier existant */
 
-.userMenu {
-  position: relative;
+/* Styles pour les liens de navigation */
+.navbarBrand a {
+  text-decoration: none;
   display: flex;
   align-items: center;
 }
@@ -655,15 +536,9 @@ body {
   gap: 0.8rem;
 }
 
-.dropdownAvatar {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #e6ca9b;
-}
+/* Ajoutez ces styles à votre fichier Navbar.module.css */
 
-.userInfo {
+.userMenu {
   display: flex;
   flex-direction: column;
 }

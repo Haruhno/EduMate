@@ -9,6 +9,7 @@ import "./App.css";
 import HomePage from './pages/Home';
 import RoleSelectionPage from './pages/RoleSelectionPage/RoleSelectionPage';
 import ProfileCompletion from './components/ProfileCompletion/ProfileCompletion';
+import TutorSearchPage from './pages/TutorSearchPage/TutorSearchPage';
 import ProfilePage from './pages/Profile/ProfilePage';
 import DashboardPage from './pages/Dashboard/DashboardPage';
 
@@ -56,6 +57,8 @@ const App: React.FC = () => {
               </PublicRoute>
             } 
           />
+          <Route path="/completer-profil" element={<ProfileCompletion />} />
+          <Route path="/recherche-tuteur" element={<TutorSearchPage />} />
           <Route 
             path="/completer-profil" 
             element={

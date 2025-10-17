@@ -1,8 +1,6 @@
 import React from 'react';
 import styles from './HowItWorks.module.css';
 
-// Importez vos images pour chaque étape
-
 const stepImages = [
   'https://media.licdn.com/dms/image/v2/D4E12AQGnEJmSOEqSIQ/article-cover_image-shrink_600_2000/article-cover_image-shrink_600_2000/0/1732537600347?e=2147483647&v=beta&t=wxJNZTDLKn0R3_kcVh-IVjTwSp8YUHNzQ2f8FHX8IlI', // Création profil
   'https://geekflare.com/fr/wp-content/uploads/sites/26/2023/03/ai-search-engines.jpg', // Recherche

@@ -1,0 +1,108 @@
+.quickSearch {
+  margin-bottom: 2rem;
+  position: relative;
+  z-index: 100;
+}
+
+.searchWithSuggestions {
+  position: relative;
+  display: flex;
+  gap: 0;
+}
+
+.searchInputWrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  background: white;
+  border: 2px solid #f1f5f9;
+  border-radius: 16px;
+  overflow: visible;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.searchInputWrapper:focus-within {
+  border-color: #fbbf24;
+  box-shadow: 0 6px 25px rgba(251, 191, 36, 0.15);
+  transform: translateY(-2px);
+}
+
+.searchInput {
+  width: 100%;
+  border: none;
+  padding: 18px 20px;
+  font-size: 16px;
+  background: transparent;
+  outline: none;
+  color: #1f2937;
+  font-family: 'DMSans', sans-serif;
+}
+
+.searchInput::placeholder {
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+/* Bouton de recherche intégré */
+.searchInputButton {
+  background: linear-gradient(135deg, #fbbf24, #fb923c);
+  color: white;
+  border: none;
+  padding: 0 28px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  border-radius: 0 14px 14px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
+}
+
+.searchInputButton:hover {
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  transform: scale(1.02);
+}
+
+.searchInputButton:active {
+  transform: scale(0.98);
+}
+
+/* Suggestions */
+.suggestionsDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #f1f5f9;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  z-index: 9999;
+  margin-top: 8px;
+  width: 100%;
+  overflow: hidden; 
+}
+
+/* Responsive pour mobile */
+@media (max-width: 768px) {
+  .searchInputWrapper {
+    border-radius: 12px;
+  }
+  
+  .searchInputButton {
+    border-radius: 0 12px 12px 0;
+    padding: 0 20px;
+  }
+  
+  .searchInput {
+    padding: 16px;
+    font-size: 14px;
+  }
+  
+  .suggestionsDropdown {
+    border-radius: 12px;
+  }
+}

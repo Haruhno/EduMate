@@ -81,7 +81,6 @@ const Services: React.FC = () => {
                 <div className={`${styles.icon} ${service.iconClass}`}>
                   {service.icon}
                 </div>
-                {/* CORRECTION ICI : utiliser service.iconLine au lieu de styles.iconLine */}
                 <div className={`${styles.iconLine} ${service.iconLine}`}></div>
               </div>
 

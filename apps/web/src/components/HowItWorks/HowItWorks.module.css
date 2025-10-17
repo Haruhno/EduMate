@@ -26,7 +26,7 @@
   font-weight: 700;
   color: #1e293b;
   margin-bottom: 1rem;
-  font-family: 'Recoleta', serif;
+  font-family: 'Poppins', sans-serif;
 }
 
 .divider {
@@ -56,7 +56,6 @@
   margin-bottom: 4rem;
 }
 
-/* Lignes de connexion avec flèches */
 .connectionLine {
   position: absolute;
   top: -2rem;
@@ -107,7 +106,6 @@
   border-right: 8px solid #94a3b8;
 }
 
-/* Styles des étapes */
 .step {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -152,7 +150,7 @@
   font-weight: 700;
   color: #1e293b;
   margin-bottom: 1rem;
-  font-family: 'Recoleta', serif;
+  font-family: 'Poppins', sans-serif;
 }
 
 .stepDescription {
@@ -236,7 +234,6 @@
   box-shadow: 0 4px 12px rgba(255, 207, 58, 0.4);
 }
 
-/* CTA final */
 .finalCta {
   text-align: center;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
@@ -271,7 +268,6 @@
   box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .step {
     grid-template-columns: 1fr;

@@ -63,7 +63,6 @@
   font-family: inherit;
 }
 
-/* Styles pour le rayon */
 .radiusHeader {
   display: flex;
   justify-content: space-between;
@@ -84,7 +83,6 @@
   border: 1px solid #e9ecef;
 }
 
-/* Style Material UI pour le slider */
 .sliderContainer {
   width: 100%;
   position: relative;
@@ -163,7 +161,6 @@
   color: #FB923C;
 }
 
-/* Styles pour la carte */
 .mapContainer {
   height: 300px;
   border-radius: 12px;

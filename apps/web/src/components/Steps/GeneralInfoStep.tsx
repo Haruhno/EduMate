@@ -150,7 +150,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         // Validation en temps réel
         validateField(name, value);
 
-        // Marquer comme touché
         setTouched((prev) => ({
             ...prev,
             [name]: true
@@ -180,17 +179,24 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                 }
                 break;
             case 'birthDate':
-                if (!value) {
-                    error = 'La date de naissance est obligatoire.';
-                } else {
+                // Date de naissance obligatoire seulement pour les tuteurs
+                if (role === 'tutor') {
+                    if (!value) {
+                        error = 'La date de naissance est obligatoire pour les tuteurs.';
+                    } else {
+                        const birthDate = new Date(value);
+                        const today = new Date();
+                        const age = today.getFullYear() - birthDate.getFullYear();
+                        if (age < 16) error = 'Vous devez avoir au moins 16 ans pour être tuteur.';
+                    }
+                }
+                // Pour les étudiants, c'est optionnel mais doit être valide si rempli
+                else if (value) {
                     const birthDate = new Date(value);
                     const today = new Date();
                     const age = today.getFullYear() - birthDate.getFullYear();
                     if (age < 16) error = 'Vous devez avoir au moins 16 ans.';
                 }
-                break;
-            case 'gender':
-                if (!value) error = 'Le genre est obligatoire.';
                 break;
             case 'phone':
                 if (value && value.trim() !== '') {
@@ -271,7 +277,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         validateField('lastName', profileData.lastName);
         validateField('email', profileData.email);
         validateField('birthDate', profileData.birthDate);
-        validateField('gender', profileData.gender);
     }, []);
 
     return (
@@ -280,11 +285,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
             <p className={styles.subtitle}>
                 Renseignez vos informations personnelles pour compléter votre profil
             </p>
-
-            {/* Indication des champs obligatoires */}
-            <div className={styles.requiredNote}>
-                <span className={styles.requiredMarker}>*</span> Indique un champ obligatoire
-            </div>
 
             {/* --- Photo de profil --- */}
             <div className={styles.photoSection}>
@@ -375,7 +375,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                                 showGrid={false}
                                 style={{
                                     containerStyle: {
-                                        backgroundColor: '#f8f9fa'
+                                        backgroundColor: '#f8f9fa' // Fond gris clair au lieu de noir
                                     }
                                 }}
                             />
@@ -525,14 +525,14 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                 {/* Genre */}
                 <div className={styles.formGroup}>
                     <label htmlFor="gender" className={styles.label}>
-                        Genre <span className={styles.requiredMarker}>*</span>
+                        Genre
                     </label>
                     <select
                         id="gender"
                         name="gender"
                         value={profileData.gender}
                         onChange={handleInputChange}
-                        className={`${styles.select} ${errors.gender ? styles.inputError : ''} ${touched.gender ? styles.touched : ''}`}
+                        className={`${styles.select} ${touched.gender ? styles.touched : ''}`}
                     >
                         <option value="">Sélectionnez</option>
                         <option value="female">Femme</option>
@@ -540,13 +540,12 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         <option value="other">Autre</option>
                         <option value="prefer_not_to_say">Je préfère ne pas répondre</option>
                     </select>
-                    {errors.gender && <p className={styles.errorText}>{errors.gender}</p>}
                 </div>
 
                 {/* Date de naissance */}
                 <div className={styles.formGroup}>
                     <label htmlFor="birthDate" className={styles.label}>
-                        Date de naissance <span className={styles.requiredMarker}>*</span>
+                        Date de naissance {role === 'tutor' && <span className={styles.requiredMarker}>*</span>}
                     </label>
                     <input
                         type="date"
@@ -573,6 +572,11 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         placeholder="Rue, ville, code postal..."
                     />
                 </div>
+            </div>
+
+            {/* Indication des champs obligatoires - En bas comme avant */}
+            <div className={styles.requiredInfo}>
+                <span className={styles.requiredMarker}>*</span> Champs obligatoires
             </div>
         </div>
     );
