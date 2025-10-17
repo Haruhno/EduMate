@@ -53,6 +53,26 @@ const ProfileCompletion: React.FC = () => {
     },
   });
 
+  // Si on arrive en mode "modification" avec des données existantes, préremplir
+  useEffect(() => {
+    if (location.state?.continueProfile && location.state?.profileData) {
+      setProfileData((prev) => ({
+        ...prev,
+        ...location.state.profileData,
+        // Garder les champs nom, prénom et email intacts
+        firstName: prev.firstName,
+        lastName: prev.lastName,
+        email: prev.email,
+        // Convertir la date de naissance au format YYYY-MM-DD pour les champs de type date
+        birthDate: location.state.profileData.birthDate
+          ? new Date(location.state.profileData.birthDate).toISOString().split('T')[0]
+          : '',
+        // Sécurité : garder une image par défaut si manquante
+        profilePicture: location.state.profileData.profilePicture || '/assets/images/avatar.jpg',
+      }));
+    }
+  }, [location.state]);
+
   // Charger uniquement les données de l'utilisateur (nom, prénom, email)
   useEffect(() => {
     const loadUserData = async () => {

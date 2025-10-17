@@ -1,0 +1,447 @@
+
+:global(body) {
+  background-color: #fffaf6;
+}
+
+/* ProfilePage.module.css */
+.container {
+  min-height: 100vh;
+  background-color: #fffaf6;
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Header simple */
+.header {
+  margin-bottom: 2rem;
+}
+
+.headerContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #333;
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(90deg, #facc15, #fb923c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  display: inline-block;
+}
+
+.editButton {
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'DMSans', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.editButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+.editIcon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Barre de progression */
+
+.progressInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.progressText {
+  font-weight: 600;
+  color: #555;
+  font-family: 'DMSans', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.progressIcon {
+  width: 18px;
+  height: 18px;
+  color: #FBBF24;
+}
+
+.progressPercentage {
+  font-weight: 700;
+  color: #FBBF24;
+  font-family: 'DMSans', sans-serif;
+}
+
+.progressBar {
+  width: 100%;
+  height: 8px;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+  border-radius: 10px;
+  transition: width 0.5s ease;
+}
+
+/* Contenu principal */
+.profileContent {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 1.5rem;
+}
+
+.mainSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Sections */
+.section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Photo de profil */
+.profilePictureSection {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.profilePicture {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #fbbf24;
+}
+
+.profileInfo {
+  flex: 1;
+}
+
+/* Badge Tuteur comme avant */
+.roleBadge {
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+  margin-bottom: 1rem;
+  font-family: 'DMSans', sans-serif;
+}
+
+/* Nom avec icône */
+.userName {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 1rem 0;
+  font-family: 'Recoleta', serif;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.userIcon {
+  width: 24px;
+  height: 24px;
+  color: #FBBF24;
+}
+
+/* Email avec icône */
+.userEmail {
+  font-size: 1rem;
+  color: #888;
+  margin: 0;
+  font-family: 'DMSans', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.emailIcon {
+  width: 24px;
+  height: 24px;
+  color: #FBBF24;
+}
+
+/* Titres de sections */
+.sectionTitle {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 1.5rem 0;
+  font-family: 'DMSans', sans-serif;
+  border-bottom: 2px solid #fbbf24;
+  padding-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sectionIcon {
+  width: 30px;
+  height: 0px;
+  color: #FBBF24;
+}
+
+/* Grilles d'information */
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.infoItem label {
+  font-weight: 600;
+  color: #555;
+  font-size: 0.9rem;
+  font-family: 'DMSans', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.infoIcon {
+  width: 16px;
+  height: 16px;
+  color: #FBBF24;
+}
+
+.infoItem p {
+  margin: 0;
+  color: #333;
+  font-size: 1rem;
+  font-family: 'DMSans', sans-serif;
+}
+
+/* Texte éducation avec gestion du débordement */
+.educationText {
+  margin: 0;
+  color: #333;
+  font-size: 1rem;
+  font-family: 'DMSans', sans-serif;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+/* Bio */
+.bio {
+  line-height: 1.6;
+  color: #333;
+  font-size: 1rem;
+  font-family: 'DMSans', sans-serif;
+  margin: 0;
+}
+
+/* Disponibilités */
+.availability {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.availabilityBadge {
+  padding: 0.6rem 1.2rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-family: 'DMSans', sans-serif;
+}
+
+.available {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.unavailable {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Localisation */
+.locationSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.mapContainer {
+  height: 200px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.mapPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.mapMarker {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.markerIcon {
+  width: 32px;
+  height: 32px;
+  color: #ef4444;
+}
+
+.city {
+  color: #666;
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+/* Spécialités */
+.specialties {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.specialtyTag {
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: 'DMSans', sans-serif;
+}
+
+/* Loading */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50vh;
+  font-size: 1.2rem;
+  color: #666;
+  font-family: 'DMSans', sans-serif;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f1f5f9;
+  border-left: 4px solid #FBBF24;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .profileContent {
+    grid-template-columns: 1fr;
+  }
+  
+  .sidebar {
+    order: -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .headerContent {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .profilePictureSection {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .profilePicture {
+    width: 100px;
+    height: 100px;
+  }
+
+  .infoGrid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .section {
+    padding: 1.5rem;
+  }
+
+  .availability {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .userName,
+  .userRole,
+  .userEmail {
+    justify-content: center;
+  }
+}
