@@ -21,6 +21,7 @@ const ProfileCompletion: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true); // Nouvel état pour l'initialisation
 
   const [profileData, setProfileData] = useState<ProfileData>({
     profilePicture: '/assets/images/avatar.jpg',
@@ -87,11 +88,15 @@ const ProfileCompletion: React.FC = () => {
         }
       } catch (error) {
         console.error('Erreur lors du chargement des données utilisateur:', error);
+      } finally {
+        setIsInitializing(false); // Fin de l'initialisation
       }
     };
 
     if (authService.isAuthenticated()) {
       loadUserData();
+    } else {
+      setIsInitializing(false);
     }
   }, []);
 
@@ -135,6 +140,11 @@ const ProfileCompletion: React.FC = () => {
   const validateCurrentStep = () => {
     const newErrors: { [key: string]: string } = {};
 
+    // Ne pas valider pendant l'initialisation
+    if (isInitializing) {
+      return newErrors;
+    }
+
     // Seulement la première étape (Informations générales) est obligatoire
     if (steps[currentStep].title === 'Informations générales') {
       if (!profileData.firstName?.trim())
@@ -156,10 +166,6 @@ const ProfileCompletion: React.FC = () => {
         if (age < 16) newErrors.birthDate = 'Vous devez avoir au moins 16 ans.';
       }
 
-      // Genre OBLIGATOIRE pour tous
-      if (!profileData.gender)
-        newErrors.gender = 'Le genre est obligatoire.';
-
       // Validation du téléphone (optionnel mais doit être valide si rempli)
       setTouched({ ...touched, phone: true });
       const phoneValue = profileData.phone?.trim() || '';
@@ -178,6 +184,14 @@ const ProfileCompletion: React.FC = () => {
     // Les autres étapes (Études, Localisation, etc.) ne sont PAS obligatoires
     return newErrors;
   };
+
+  // Effet pour nettoyer les erreurs après l'initialisation
+  useEffect(() => {
+    if (!isInitializing) {
+      const newErrors = validateCurrentStep();
+      setErrors(newErrors);
+    }
+  }, [isInitializing, profileData, currentStep]);
 
   const eNext = () => {
     const newErrors = validateCurrentStep();
@@ -226,6 +240,17 @@ const ProfileCompletion: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Afficher un loader pendant l'initialisation si nécessaire
+  if (isInitializing) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loading}>
+          <p>Chargement de vos informations...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>

@@ -214,9 +214,6 @@ const Navbar: React.FC = () => {
                     <span className={styles.userEmail}>{currentUser.email}</span>
                     {profileStatus && (
                       <div className={styles.profileStatus}>
-                        <div className={styles.statusBadge}>
-                          {profileStatus.isCompleted ? '✅ Profil complet' : '📝 Profil à compléter'}
-                        </div>
                         {!profileStatus.isCompleted && profileStatus.completionPercentage > 0 && (
                           <div className={styles.progress}>
                             <div 

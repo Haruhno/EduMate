@@ -108,6 +108,7 @@
 
 .section {
   margin-bottom: 1.5rem;
+  text-align: center;
 }
 
 .section:last-child {
@@ -132,6 +133,7 @@
   flex-direction: column;
   gap: 0.25rem;
   animation: fadeInUp 0.3s ease;
+  text-align: center;
 }
 
 .infoLabel {
@@ -160,11 +162,14 @@
   border-left: 3px solid #FBBF24;
 }
 
+/* Spécialités centrées */
 .tags {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.25rem;
+  justify-content: center;
+  align-items: center;
 }
 
 .tag {
@@ -175,12 +180,16 @@
   font-size: 0.75rem;
   font-weight: 500;
   border: 1px solid #ffb907;
+  text-align: center; 
 }
 
+/* Disponibilité centrée */
 .availability {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  justify-content: center;
+  align-items: center; 
 }
 
 .availabilityBadge {
@@ -191,6 +200,7 @@
   font-size: 0.8rem;
   font-weight: 500;
   border: 1px solid #c3e6cb;
+  text-align: center; 
 }
 
 .emptyState {
@@ -239,6 +249,23 @@
   
   .profileName {
     font-size: 1.25rem;
+  }
+
+  /* Responsive pour les spécialités et disponibilité */
+  .tags {
+    justify-content: center;
+    gap: 0.4rem;
+  }
+
+  .availability {
+    justify-content: center;
+    gap: 0.4rem;
+  }
+
+  .tag,
+  .availabilityBadge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
   }
 }
 
