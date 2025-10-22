@@ -41,28 +41,6 @@ const ProfileTutor = sequelize.define('ProfileTutor', {
     allowNull: true
   },
   
-  // Éducation
-  educationLevel: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  school: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  field: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  year: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  diplomaFile: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  },
-  
   // Expérience
   experience: {
     type: DataTypes.STRING,

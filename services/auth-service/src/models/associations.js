@@ -1,8 +1,10 @@
+// models/associations.js
 const User = require('./User');
 const ProfileTutor = require('./ProfileTutor');
 const ProfileStudent = require('./ProfileStudent');
+const Diploma = require('./Diploma');
 
-// Définir les associations
+// Associations User - Profil
 User.hasOne(ProfileTutor, { 
   foreignKey: 'userId', 
   as: 'tutorProfile',
@@ -15,12 +17,24 @@ User.hasOne(ProfileStudent, {
   onDelete: 'CASCADE'
 });
 
-ProfileTutor.belongsTo(User, { 
+ProfileTutor.belongsTo(User, {
   foreignKey: 'userId',
   as: 'user'
 });
 
-ProfileStudent.belongsTo(User, { 
+ProfileStudent.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'user'
+});
+
+// Associations User - Diplômes
+User.hasMany(Diploma, {
+  foreignKey: 'userId',
+  as: 'diplomas',
+  onDelete: 'CASCADE'
+});
+
+Diploma.belongsTo(User, {
   foreignKey: 'userId',
   as: 'user'
 });
@@ -28,5 +42,6 @@ ProfileStudent.belongsTo(User, {
 module.exports = {
   User,
   ProfileTutor,
-  ProfileStudent
+  ProfileStudent,
+  Diploma
 };

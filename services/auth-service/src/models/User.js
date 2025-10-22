@@ -1,3 +1,4 @@
+// models/User.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const bcrypt = require('bcryptjs');
@@ -34,7 +35,24 @@ const User = sequelize.define('User', {
   },
   isVerified: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true // MODIFIÉ: true par défaut au lieu de false
+    defaultValue: true
+  },
+  // Nouveaux champs pour stocker les infos de base
+  phone: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  countryCode: {
+    type: DataTypes.STRING,
+    defaultValue: '+33'
+  },
+  gender: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  birthDate: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   tableName: 'users',      

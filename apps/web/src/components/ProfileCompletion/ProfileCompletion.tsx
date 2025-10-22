@@ -56,19 +56,22 @@ const ProfileCompletion: React.FC = () => {
   // Si on arrive en mode "modification" avec des données existantes, préremplir
   useEffect(() => {
     if (location.state?.continueProfile && location.state?.profileData) {
+      const profile = location.state.profileData;
+      const formattedBirthDate = profile.birthDate 
+        ? new Date(profile.birthDate).toISOString().split('T')[0]
+        : '';
+      
       setProfileData((prev) => ({
         ...prev,
-        ...location.state.profileData,
+        ...profile,
+        // Convertir la date de naissance au format YYYY-MM-DD pour les champs de type date
+        birthDate: formattedBirthDate,
         // Garder les champs nom, prénom et email intacts
         firstName: prev.firstName,
         lastName: prev.lastName,
         email: prev.email,
-        // Convertir la date de naissance au format YYYY-MM-DD pour les champs de type date
-        birthDate: location.state.profileData.birthDate
-          ? new Date(location.state.profileData.birthDate).toISOString().split('T')[0]
-          : '',
         // Sécurité : garder une image par défaut si manquante
-        profilePicture: location.state.profileData.profilePicture || '/assets/images/avatar.jpg',
+        profilePicture: profile.profilePicture || '/assets/images/avatar.jpg',
       }));
     }
   }, [location.state]);
@@ -100,21 +103,36 @@ const ProfileCompletion: React.FC = () => {
     }
   }, []);
 
-  // Sauvegarder automatiquement à chaque étape
   useEffect(() => {
-    const saveProgress = async () => {
-      if (currentStep >= 0 && authService.isAuthenticated()) {
-        try {
-          await profileService.saveProfile(profileData, currentStep);
-        } catch (error) {
-          console.error('Erreur de sauvegarde automatique:', error);
+    const loadProfileData = async () => {
+      try {
+        const response = await profileService.getProfile();
+        if (response.success && response.data.profile) {
+          console.log('Données du profil chargées:', response.data.profile);
+          
+          // Formater correctement la date de naissance si elle existe
+          const profile = response.data.profile;
+          const formattedBirthDate = profile.birthDate 
+            ? new Date(profile.birthDate).toISOString().split('T')[0]
+            : '';
+          
+          setProfileData(prev => ({
+            ...prev,
+            ...profile,
+            birthDate: formattedBirthDate, // Utiliser la date formatée
+            // Assurez-vous que les diplômes sont bien inclus
+            diplomas: profile.diplomas || []
+          }));
         }
+      } catch (error) {
+        console.error('Erreur chargement profil:', error);
       }
     };
 
-    const timeoutId = setTimeout(saveProgress, 1000);
-    return () => clearTimeout(timeoutId);
-  }, [profileData, currentStep]);
+    if (authService.isAuthenticated()) {
+      loadProfileData();
+    }
+  }, []);
 
   // Étapes selon le rôle
   const steps = role === 'student'
@@ -136,7 +154,7 @@ const ProfileCompletion: React.FC = () => {
   const CurrentStepComponent = steps[currentStep].component;
   const isFinalStep = currentStep === steps.length - 1;
 
-  // Validation - SEULEMENT les informations générales sont obligatoires
+  // Validation 
   const validateCurrentStep = () => {
     const newErrors: { [key: string]: string } = {};
 
@@ -156,14 +174,20 @@ const ProfileCompletion: React.FC = () => {
       else if (!/\S+@\S+\.\S+/.test(profileData.email))
         newErrors.email = "L'adresse e-mail n'est pas valide.";
       
-      // Date de naissance OBLIGATOIRE pour tous (tuteurs et étudiants)
-      if (!profileData.birthDate)
-        newErrors.birthDate = 'La date de naissance est obligatoire.';
-      else {
-        const birthDate = new Date(profileData.birthDate);
-        const today = new Date();
-        const age = today.getFullYear() - birthDate.getFullYear();
-        if (age < 16) newErrors.birthDate = 'Vous devez avoir au moins 16 ans.';
+      // Date de naissance obligatoire seulement pour les tuteurs
+      if (role === 'tutor') {
+        if (!profileData.birthDate)
+          newErrors.birthDate = 'La date de naissance est obligatoire pour les tuteurs.';
+        else {
+          const birthDate = new Date(profileData.birthDate);
+          const today = new Date();
+          const age = today.getFullYear() - birthDate.getFullYear();
+          const monthDiff = today.getMonth() - birthDate.getMonth();
+          const isBirthdayPassed = monthDiff > 0 || (monthDiff === 0 && today.getDate() >= birthDate.getDate());
+          const actualAge = isBirthdayPassed ? age : age - 1;
+          
+          if (actualAge < 16) newErrors.birthDate = 'Vous devez avoir au moins 16 ans pour être tuteur.';
+        }
       }
 
       // Validation du téléphone (optionnel mais doit être valide si rempli)
@@ -180,8 +204,21 @@ const ProfileCompletion: React.FC = () => {
         }
       }
     }
+    
+    // Validation pour l'étape EducationStep - Vérifier les erreurs d'années
+    else if (steps[currentStep].title === 'Études' || steps[currentStep].title === 'Diplômes') {
+      // Vérifier s'il y a des erreurs d'années dans les diplômes existants
+      if (profileData.diplomas && profileData.diplomas.length > 0) {
+        profileData.diplomas.forEach((diploma: any, index: number) => {
+          if (diploma.startYear && diploma.endYear && !diploma.isCurrent) {
+            if (diploma.endYear < diploma.startYear) {
+              newErrors[`diploma-${index}-endYear`] = "L'année de fin ne peut pas être antérieure à l'année de début";
+            }
+          }
+        });
+      }
+    }
 
-    // Les autres étapes (Études, Localisation, etc.) ne sont PAS obligatoires
     return newErrors;
   };
 
@@ -197,7 +234,10 @@ const ProfileCompletion: React.FC = () => {
     const newErrors = validateCurrentStep();
     setErrors(newErrors);
 
-    if (Object.keys(newErrors).length === 0) {
+    // Vérifier s'il y a des erreurs d'années dans EducationStep
+    const hasDiplomaErrors = Object.keys(newErrors).some(key => key.startsWith('diploma-'));
+
+    if (Object.keys(newErrors).length === 0 && !hasDiplomaErrors) {
       if (!isFinalStep) {
         setCurrentStep((prev) => prev + 1);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -205,10 +245,22 @@ const ProfileCompletion: React.FC = () => {
         eSubmit();
       }
     } else {
+      // Trouver le premier champ en erreur pour le scroll
       const firstErrorField = Object.keys(newErrors)[0];
-      const errorElement = document.getElementById(firstErrorField);
-      if (errorElement) {
-        errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (firstErrorField) {
+        let errorElement;
+        
+        // Gestion spéciale pour les erreurs de diplômes
+        if (firstErrorField.startsWith('diploma-')) {
+          // Pour les erreurs de diplômes, on scroll vers le premier diplôme en erreur
+          errorElement = document.querySelector(`.${styles.diplomaCard}`);
+        } else {
+          errorElement = document.getElementById(firstErrorField);
+        }
+        
+        if (errorElement) {
+          errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }
     }
   };

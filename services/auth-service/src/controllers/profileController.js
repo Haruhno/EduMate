@@ -1,3 +1,4 @@
+// controllers/profileController.js
 const profileService = require('../services/profileService');
 const authService = require('../services/authService');
 const multer = require('multer');
@@ -5,7 +6,7 @@ const path = require('path');
 
 class ProfileController {
   // Sauvegarder le profil
-  async saveProfile(req, res) {
+   async saveProfile(req, res) {
     try {
       const token = req.headers.authorization?.split(' ')[1];
       if (!token) {
@@ -18,10 +19,16 @@ class ProfileController {
       const user = await authService.validateToken(token);
       const { profileData, currentStep } = req.body;
 
+      // Inclure l'étape actuelle dans les données du profil
+      const profileDataWithStep = {
+        ...profileData,
+        currentStep: currentStep || 0
+      };
+
       const profile = await profileService.createOrUpdateProfile(
         user.id, 
         user.role, 
-        profileData
+        profileDataWithStep
       );
 
       res.json({
@@ -42,7 +49,7 @@ class ProfileController {
     }
   }
 
-  // Récupérer le profil - CORRIGÉ
+  // Récupérer le profil (inclut les diplômes)
   async getProfile(req, res) {
     try {
       const token = req.headers.authorization?.split(' ')[1];
@@ -74,8 +81,7 @@ class ProfileController {
     } catch (error) {
       console.error('Erreur récupération profil:', error);
       
-      // Si le profil n'existe pas, retourner un succès avec profil null
-      if (error.message.includes('Profil non trouvé') || error.message.includes('profil')) {
+      if (error.message.includes('Profil non trouvé')) {
         return res.json({
           success: true,
           message: 'Profil non trouvé',
@@ -92,8 +98,7 @@ class ProfileController {
       });
     }
   }
-
-  // Finaliser le profil - MODIFIÉ (suppression vérification email)
+  // Finaliser le profil
   async completeProfile(req, res) {
     try {
       const token = req.headers.authorization?.split(' ')[1];
@@ -105,10 +110,6 @@ class ProfileController {
       }
 
       const user = await authService.validateToken(token);
-      
-      // SUPPRIMÉ: Vérification de l'email
-      // Le profil peut être complété directement sans vérification d'email
-      
       const profile = await profileService.completeProfile(user.id, user.role);
 
       res.json({
@@ -124,7 +125,7 @@ class ProfileController {
     }
   }
 
-  // Vérifier le statut du profil - CORRIGÉ
+  // Vérifier le statut du profil
   async getProfileStatus(req, res) {
     try {
       const token = req.headers.authorization?.split(' ')[1];
@@ -136,10 +137,15 @@ class ProfileController {
       }
 
       const user = await authService.validateToken(token);
-      const profile = await profileService.getProfile(user.id, user.role);
+      const hasProfile = await profileService.profileExists(user.id, user.role);
+      
+      let profile = null;
+      if (hasProfile) {
+        profile = await profileService.getProfile(user.id, user.role);
+      }
 
       const status = {
-        hasProfile: !!profile,
+        hasProfile,
         isCompleted: profile?.isCompleted || false,
         isVerified: user.isVerified || false,
         completionPercentage: profile?.completionPercentage || 0,
@@ -154,21 +160,6 @@ class ProfileController {
     } catch (error) {
       console.error('Erreur statut profil:', error);
       
-      // Si erreur due à un profil manquant, retourner le statut par défaut
-      if (error.message.includes('Profil non trouvé') || error.message.includes('profil')) {
-        return res.json({
-          success: true,
-          message: 'Statut récupéré',
-          data: {
-            hasProfile: false,
-            isCompleted: false,
-            isVerified: false,
-            completionPercentage: 0,
-            role: 'student'
-          }
-        });
-      }
-
       res.status(400).json({
         success: false,
         message: error.message
@@ -221,7 +212,8 @@ class ProfileController {
         data: {
           url: fileUrl,
           filename: req.file.filename,
-          originalName: req.file.originalname
+          originalName: req.file.originalname,
+          size: req.file.size
         }
       });
     } catch (error) {
