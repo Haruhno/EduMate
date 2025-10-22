@@ -1,3 +1,4 @@
+// app.js (votre fichier principal)
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
@@ -30,7 +31,14 @@ app.use('/api/tutors', tutorRoutes);
 
 // Route de santé
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', service: 'Auth Service' });
+  res.json({ 
+    status: 'OK', 
+    service: 'Auth Service',
+    routes: [
+      '/api/auth',
+      '/api/profile', 
+    ]
+  });
 });
 
 // Gestion des erreurs
@@ -47,18 +55,22 @@ const PORT = process.env.PORT || 3001;
 // Synchronisation de la base de données et démarrage du serveur
 sequelize.sync({ alter: true })
   .then(() => {
-    console.log('✅ Base de données synchronisée');
-    console.log('📊 Tables disponibles:');
+    console.log('Base de données synchronisée');
+    console.log('Tables disponibles:');
     console.log('   - users');
     console.log('   - profile_tutors'); 
     console.log('   - profile_students');
+    console.log('   - diplomas'); 
     
     app.listen(PORT, () => {
-      console.log(`🚀 Auth Service démarré sur le port ${PORT}`);
+      console.log(`Auth Service démarré sur le port ${PORT}`);
+      console.log('Routes disponibles:');
+      console.log('   - /api/auth');
+      console.log('   - /api/profile');
     });
   })
   .catch(error => {
-    console.error('❌ Erreur de synchronisation de la base de données:', error);
+    console.error('Erreur de synchronisation de la base de données:', error);
   });
 
 module.exports = app;

@@ -23,15 +23,67 @@ h2 {
   font-family: 'DMSans', sans-serif;
 }
 
+.diplomaCard {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.diplomaCard:hover {
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.1);
+}
+
+.diplomaHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #FBBF24;
+}
+
+.diplomaHeader h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: bold;
+  font-family: 'Poppins', sans-serif;
+  color: #333;
+}
+
+.removeButton {
+  background: #333;
+  color: white;
+  border: none;
+  padding: 0.5rem 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.removeButton:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
 .formGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
+  gap: 2rem;
 }
 
 .formGroup {
   display: flex;
   flex-direction: column;
+  gap: 0.75rem;
 }
 
 .formGroup.fullWidth {
@@ -39,31 +91,232 @@ h2 {
 }
 
 .label {
-  font-weight: 500;
+  font-weight: 600;
   color: #333;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-family: 'DMSans', sans-serif;
-  font-size: 1rem;
 }
 
-.input,
-.select {
-  padding: 0.75rem 1rem;
+/* Styles pour les dropdowns customisés */
+.customDropdown {
+  position: relative;
+  width: 100%;
+}
+
+.dropdownButton {
+  width: 100%;
+  padding: 0.875rem 1.25rem;
   border: 2px solid #e9ecef;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 1rem;
-  transition: all 0.2s;
-  font-family: inherit;  
+  transition: all 0.3s ease;
+  font-family: inherit;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  height: 3.25rem;
 }
 
-.input:focus,
-.select:focus {
+.dropdownButton:hover {
+  border-color: #FBBF24;
+}
+
+.dropdownButton:focus {
   outline: none;
   border-color: #FBBF24;
-  box-shadow: 0 0 0 4px #fff4d8;
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.1);
 }
 
+.dropdownButton:disabled {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.dropdownText {
+  color: #333;
+}
+
+.dropdownButton:disabled .dropdownText {
+  color: #6c757d;
+}
+
+.dropdownArrow {
+  color: #6c757d;
+  font-size: 0.8rem;
+  transition: transform 0.2s ease;
+}
+
+.customDropdown:focus-within .dropdownArrow {
+  transform: rotate(180deg);
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e9ecef;
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.dropdownItem {
+  padding: 0.875rem 1.25rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f8f9fa;
+  transition: all 0.2s ease;
+  min-height: 3.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.dropdownItem:hover {
+  background-color: #fff8e6;
+  border-left: 3px solid #FBBF24;
+}
+
+.dropdownItem.selected {
+  background-color: #fff8e6;
+  color: #FBBF24;
+  font-weight: 600;
+  border-left: 3px solid #FBBF24;
+}
+
+.dropdownItem:last-child {
+  border-bottom: none;
+}
+
+/* Styles pour l'input d'établissement */
+.input {
+  width: 100%;
+  padding: 0.875rem 1.25rem;
+  border: 2px solid #e9ecef;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  font-family: inherit;
+  background: white;
+  height: 3.25rem;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #FBBF24;
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.1);
+}
+
+.searchContainer {
+  position: relative;
+  width: 100%;
+}
+
+.highlight {
+  color: #FBBF24;
+  font-weight: 600;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.countryName {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+/* Styles d'erreur identiques à GeneralInfoStep */
+.inputError {
+  border-color: #dc2626 !important;
+  background-color: #fef2f2;
+}
+
+.errorText {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  font-family: 'DMSans', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: -0.5rem;
+}
+
+/* Styles pour le dropdown des suggestions */
+.suggestionsDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e9ecef;
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.suggestionItem {
+  padding: 0.875rem 1.25rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  min-height: 3.25rem;
+  justify-content: center;
+}
+
+.suggestionItem:hover {
+  background-color: #fff8e6;
+  border-left: 3px solid #FBBF24;
+}
+
+.suggestionItem:last-child {
+  border-bottom: none;
+}
+
+.universityName {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.universityLocation {
+  font-size: 0.7rem;
+  color: #666;
+  font-style: italic;
+}
+
+.suggestionHint {
+  font-size: 0.85rem;
+  color: #FBBF24;
+  font-weight: 500;
+}
+
+.loading, .noResults {
+  padding: 1rem 1.25rem;
+  color: #666;
+  font-size: 0.9rem;
+  text-align: center;
+  font-style: italic;
+  min-height: 3.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Styles pour l'upload de fichiers */
 .fileUpload {
   display: flex;
   align-items: center;
@@ -79,140 +332,105 @@ h2 {
   background: #f8f9fa;
   border: 2px dashed #dee2e6;
   color: #6c757d;
-  padding: 1rem 1.5rem;
-  border-radius: 8px;
+  padding: 1rem 2.55rem;
+  border-radius: 10px;
   cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  height: 3.25rem;
 }
 
 .uploadButton:hover {
   background: #fff8e6;
   border-color: #FBBF24;
   color: #FBBF24;
+  transform: translateY(-1px);
 }
 
 .fileName {
   color: #FBBF24;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .helpText {
   color: #6c757d;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   margin-top: 0.5rem;
-  margin-bottom: 0;
+}
+
+/* Styles pour le bouton Ajouter */
+.addButtonContainer {
+  display: flex;
+  justify-content: center;
+  margin: 2rem 0;
+}
+
+.addButton {
+  background: linear-gradient(135deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);
+  height: 3.5rem;
+}
+
+.addButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(251, 191, 36, 0.4);
+}
+
+.addIcon {
+  font-size: 1.2rem;
+  font-weight: 300;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .formGrid {
     grid-template-columns: 1fr;
-    gap: 1rem;
+    gap: 1.5rem;
   }
   
   .fileUpload {
     flex-direction: column;
     align-items: flex-start;
   }
-}
-
-.manualInput {
-  margin-top: 0.5rem;
-}
-
-.manualInput .input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 2px solid #e9ecef;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: all 0.2s;
-  font-family: inherit;
-}
-
-.manualInput .input:focus {
-  outline: none;
-  border-color: #FBBF24;
-  box-shadow: 0 0 0 4px #fff4d8;
-}
-
-.helpText {
-  color: #6c757d;
-  font-size: 0.8rem;
-  margin-top: 0.5rem;
-  margin-bottom: 0;
-  font-style: italic;
-}
-
-.searchContainer {
-  position: relative;
-  width: 100%;
-}
-
-.suggestionsDropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: white;
-  border: 2px solid #e9ecef;
-  border-top: none;
-  border-radius: 0 0 8px 8px;
-  max-height: 300px;
-  overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.suggestionItem {
-  padding: 0.75rem 1rem;
-  cursor: pointer;
-  border-bottom: 1px solid #f8f9fa;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.suggestionItem:hover {
-  background-color: #fff8e6;
-}
-
-.suggestionItem:last-child {
-  border-bottom: none;
-}
-
-.universityName {
-  font-weight: 500;
-  color: #333;
-  font-size: 0.9rem;
-}
-
-.universityLocation {
-  font-size: 0.8rem;
-  color: #666;
-  font-style: italic;
-}
-
-.suggestionHint {
-  font-size: 0.8rem;
-  color: #FBBF24;
-  font-style: italic;
-}
-
-.noResults {
-  padding: 0.75rem 1rem;
-  color: #666;
-  font-size: 0.9rem;
-  text-align: center;
-  font-style: italic;
-}
-
-/* Fermer les suggestions quand on clique en dehors */
-.suggestionsDropdown:focus-within {
-  display: block;
+  
+  .diplomaHeader {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  
+  .diplomaCard {
+    padding: 1.5rem;
+  }
+  
+  .addButton {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .dropdownButton, .input {
+    height: 3rem;
+    padding: 0.75rem 1rem;
+  }
+  
+  .dropdownItem, .suggestionItem {
+    padding: 0.75rem 1rem;
+    min-height: 3rem;
+  }
 }
