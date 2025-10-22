@@ -40,25 +40,7 @@ const ProfileStudent = sequelize.define('ProfileStudent', {
     type: DataTypes.TEXT,
     allowNull: true
   },
-  
-  // Éducation
-  educationLevel: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  school: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  field: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  year: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  
+
   // Localisation
   location: {
     type: DataTypes.JSON,

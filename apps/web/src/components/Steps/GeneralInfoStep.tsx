@@ -15,6 +15,19 @@ interface GeneralInfoStepProps {
   setTouched: React.Dispatch<React.SetStateAction<{ [key: string]: boolean }>>; 
 }
 
+interface Suggestion {
+  display_name: string;
+  lat: string;
+  lon: string;
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    municipality?: string;
+    country?: string;
+  };
+}
+
 const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
     profileData,
     setProfileData,
@@ -26,6 +39,8 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const addressInputRef = useRef<HTMLInputElement>(null);
+    const suggestionsRef = useRef<HTMLDivElement>(null);
     const [dropdownOpen, setDropdownOpen] = useState(false);
 
     // États du recadrage
@@ -34,6 +49,11 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
     const [cropping, setCropping] = useState(false);
     const [imageToCrop, setImageToCrop] = useState<string | null>(null);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+
+    // États pour les suggestions d'adresse
+    const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [isLoadingAddress, setIsLoadingAddress] = useState(false);
 
     // Génère la liste des pays
     const countries = (allCountries as any[]).map((country) => ({
@@ -66,8 +86,19 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
     // Ferme le dropdown quand on clique dehors
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
+            // Pour le dropdown du téléphone
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setDropdownOpen(false);
+            }
+            
+            // Pour les suggestions d'adresse
+            if (
+                suggestionsRef.current && 
+                !suggestionsRef.current.contains(event.target as Node) &&
+                addressInputRef.current &&
+                !addressInputRef.current.contains(event.target as Node)
+            ) {
+                setShowSuggestions(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -78,6 +109,65 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
     const onCropComplete = useCallback((_: any, croppedAreaPixels: any) => {
         setCroppedAreaPixels(croppedAreaPixels);
     }, []);
+
+    // Fonction pour rechercher des suggestions d'adresses
+    const searchAddressSuggestions = async (query: string) => {
+        if (!query || query.length < 3) {
+            setSuggestions([]);
+            setShowSuggestions(false);
+            return;
+        }
+
+        setIsLoadingAddress(true);
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5&countrycodes=`
+            );
+            const data = await response.json();
+            setSuggestions(data);
+            setShowSuggestions(true);
+        } catch (error) {
+            console.error('Erreur de recherche d\'adresses:', error);
+            setSuggestions([]);
+        } finally {
+            setIsLoadingAddress(false);
+        }
+    };
+
+    // Fonction pour sélectionner une suggestion d'adresse
+    const handleAddressSuggestionSelect = (suggestion: Suggestion) => {
+        setProfileData((prev: any) => ({
+            ...prev,
+            address: suggestion.display_name,
+            // Optionnel: vous pouvez aussi stocker les coordonnées GPS si besoin
+            location: {
+                ...prev.location,
+                latitude: suggestion.lat,
+                longitude: suggestion.lon,
+                city: suggestion.address?.city || suggestion.address?.town || suggestion.address?.village || suggestion.address?.municipality || ''
+            }
+        }));
+
+        setShowSuggestions(false);
+        setSuggestions([]);
+    };
+
+    // Gérer le changement de l'adresse avec debounce
+    const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { value } = e.target;
+        
+        setProfileData((prev: any) => ({
+            ...prev,
+            address: value
+        }));
+
+        // Rechercher des suggestions après un délai
+        const timeoutId = setTimeout(() => {
+            searchAddressSuggestions(value);
+        }, 300);
+
+        return () => clearTimeout(timeoutId);
+    };
 
     // Quand utilisateur choisit une image
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -138,7 +228,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         }
     };
 
-    const handleInputChange = (
+   const handleInputChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
     ) => {
         const { name, value } = e.target;
@@ -149,6 +239,15 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
 
         // Validation en temps réel
         validateField(name, value);
+
+        // Si c'est un étudiant et qu'il modifie la date de naissance, supprimer toute erreur
+        if (name === 'birthDate' && role === 'student') {
+            setErrors((prev) => {
+                const updated = { ...prev };
+                delete updated.birthDate;
+                return updated;
+            });
+        }
 
         setTouched((prev) => ({
             ...prev,
@@ -166,37 +265,35 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
 
         switch (name) {
             case 'firstName':
-                if (!value?.trim()) error = 'Le prénom est obligatoire.';
+                if (!value?.trim()) error = '⚠ Le prénom est obligatoire.';
                 break;
             case 'lastName':
-                if (!value?.trim()) error = 'Le nom est obligatoire.';
+                if (!value?.trim()) error = '⚠ Le nom est obligatoire.';
                 break;
             case 'email':
                 if (!value?.trim()) {
-                    error = 'L\'adresse e-mail est obligatoire.';
+                    error = '⚠ L\'adresse e-mail est obligatoire.';
                 } else if (!/\S+@\S+\.\S+/.test(value)) {
-                    error = 'L\'adresse e-mail n\'est pas valide.';
+                    error = '⚠ L\'adresse e-mail n\'est pas valide.';
                 }
                 break;
             case 'birthDate':
                 // Date de naissance obligatoire seulement pour les tuteurs
                 if (role === 'tutor') {
                     if (!value) {
-                        error = 'La date de naissance est obligatoire pour les tuteurs.';
+                        error = '⚠ La date de naissance est obligatoire pour les tuteurs.';
                     } else {
                         const birthDate = new Date(value);
                         const today = new Date();
                         const age = today.getFullYear() - birthDate.getFullYear();
-                        if (age < 16) error = 'Vous devez avoir au moins 16 ans pour être tuteur.';
+                        const monthDiff = today.getMonth() - birthDate.getMonth();
+                        const isBirthdayPassed = monthDiff > 0 || (monthDiff === 0 && today.getDate() >= birthDate.getDate());
+                        const actualAge = isBirthdayPassed ? age : age - 1;
+                        
+                        if (actualAge < 16) error = '⚠ Vous devez avoir au moins 16 ans pour être tuteur.';
                     }
                 }
-                // Pour les étudiants, c'est optionnel mais doit être valide si rempli
-                else if (value) {
-                    const birthDate = new Date(value);
-                    const today = new Date();
-                    const age = today.getFullYear() - birthDate.getFullYear();
-                    if (age < 16) error = 'Vous devez avoir au moins 16 ans.';
-                }
+                // Pour les étudiants, AUCUNE validation - même pas d'âge minimum
                 break;
             case 'phone':
                 if (value && value.trim() !== '') {
@@ -213,7 +310,12 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
             if (error) {
                 updated[name] = error;
             } else {
-                delete updated[name];
+                // IMPORTANT: Supprimer l'erreur pour birthDate si l'utilisateur est étudiant
+                if (name === 'birthDate' && role === 'student') {
+                    delete updated.birthDate;
+                } else if (error === '') {
+                    delete updated[name];
+                }
             }
             return updated;
         });
@@ -233,7 +335,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
 
         setTouched((prev) => ({
             ...prev,
-            phone: true
+            [name]: true
         }));
 
         window.dispatchEvent(
@@ -276,7 +378,18 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         validateField('firstName', profileData.firstName);
         validateField('lastName', profileData.lastName);
         validateField('email', profileData.email);
-        validateField('birthDate', profileData.birthDate);
+        
+        // Pour la date de naissance, seulement valider si c'est un tuteur
+        if (role === 'tutor') {
+            validateField('birthDate', profileData.birthDate);
+        } else {
+            // Pour les étudiants, s'assurer qu'il n'y a pas d'erreur sur birthDate
+            setErrors((prev) => {
+                const updated = { ...prev };
+                delete updated.birthDate;
+                return updated;
+            });
+        }
     }, []);
 
     return (
@@ -375,7 +488,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                                 showGrid={false}
                                 style={{
                                     containerStyle: {
-                                        backgroundColor: '#f8f9fa' // Fond gris clair au lieu de noir
+                                        backgroundColor: '#f8f9fa' 
                                     }
                                 }}
                             />
@@ -559,18 +672,50 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                     {errors.birthDate && <p className={styles.errorText}>{errors.birthDate}</p>}
                 </div>
 
-                {/* Adresse */}
+                {/* Adresse avec suggestions - NOUVEAU */}
                 <div className={`${styles.formGroup} ${styles.fullWidth}`}>
                     <label htmlFor="address" className={styles.label}>Adresse personnelle</label>
-                    <input
-                        type="text"
-                        id="address"
-                        name="address"
-                        value={profileData.address}
-                        onChange={handleInputChange}
-                        className={styles.input}
-                        placeholder="Rue, ville, code postal..."
-                    />
+                    <div className={styles.autocompleteContainer}>
+                        <input
+                            ref={addressInputRef}
+                            type="text"
+                            id="address"
+                            name="address"
+                            value={profileData.address}
+                            onChange={handleAddressChange}
+                            onFocus={() => {
+                                if (suggestions.length > 0) {
+                                    setShowSuggestions(true);
+                                }
+                            }}
+                            className={styles.inputAdress}
+                            placeholder="Commencez à taper votre adresse (rue, ville, pays)..."
+                            autoComplete="off"
+                        />
+                        {isLoadingAddress && (
+                            <div className={styles.loadingSpinner}>
+                                <div className={styles.spinner}></div>
+                            </div>
+                        )}
+                        {showSuggestions && suggestions.length > 0 && (
+                            <div ref={suggestionsRef} className={styles.suggestionsDropdown}>
+                                {suggestions.map((suggestion, index) => (
+                                    <div
+                                        key={index}
+                                        className={styles.suggestionItem}
+                                        onClick={() => handleAddressSuggestionSelect(suggestion)}
+                                    >
+                                        <div className={styles.suggestionText}>
+                                            {suggestion.display_name}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    <p className={styles.helpText}>
+                        Tapez au moins 3 caractères pour voir les suggestions d'adresses internationales
+                    </p>
                 </div>
             </div>
 
