@@ -1,3 +1,4 @@
+// models/ProfileTutor.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -15,6 +16,24 @@ const ProfileTutor = sequelize.define('ProfileTutor', {
       key: 'id'
     }
   },
+  
+  // AJOUTEZ CES CHAMPS MANQUANTS
+  hourlyRate: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 30.00,
+    allowNull: false
+  },
+  rating: {
+    type: DataTypes.DECIMAL(3, 2),
+    defaultValue: 0.00,
+    allowNull: false
+  },
+  reviewsCount: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    allowNull: false
+  },
+
   // Informations générales
   profilePicture: {
     type: DataTypes.TEXT,
@@ -65,7 +84,7 @@ const ProfileTutor = sequelize.define('ProfileTutor', {
   
   // Expérience
   experience: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
   },
   bio: {
@@ -73,8 +92,9 @@ const ProfileTutor = sequelize.define('ProfileTutor', {
     allowNull: true
   },
   specialties: {
-    type: DataTypes.JSON,
-    defaultValue: []
+    type: DataTypes.JSONB,
+    allowNull: false,
+    defaultValue: [],
   },
   
   // Disponibilité

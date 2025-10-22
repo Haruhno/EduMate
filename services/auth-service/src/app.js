@@ -8,6 +8,7 @@ require('./models/associations');
 
 const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
+const tutorRoutes = require('./routes/tutorRoutes');
 
 const app = express();
 
@@ -22,6 +23,10 @@ app.use('/uploads', express.static('uploads'));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
+
+// Après les autres routes
+
+app.use('/api/tutors', tutorRoutes);
 
 // Route de santé
 app.get('/health', (req, res) => {

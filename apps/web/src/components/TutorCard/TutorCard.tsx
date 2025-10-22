@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import styles from './TutorCard.module.css';
 
 interface Tutor {
-  id: number;
+  id: string;
   name: string;
   subject: string;
   rating: number;
