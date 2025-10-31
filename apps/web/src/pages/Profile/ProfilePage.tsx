@@ -21,10 +21,25 @@ interface Diploma {
   } | null;
 }
 
+interface Experience {
+  id: string;
+  jobTitle: string;
+  employmentType: string;
+  company: string;
+  location: string;
+  startMonth: string;
+  startYear: number;
+  endMonth: string;
+  endYear: number | null;
+  isCurrent: boolean;
+  description: string;
+}
+
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [diplomas, setDiplomas] = useState<Diploma[]>([]);
+  const [experiences, setExperiences] = useState<Experience[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [completionPercentage, setCompletionPercentage] = useState(0);
@@ -42,12 +57,16 @@ const ProfilePage: React.FC = () => {
             const profile = response.data.profile;
             setProfileData(profile);
             
-            // Les diplômes sont maintenant inclus directement dans le profil
             if (profile.diplomas && Array.isArray(profile.diplomas)) {
               setDiplomas(profile.diplomas);
             }
             
-            calculateCompletion(profile);
+            if (profile.experiences && Array.isArray(profile.experiences)) {
+              setExperiences(profile.experiences);
+            }
+            
+            // Passez user ET profile à la fonction
+            calculateCompletion(profile, currentUser);
           }
         }
       } catch (error) {
@@ -60,30 +79,52 @@ const ProfilePage: React.FC = () => {
     loadProfile();
   }, []);
 
-  const calculateCompletion = (profile: ProfileData) => {
-    let completedFields = 0;
-    let totalFields = 8; // Champs de base
+  const calculateCompletion = (profile: ProfileData, user: any) => {
+    const checks: {name: string, completed: boolean}[] = [];
 
-    // Champs de base
-    if (profile.firstName?.trim()) completedFields++;
-    if (profile.lastName?.trim()) completedFields++;
-    if (profile.email?.trim()) completedFields++;
-    if (profile.phone?.trim()) completedFields++;
-    if (profile.birthDate) completedFields++;
-    if (profile.gender) completedFields++;
-    if (profile.address?.trim()) completedFields++;
-    if (profile.educationLevel?.trim()) completedFields++;
+    // Les champs de l'utilisateur qui sont stockés dans user
+    checks.push({name: 'firstName', completed: !!(user?.firstName && String(user.firstName).trim())});
+    checks.push({name: 'lastName', completed: !!(user?.lastName && String(user.lastName).trim())});
+    checks.push({name: 'email', completed: !!(user?.email && String(user.email).trim())});
 
-    // Bonus pour les diplômes
-    if (profile.diplomas && profile.diplomas.length > 0) {
-      completedFields += 2;
-      totalFields += 2;
+    // Les champs du profil qui sont stockés dans profil
+    checks.push({name: 'phone', completed: !!(profile?.phone && String(profile.phone).trim())});
+    checks.push({name: 'birthDate', completed: !!profile?.birthDate});
+    checks.push({name: 'gender', completed: !!(profile?.gender && String(profile.gender).trim())});
+    checks.push({name: 'address', completed: !!(profile?.address && String(profile.address).trim())});
+    checks.push({name: 'bio', completed: !!(profile?.bio && String(profile.bio).trim())});
+
+    // Photo
+    const photoCompleted = !!(profile?.profilePicture && profile.profilePicture !== '/assets/images/avatar.jpg');
+    checks.push({name: 'profilePicture', completed: photoCompleted});
+
+    // Education
+    checks.push({name: 'diplomas', completed: !!(profile?.diplomas && profile.diplomas.length > 0)});
+
+    // Experiences (seulement pour tuteur)
+    if (user?.role === 'tutor') {
+      checks.push({name: 'experiences', completed: !!(profile?.experiences && profile.experiences.length > 0)});
     }
 
-    const percentage = Math.round((completedFields / totalFields) * 100);
-    setCompletionPercentage(percentage);
-  };
+    // Availability (seulement pour tuteur)
+    if (user?.role === 'tutor') {
+      const availabilityCompleted = !!(profile?.availability && (
+        profile.availability.online === true || 
+        profile.availability.inPerson === true
+      ));
+      checks.push({name: 'availability', completed: availabilityCompleted});
+    }
 
+    // Location
+    checks.push({name: 'location', completed: !!(profile?.location?.address && String(profile.location.address).trim())});
+
+    // Calcul
+    const completedFields = checks.filter(check => check.completed).length;
+    const totalFields = checks.length;
+
+    setCompletionPercentage(Math.round((completedFields / totalFields) * 100));
+  };
+  
   const handleEditProfile = () => {
     navigate('/completer-profil', {
       state: {
@@ -101,6 +142,19 @@ const ProfilePage: React.FC = () => {
     return endYear ? `${startYear} - ${endYear}` : `${startYear}`;
   };
 
+  const formatExperiencePeriod = (startMonth: string, startYear: number, endMonth: string, endYear: number | null, isCurrent: boolean) => {
+    if (isCurrent) {
+      return `${startMonth} ${startYear} - En cours`;
+    }
+    return `${startMonth} ${startYear} - ${endMonth} ${endYear}`;
+  };
+
+  // Vérifier le nombre d'éléments
+  const hasMultipleDiplomas = diplomas.length > 1;
+  const hasSingleDiploma = diplomas.length === 1;
+  const hasMultipleExperiences = experiences.length > 1;
+  const hasSingleExperience = experiences.length === 1;
+
   if (isLoading) {
     return (
       <div className={styles.container}>
@@ -114,7 +168,7 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      {/* Header simple et propre */}
+      {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerContent}>
           <h1 className={styles.title}>Mon Profil</h1>
@@ -147,7 +201,7 @@ const ProfilePage: React.FC = () => {
       </div>
    
       <div className={styles.profileContent}>
-        {/* Section principale */}
+        {/* Section principale - Gauche */}
         <div className={styles.mainSection}>
           {/* Carte profil */}
           <div className={styles.section}>
@@ -228,11 +282,23 @@ const ProfilePage: React.FC = () => {
                 </label>
                 <p>{profileData?.address || 'Non renseignée'}</p>
               </div>
+              {/* Section À propos */}
+              {profileData?.bio && (
+                <div className={styles.infoItemFullWidth}>
+                  <label>
+                    <svg className={styles.infoIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    À propos
+                  </label>
+                  <p className={styles.bio}>{profileData.bio}</p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Section Diplômes */}
-          {diplomas.length > 0 && (
+          {/* Section Diplômes - Style multiple */}
+          {hasMultipleDiplomas && (
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>
                 <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -274,20 +340,234 @@ const ProfilePage: React.FC = () => {
             </div>
           )}
 
-          {/* Section À propos */}
-          {profileData?.bio && (
+          {/* Section Diplôme - Style unique */}
+          {hasSingleDiploma && (
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>
                 <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  <path d="M12 14l9-5-9-5-9 5 9 5z" />
+                  <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
                 </svg>
-                À propos
+                Diplôme
               </h3>
-              <p className={styles.bio}>{profileData.bio}</p>
+              <div className={styles.infoGrid}>
+                {diplomas[0].educationLevel && (
+                  <div className={styles.infoItem}>
+                    <label>
+                      <svg className={styles.infoIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 14l9-5-9-5-9 5 9 5z" />
+                        <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                      </svg>
+                      Niveau d'étude
+                    </label>
+                    <p>{diplomas[0].educationLevel}</p>
+                  </div>
+                )}
+                {diplomas[0].field && (
+                  <div className={styles.infoItem}>
+                    <label>
+                      <svg className={styles.infoIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Domaine
+                    </label>
+                    <p>{diplomas[0].field}</p>
+                  </div>
+                )}
+                {diplomas[0].school && (
+                  <div className={styles.infoItem}>
+                    <label>
+                      <svg className={styles.infoIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      Établissement
+                    </label>
+                    <p>{diplomas[0].school}</p>
+                  </div>
+                )}
+                {diplomas[0].country && (
+                  <div className={styles.infoItem}>
+                    <label>
+                      <svg className={styles.infoIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Pays
+                    </label>
+                    <p>{diplomas[0].country}</p>
+                  </div>
+                )}
+                {diplomas[0].startYear && (
+                  <div className={styles.infoItem}>
+                    <label>
+                      <svg className={styles.infoIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      Période
+                    </label>
+                    <p>
+                      {formatYearRange(diplomas[0].startYear, diplomas[0].endYear, diplomas[0].isCurrent)}
+                    </p>
+                  </div>
+                )}
+                {diplomas[0].diplomaFile && (
+                  <div className={styles.infoItem}>
+                    <label>
+                      <svg className={styles.infoIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                      </svg>
+                      Diplôme
+                    </label>
+                    <a 
+                      href={diplomas[0].diplomaFile.path} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className={styles.fileLink}
+                    >
+                      📎 {diplomas[0].diplomaFile.name}
+                    </a>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Section Disponibilités */}
+          {/* Section Expériences professionnelles - Style multiple */}
+          {user?.role === 'tutor' && hasMultipleExperiences && (
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>
+                <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                Expériences professionnelles
+              </h3>
+              <div className={styles.experiencesList}>
+                {experiences.map((experience, index) => (
+                  <div key={experience.id || index} className={styles.experienceItem}>
+                    <div className={styles.experienceHeader}>
+                      <h4 className={styles.experienceTitle}>{experience.jobTitle}</h4>
+                      <span className={styles.experiencePeriod}>
+                        {formatExperiencePeriod(
+                          experience.startMonth, 
+                          experience.startYear, 
+                          experience.endMonth, 
+                          experience.endYear, 
+                          experience.isCurrent
+                        )}
+                      </span>
+                    </div>
+                    <div className={styles.experienceDetails}>
+                      <p className={styles.experienceCompany}><strong>Entreprise:</strong> {experience.company}</p>
+                      <p className={styles.experienceType}><strong>Type d'emploi:</strong> {experience.employmentType}</p>
+                      <p className={styles.experienceLocation}><strong>Lieu:</strong> {experience.location}</p>
+                    </div>
+                    {experience.description && (
+                      <div className={styles.experienceDescription}>
+                        <p className={styles.experienceDescriptionText}>{experience.description}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Section Expérience professionnelle - Style unique */}
+          {user?.role === 'tutor' && hasSingleExperience && (
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>
+                <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                Expérience professionnelle
+              </h3>
+              <div className={styles.infoGrid}>
+                {experiences[0].jobTitle && (
+                  <div className={styles.infoItem}>
+                    <label>
+                      <svg className={styles.infoIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      Poste
+                    </label>
+                    <p>{experiences[0].jobTitle}</p>
+                  </div>
+                )}
+                {experiences[0].company && (
+                  <div className={styles.infoItem}>
+                    <label>
+                      <svg className={styles.infoIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      Entreprise
+                    </label>
+                    <p>{experiences[0].company}</p>
+                  </div>
+                )}
+                {experiences[0].employmentType && (
+                  <div className={styles.infoItem}>
+                    <label>
+                      <svg className={styles.infoIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      Type d'emploi
+                    </label>
+                    <p>{experiences[0].employmentType}</p>
+                  </div>
+                )}
+                {experiences[0].location && (
+                  <div className={styles.infoItem}>
+                    <label>
+                      <svg className={styles.infoIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Lieu
+                    </label>
+                    <p>{experiences[0].location}</p>
+                  </div>
+                )}
+                {experiences[0].startYear && (
+                  <div className={styles.infoItem}>
+                    <label>
+                      <svg className={styles.infoIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      Période
+                    </label>
+                    <p>
+                      {formatExperiencePeriod(
+                        experiences[0].startMonth, 
+                        experiences[0].startYear, 
+                        experiences[0].endMonth, 
+                        experiences[0].endYear, 
+                        experiences[0].isCurrent
+                      )}
+                    </p>
+                  </div>
+                )}
+                {experiences[0].description && (
+                  <div className={styles.infoItem}>
+                    <label>
+                      <svg className={styles.infoIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Description
+                    </label>
+                    <div className={styles.experienceDescription}>
+                      <div className={styles.experienceDescriptionText}>{experiences[0].description}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Section secondaire - Droite */}
+        <div className={styles.sidebar}>
+          {/* Disponibilités */}
           {user?.role === 'tutor' && profileData?.availability && (
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>
@@ -310,11 +590,27 @@ const ProfilePage: React.FC = () => {
               </div>
             </div>
           )}
-        </div>
 
-        {/* Section secondaire */}
-        <div className={styles.sidebar}>
-          {/* Carte Localisation */}
+          {/* Spécialités */}
+          {user?.role === 'tutor' && profileData?.specialties && profileData.specialties.length > 0 && (
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>
+                <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Spécialités
+              </h3>
+              <div className={styles.specialties}>
+                {profileData.specialties.map((specialty, index) => (
+                  <span key={index} className={styles.specialtyTag}>
+                    {specialty}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Localisation */}
           {profileData?.location?.address && (
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>
@@ -361,25 +657,6 @@ const ProfilePage: React.FC = () => {
                     <p>{profileData.location.radius} km</p>
                   </div>
                 )}
-              </div>
-            </div>
-          )}
-
-          {/* Carte Spécialités */}
-          {user?.role === 'tutor' && profileData?.specialties && profileData.specialties.length > 0 && (
-            <div className={styles.section}>
-              <h3 className={styles.sectionTitle}>
-                <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                Spécialités
-              </h3>
-              <div className={styles.specialties}>
-                {profileData.specialties.map((specialty, index) => (
-                  <span key={index} className={styles.specialtyTag}>
-                    {specialty}
-                  </span>
-                ))}
               </div>
             </div>
           )}

@@ -57,6 +57,7 @@ const EducationStep: React.FC<EducationStepProps> = ({
   
   const [diplomas, setDiplomas] = useState<Diploma[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [hasBeenValidated, setHasBeenValidated] = useState(false);
 
   const [universities, setUniversities] = useState<{ [key: number]: University[] }>({});
   const [isLoading, setIsLoading] = useState<{ [key: number]: boolean }>({});
@@ -67,6 +68,7 @@ const EducationStep: React.FC<EducationStepProps> = ({
   const [isManualEntry, setIsManualEntry] = useState<{ [key: number]: boolean }>({});
   const [selectedCountries, setSelectedCountries] = useState<{ [key: number]: string }>({});
   const [dropdownOpen, setDropdownOpen] = useState<DropdownState>({});
+  
 
   // Pays qui ne fonctionnent pas bien avec l'API
   const problematicCountries = [
@@ -163,6 +165,92 @@ const EducationStep: React.FC<EducationStepProps> = ({
     );
   };
 
+  // Fonction pour détecter si un diplôme a commencé à être rempli
+  const hasDiplomaStartedFilling = (diploma: Diploma): boolean => {
+    return (
+      diploma.educationLevel.trim() !== '' ||
+      diploma.field.trim() !== '' ||
+      diploma.school.trim() !== '' ||
+      diploma.country.trim() !== '' ||
+      diploma.startYear !== '' ||
+      diploma.endYear !== '' ||
+      diploma.isCurrent
+    );
+  };
+
+  // Validation complète de tous les diplômes
+  const validateAllDiplomas = () => {
+    const newErrors: { [key: string]: string } = { ...errors };
+    
+    // Supprimer les anciennes erreurs de diplômes
+    Object.keys(newErrors).forEach(key => {
+      if (key.startsWith('diploma-')) {
+        delete newErrors[key];
+      }
+    });
+
+    let hasAnyError = false;
+
+    diplomas.forEach((diploma, index) => {
+      const diplomaKey = `diploma-${index}`;
+      const hasStartedFilling = hasDiplomaStartedFilling(diploma);
+
+      if (hasStartedFilling) {
+        // Vérifier que tous les champs obligatoires sont remplis
+        if (!diploma.educationLevel?.trim()) {
+          newErrors[`${diplomaKey}-educationLevel`] = "Veuillez renseigner cette information";
+          hasAnyError = true;
+        }
+
+        if (!diploma.field?.trim()) {
+          newErrors[`${diplomaKey}-field`] = "Veuillez renseigner cette information";
+          hasAnyError = true;
+        }
+
+        if (!diploma.school?.trim()) {
+          newErrors[`${diplomaKey}-school`] = "Veuillez renseigner cette information";
+          hasAnyError = true;
+        }
+
+        if (!diploma.country?.trim()) {
+          newErrors[`${diplomaKey}-country`] = "Veuillez renseigner cette information";
+          hasAnyError = true;
+        }
+
+        if (!diploma.startYear) {
+          newErrors[`${diplomaKey}-startYear`] = "Veuillez renseigner cette information";
+          hasAnyError = true;
+        }
+
+        // Validation pour l'année de fin si ce n'est pas en cours
+        if (!diploma.isCurrent) {
+          if (!diploma.endYear) {
+            newErrors[`${diplomaKey}-endYear`] = "Veuillez renseigner cette information";
+            hasAnyError = true;
+          }
+        }
+
+        // Validation de la cohérence des années
+        if (diploma.startYear && diploma.endYear && !diploma.isCurrent) {
+          if (diploma.endYear < diploma.startYear) {
+            newErrors[`${diplomaKey}-endYear`] = "L'année de fin ne peut pas être antérieure à l'année de début";
+            hasAnyError = true;
+          }
+        }
+      }
+    });
+
+    setErrors(newErrors);
+    setHasBeenValidated(true);
+    return !hasAnyError;
+  };
+
+  // Exposer la fonction de validation au parent
+  useEffect(() => {
+    // @ts-ignore
+    window.validateEducationStep = validateAllDiplomas;
+  }, [diplomas]);
+
   // Préremplissage des données
   useEffect(() => {
     if (profileData?.diplomas && profileData.diplomas.length > 0) {
@@ -218,10 +306,10 @@ const EducationStep: React.FC<EducationStepProps> = ({
         diplomas: diplomas
       }));
 
-      // VALIDER TOUS LES DIPLÔMES À CHAQUE CHANGEMENT
-      diplomas.forEach((diploma, index) => {
-        validateYears(index, diploma.startYear, diploma.endYear, diploma.isCurrent);
-      });
+      // Si on a déjà validé une fois, revalider à chaque changement
+      if (hasBeenValidated) {
+        validateAllDiplomas();
+      }
     }
   }, [diplomas, isInitialized, setProfileData]);
 
@@ -438,10 +526,14 @@ const EducationStep: React.FC<EducationStepProps> = ({
       setIsLoading(prev => ({ ...prev, [index]: false }));
       
       // Nettoyer les erreurs
-      const diplomaKey = `diploma-${index}-endYear`;
+      const diplomaKey = `diploma-${index}`;
       setErrors(prev => {
         const updated = { ...prev };
-        delete updated[diplomaKey];
+        Object.keys(updated).forEach(key => {
+          if (key.startsWith(diplomaKey)) {
+            delete updated[key];
+          }
+        });
         return updated;
       });
     }
@@ -610,6 +702,16 @@ const EducationStep: React.FC<EducationStepProps> = ({
         const endYearErrorKey = `diploma-${index}-endYear`;
         const hasEndYearError = errors[endYearErrorKey];
         
+        // Variables pour les erreurs de chaque champ
+        const diplomaKey = `diploma-${index}`;
+        const hasEducationLevelError = hasBeenValidated && errors[`${diplomaKey}-educationLevel`];
+        const hasFieldError = hasBeenValidated && errors[`${diplomaKey}-field`];
+        const hasSchoolError = hasBeenValidated && errors[`${diplomaKey}-school`];
+        const hasCountryError = hasBeenValidated && errors[`${diplomaKey}-country`];
+        const hasStartYearError = hasBeenValidated && errors[`${diplomaKey}-startYear`];
+        const hasEndYearRequiredError = hasBeenValidated && errors[`${diplomaKey}-endYear`] && 
+                                       errors[`${diplomaKey}-endYear`] === "Veuillez renseigner cette information";
+        
         return (
           <div key={index} className={styles.diplomaCard}>
             {diplomas.length > 1 && (
@@ -634,7 +736,7 @@ const EducationStep: React.FC<EducationStepProps> = ({
                 <div className={styles.customDropdown} ref={setDropdownRef(index, 'educationLevel')}>
                   <button
                     type="button"
-                    className={styles.dropdownButton}
+                    className={`${styles.dropdownButton} ${hasEducationLevelError ? styles.inputError : ''}`}
                     onClick={() => toggleDropdown(index, 'educationLevel')}
                   >
                     <span className={styles.dropdownText}>
@@ -656,6 +758,11 @@ const EducationStep: React.FC<EducationStepProps> = ({
                     </div>
                   )}
                 </div>
+                {hasEducationLevelError && (
+                  <div className={styles.errorText}>
+                    ⚠ {errors[`${diplomaKey}-educationLevel`]}
+                  </div>
+                )}
               </div>
 
               {/* Domaine */}
@@ -664,7 +771,7 @@ const EducationStep: React.FC<EducationStepProps> = ({
                 <div className={styles.customDropdown} ref={setDropdownRef(index, 'field')}>
                   <button
                     type="button"
-                    className={styles.dropdownButton}
+                    className={`${styles.dropdownButton} ${hasFieldError ? styles.inputError : ''}`}
                     onClick={() => toggleDropdown(index, 'field')}
                   >
                     <span className={styles.dropdownText}>
@@ -686,6 +793,11 @@ const EducationStep: React.FC<EducationStepProps> = ({
                     </div>
                   )}
                 </div>
+                {hasFieldError && (
+                  <div className={styles.errorText}>
+                    ⚠ {errors[`${diplomaKey}-field`]}
+                  </div>
+                )}
               </div>
 
               {/* Pays */}
@@ -698,7 +810,7 @@ const EducationStep: React.FC<EducationStepProps> = ({
                     value={countrySearchTerms[index] || ''}
                     onChange={(e) => handleCountryInputChange(index, e.target.value)}
                     onFocus={() => handleCountryFocus(index)}
-                    className={styles.input}
+                    className={`${styles.input} ${hasCountryError ? styles.inputError : ''}`}
                     placeholder="Recherchez un pays..."
                   />
                   
@@ -724,9 +836,14 @@ const EducationStep: React.FC<EducationStepProps> = ({
                     </div>
                   )}
                 </div>
+                {hasCountryError && (
+                  <div className={styles.errorText}>
+                    ⚠ {errors[`${diplomaKey}-country`]}
+                  </div>
+                )}
               </div>
 
-             {/* Établissement */}
+              {/* Établissement */}
               <div className={styles.formGroup}>
                 <label className={styles.label}>
                   {role === 'student' ? 'Établissement' : 'Établissement de formation'}
@@ -746,7 +863,7 @@ const EducationStep: React.FC<EducationStepProps> = ({
                         setShowSuggestions(prev => ({ ...prev, [index]: false }));
                       }, 200);
                     }}
-                    className={styles.input}
+                    className={`${styles.input} ${hasSchoolError ? styles.inputError : ''}`}
                     placeholder={
                       isManualEntry[index] || isProblematic
                         ? `Saisissez le nom de votre établissement${selectedCountries[index] ? ` (${selectedCountries[index]})` : ''}`
@@ -764,7 +881,7 @@ const EducationStep: React.FC<EducationStepProps> = ({
                         <div className={styles.loading}>Chargement des universités...</div>
                       ) : (
                         <>
-                          {/* Suggestions d'universités - "Autre" À LA FIN */}
+                          {/* Suggestions d'universités */}
                           {filteredUnis.map((uni) => (
                             <div
                               key={`${index}-${uni.name}`}
@@ -778,7 +895,7 @@ const EducationStep: React.FC<EducationStepProps> = ({
                             </div>
                           ))}
 
-                          {/* Option "Autre" - MAINTENANT À LA FIN */}
+                          {/* Option "Autre" */}
                           <div
                             className={styles.suggestionItem}
                             onMouseDown={(e) => {
@@ -800,6 +917,11 @@ const EducationStep: React.FC<EducationStepProps> = ({
                     </div>
                   )}
                 </div>
+                {hasSchoolError && (
+                  <div className={styles.errorText}>
+                    ⚠ {errors[`${diplomaKey}-school`]}
+                  </div>
+                )}
               </div>
 
               {/* Année de début */}
@@ -808,7 +930,7 @@ const EducationStep: React.FC<EducationStepProps> = ({
                 <div className={styles.customDropdown} ref={setDropdownRef(index, 'startYear')}>
                   <button
                     type="button"
-                    className={styles.dropdownButton}
+                    className={`${styles.dropdownButton} ${hasStartYearError ? styles.inputError : ''}`}
                     onClick={() => toggleDropdown(index, 'startYear')}
                   >
                     <span className={styles.dropdownText}>
@@ -830,6 +952,11 @@ const EducationStep: React.FC<EducationStepProps> = ({
                     </div>
                   )}
                 </div>
+                {hasStartYearError && (
+                  <div className={styles.errorText}>
+                    ⚠ {errors[`${diplomaKey}-startYear`]}
+                  </div>
+                )}
               </div>
 
               {/* Année de fin */}
@@ -838,7 +965,7 @@ const EducationStep: React.FC<EducationStepProps> = ({
                 <div className={styles.customDropdown} ref={setDropdownRef(index, 'endYear')}>
                   <button
                     type="button"
-                    className={`${styles.dropdownButton} ${hasEndYearError ? styles.inputError : ''}`}
+                    className={`${styles.dropdownButton} ${hasEndYearError || hasEndYearRequiredError ? styles.inputError : ''}`}
                     onClick={() => toggleDropdown(index, 'endYear')}
                   >
                     <span className={styles.dropdownText}>
@@ -875,10 +1002,15 @@ const EducationStep: React.FC<EducationStepProps> = ({
                     </div>
                   )}
                 </div>
-                {/* Message d'erreur sous le champ */}
-                {hasEndYearError && (
+                {/* Messages d'erreur */}
+                {hasEndYearRequiredError && (
                   <div className={styles.errorText}>
-                    ⚠ L'année de fin ne peut pas être antérieure à l'année de début
+                    ⚠ {errors[`${diplomaKey}-endYear`]}
+                  </div>
+                )}
+                {hasEndYearError && !hasEndYearRequiredError && (
+                  <div className={styles.errorText}>
+                    ⚠ {errors[`${diplomaKey}-endYear`]}
                   </div>
                 )}
               </div>

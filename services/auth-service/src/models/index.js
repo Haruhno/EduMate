@@ -4,7 +4,7 @@ const ProfileTutor = require('./ProfileTutor');
 const ProfileStudent = require('./ProfileStudent');
 const Diploma = require('./Diploma');
 
-// Importez les associations
+// Importer les associations
 require('./associations');
 
 module.exports = {

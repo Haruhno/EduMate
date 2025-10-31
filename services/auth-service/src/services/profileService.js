@@ -1,4 +1,4 @@
-const { ProfileTutor, ProfileStudent, User, Diploma } = require('../models/associations');
+const { ProfileTutor, ProfileStudent, User, Diploma, Experience } = require('../models/associations');
 
 class ProfileService {
   // Créer ou mettre à jour un profil
@@ -8,8 +8,8 @@ class ProfileService {
     try {
       let profile = await ProfileModel.findOne({ where: { userId } });
 
-      // Séparer les données du profil des diplômes
-      const { diplomas, ...profileDataToSave } = profileData;
+      // Séparer les données du profil des diplômes et expériences
+      const { diplomas, experiences, ...profileDataToSave } = profileData;
 
       if (profile) {
         await profile.update({
@@ -29,6 +29,11 @@ class ProfileService {
         await this.saveDiplomas(userId, role, diplomas);
       }
 
+      // Sauvegarder les expériences séparément
+      if (experiences && Array.isArray(experiences)) {
+        await this.saveExperiences(userId, role, experiences);
+      }
+
       // Recalculer le pourcentage de complétion
       const completionPercentage = await this.calculateCompletionPercentage(profile, role, userId);
       await profile.update({ completionPercentage });
@@ -40,7 +45,7 @@ class ProfileService {
     }
   }
 
-  // Sauvegarder les diplômes - CORRIGÉ
+  // Sauvegarder les diplômes
   async saveDiplomas(userId, profileType, diplomasData) {
     try {
       console.log('Sauvegarde des diplômes:', { userId, profileType, diplomasData });
@@ -84,7 +89,7 @@ class ProfileService {
     }
   }
 
-  // Récupérer les diplômes d'un utilisateur - CORRIGÉ
+  // Récupérer les diplômes d'un utilisateur
   async getDiplomasByUser(userId, profileType) {
     try {
       const diplomas = await Diploma.findAll({
@@ -116,7 +121,85 @@ class ProfileService {
     }
   }
 
-  // Récupérer un profil avec les diplômes - CORRIGÉ
+  // Sauvegarder les expériences
+  async saveExperiences(userId, profileType, experiencesData) {
+    try {
+      console.log('Sauvegarde des expériences:', { userId, profileType, experiencesData });
+
+      // Supprimer les anciennes expériences
+      await Experience.destroy({
+        where: { userId, profileType }
+      });
+
+      // Créer les nouvelles expériences
+      const experiences = [];
+      for (const experienceData of experiencesData) {
+        // Vérifier que l'expérience a au moins un champ rempli
+        const hasData = Object.values(experienceData).some(value => 
+          value !== '' && value !== null && value !== undefined && 
+          (typeof value !== 'string' || value.trim() !== '')
+        );
+
+        if (hasData) {
+          const experience = await Experience.create({
+            userId,
+            profileType,
+            jobTitle: experienceData.jobTitle || '',
+            employmentType: experienceData.employmentType || '',
+            company: experienceData.company || '',
+            location: experienceData.location || '',
+            startMonth: experienceData.startMonth || '',
+            startYear: experienceData.startYear || null,
+            endMonth: experienceData.isCurrent ? null : (experienceData.endMonth || ''),
+            endYear: experienceData.isCurrent ? null : (experienceData.endYear || null),
+            isCurrent: experienceData.isCurrent || false,
+            description: experienceData.description || ''
+          });
+
+          experiences.push(experience);
+        }
+      }
+
+      console.log(`✅ ${experiences.length} expérience(s) sauvegardée(s) pour l'utilisateur ${userId}`);
+      return experiences;
+    } catch (error) {
+      console.error('Erreur détaillée sauvegarde expériences:', error);
+      throw new Error(`Erreur lors de la sauvegarde des expériences: ${error.message}`);
+    }
+  }
+
+  // Récupérer les expériences d'un utilisateur
+  async getExperiencesByUser(userId, profileType) {
+    try {
+      const experiences = await Experience.findAll({
+        where: { userId, profileType },
+        order: [
+          ['isCurrent', 'DESC'],
+          ['startYear', 'DESC'],
+          ['startMonth', 'DESC']
+        ]
+      });
+
+      return experiences.map(experience => ({
+        id: experience.id,
+        jobTitle: experience.jobTitle,
+        employmentType: experience.employmentType,
+        company: experience.company,
+        location: experience.location,
+        startMonth: experience.startMonth,
+        startYear: experience.startYear,
+        endMonth: experience.endMonth,
+        endYear: experience.endYear,
+        isCurrent: experience.isCurrent,
+        description: experience.description
+      }));
+    } catch (error) {
+      console.error('Erreur récupération expériences:', error);
+      throw new Error(`Erreur lors de la récupération des expériences: ${error.message}`);
+    }
+  }
+
+  // Récupérer un profil avec les diplômes et expériences
   async getProfile(userId, role) {
     try {
       const ProfileModel = role === 'tutor' ? ProfileTutor : ProfileStudent;
@@ -126,14 +209,18 @@ class ProfileService {
         throw new Error('Profil non trouvé');
       }
 
-      // Bien récupérer les diplômes
+      // Récupérer les diplômes
       const diplomas = await this.getDiplomasByUser(userId, role);
+      
+      // Récupérer les expériences
+      const experiences = await this.getExperiencesByUser(userId, role);
 
       const profileData = profile.toJSON();
       
       return {
         ...profileData,
-        diplomas: diplomas 
+        diplomas: diplomas,
+        experiences: experiences
       };
     } catch (error) {
       console.error('Erreur détaillée récupération profil:', error);
@@ -141,7 +228,7 @@ class ProfileService {
     }
   }
 
-  // Calculer le pourcentage de complétion avec les diplômes
+  // Calculer le pourcentage de complétion avec les diplômes et expériences
   async calculateCompletionPercentage(profile, role, userId) {
     let completedFields = 0;
     let totalFields = 8; // Champs de base
@@ -173,6 +260,15 @@ class ProfileService {
     if (diplomas.length > 0) {
       completedFields += 2; // Bonus pour avoir au moins un diplôme
       totalFields += 2;
+    }
+
+    // Vérifier les expériences (pour les tuteurs seulement)
+    if (role === 'tutor') {
+      const experiences = await this.getExperiencesByUser(userId, role);
+      if (experiences.length > 0) {
+        completedFields += 2; // Bonus pour avoir au moins une expérience
+        totalFields += 2;
+      }
     }
 
     return Math.round((completedFields / totalFields) * 100);

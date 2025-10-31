@@ -19,6 +19,20 @@ interface Diploma {
   diplomaFile?: any;
 }
 
+interface Experience {
+  id?: string;
+  jobTitle: string;
+  employmentType: string;
+  company: string;
+  location: string;
+  startMonth: string;
+  startYear: number | '';
+  endMonth: string;
+  endYear: number | '';
+  isCurrent: boolean;
+  description: string;
+}
+
 const PreviewStep: React.FC<PreviewStepProps> = ({ profileData, role }) => {
     const previewRef = useRef<HTMLDivElement>(null);
     const lastProfileDataRef = useRef<string>("");
@@ -37,7 +51,7 @@ const PreviewStep: React.FC<PreviewStepProps> = ({ profileData, role }) => {
         }
     }, [profileData]);
 
-    // Fonction pour formater la période
+    // Fonction pour formater la période des diplômes
     const formatYearRange = (startYear: number | '', endYear: number | '', isCurrent: boolean) => {
         if (isCurrent) {
             return `${startYear} - En cours`;
@@ -45,10 +59,23 @@ const PreviewStep: React.FC<PreviewStepProps> = ({ profileData, role }) => {
         return endYear ? `${startYear} - ${endYear}` : `${startYear}`;
     };
 
+    // Fonction pour formater la période des expériences
+    const formatExperiencePeriod = (startMonth: string, startYear: number | '', endMonth: string, endYear: number | '', isCurrent: boolean) => {
+        if (isCurrent) {
+            return `${startMonth} ${startYear} - En cours`;
+        }
+        return `${startMonth} ${startYear} - ${endMonth} ${endYear}`;
+    };
+
     // Vérifier s'il y a des diplômes multiples
     const hasMultipleDiplomas = profileData.diplomas && profileData.diplomas.length > 1;
     const hasSingleDiploma = profileData.diplomas && profileData.diplomas.length === 1;
     const firstDiploma = hasSingleDiploma ? profileData.diplomas[0] : null;
+
+    // Vérifier s'il y a des expériences multiples
+    const hasMultipleExperiences = profileData.experiences && profileData.experiences.length > 1;
+    const hasSingleExperience = profileData.experiences && profileData.experiences.length === 1;
+    const firstExperience = hasSingleExperience ? profileData.experiences[0] : null;
 
     return (
         <div className={styles.container} ref={previewRef}>
@@ -118,10 +145,19 @@ const PreviewStep: React.FC<PreviewStepProps> = ({ profileData, role }) => {
                             <span className={styles.infoValue}>{profileData.address}</span>
                         </div>
                     )}
+                    {/* Description/Bio */}
+                    {profileData.bio && (
+                    <>
+                        <div className={styles.infoItem}>
+                            <span className={styles.infoLabel}>Description générale</span>
+                            <p className={styles.bioText}>{profileData.bio}</p>
+                        </div>
+                    </>
+                    )}
                 </div>
             </div>
 
-            {/*  Section Diplômes style pout plusieurs diplômes */}
+            {/* Section Diplômes style pour plusieurs diplômes */}
             {hasMultipleDiplomas && profileData.diplomas.some((diploma: Diploma) => 
                 diploma.educationLevel || diploma.field || diploma.school || diploma.country
             ) && (
@@ -181,7 +217,7 @@ const PreviewStep: React.FC<PreviewStepProps> = ({ profileData, role }) => {
                 </>
             )}
 
-            {/*Section Diplômes style pour un seul diplôme*/}
+            {/* Section Diplômes style pour un seul diplôme */}
             {(hasSingleDiploma || profileData.educationLevel || profileData.school || profileData.field) && 
             !hasMultipleDiplomas && 
             // Vérifier qu'il y a au moins une donnée significative
@@ -191,7 +227,7 @@ const PreviewStep: React.FC<PreviewStepProps> = ({ profileData, role }) => {
                     <div className={styles.separator}></div>
                     <div className={styles.section}>
                         <h4 className={styles.sectionTitle}>
-                            {role === 'student' ? 'Parcours académique' : 'Diplômes'}
+                            {role === 'student' ? 'Parcours académique' : 'Diplôme'}
                         </h4>
                         <div className={styles.infoGrid}>
                             {/* Afficher chaque champ seulement s'il est rempli */}
@@ -256,33 +292,124 @@ const PreviewStep: React.FC<PreviewStepProps> = ({ profileData, role }) => {
                 </>
             )}
 
-            {/* Expérience (tuteurs) */}
-            {role === 'tutor' && (profileData.experience || profileData.bio || profileData.specialties?.length > 0) && (
+            {/* Section Expériences (tuteurs) - Style multiple */}
+            {role === 'tutor' && hasMultipleExperiences && profileData.experiences.some((exp: Experience) => 
+                exp.jobTitle || exp.company || exp.employmentType
+            ) && (
                 <>
                     <div className={styles.separator}></div>
                     <div className={styles.section}>
-                        <h4 className={styles.sectionTitle}>Expérience</h4>
-                        <div className={styles.infoGrid}>
-                            {profileData.experience && (
-                                <div className={styles.infoItem}>
-                                    <span className={styles.infoLabel}>Expérience</span>
-                                    <span className={styles.infoValue}>{profileData.experience}</span>
-                                </div>
-                            )}
-                            {profileData.bio && (
-                                <div className={styles.infoItem}>
-                                    <span className={styles.infoLabel}>Présentation</span>
-                                    <p className={styles.bioText}>{profileData.bio}</p>
-                                </div>
-                            )}
-                            {profileData.specialties?.length > 0 && (
-                                <div className={styles.infoItem}>
-                                    <span className={styles.infoLabel}>Spécialités</span>
-                                    <div className={styles.tags}>
-                                        {profileData.specialties.map((spec: string, index: number) => (
-                                            <span key={index} className={styles.tag}>{spec}</span>
-                                        ))}
+                        <h4 className={styles.sectionTitle}>Expériences professionnelles</h4>
+                        <div className={styles.experiencesList}>
+                            {profileData.experiences.map((experience: Experience, index: number) => (
+                                // Afficher seulement les expériences qui ont au moins un champ rempli
+                                (experience.jobTitle || experience.company || experience.employmentType) && (
+                                    <div key={experience.id || index} className={styles.experienceItem}>
+                                        <div className={styles.experienceHeader}>
+                                            {experience.jobTitle && (
+                                                <h5 className={styles.experienceTitle}>{experience.jobTitle}</h5>
+                                            )}
+                                            {/* Afficher la période seulement si startYear est rempli */}
+                                            {experience.startYear && (
+                                                <span className={styles.experiencePeriod}>
+                                                    {formatExperiencePeriod(
+                                                        experience.startMonth, 
+                                                        experience.startYear, 
+                                                        experience.endMonth, 
+                                                        experience.endYear, 
+                                                        experience.isCurrent
+                                                    )}
+                                                </span>
+                                            )}
+                                        </div>
+                                        
+                                        {(experience.company || experience.employmentType || experience.location) && (
+                                            <div className={styles.experienceDetails}>
+                                                {experience.company && (
+                                                    <p className={styles.experienceCompany}>
+                                                        <strong>Entreprise:</strong> {experience.company}
+                                                    </p>
+                                                )}
+                                                {experience.employmentType && (
+                                                    <p className={styles.experienceType}>
+                                                        <strong>Type:</strong> {experience.employmentType}
+                                                    </p>
+                                                )}
+                                                {experience.location && (
+                                                    <p className={styles.experienceLocation}>
+                                                        <strong>Lieu:</strong> {experience.location}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+                                        
+                                        {experience.description && (
+                                            <div className={styles.experienceDescription}>
+                                                <p>{experience.description}</p>
+                                            </div>
+                                        )}
                                     </div>
+                                )
+                            ))}
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* Section Expériences (tuteurs) - Style unique */}
+            {role === 'tutor' && hasSingleExperience && 
+            // Vérifier qu'il y a au moins une donnée significative
+            (firstExperience?.jobTitle || firstExperience?.company || firstExperience?.employmentType) && (
+                <>
+                    <div className={styles.separator}></div>
+                    <div className={styles.section}>
+                        <h4 className={styles.sectionTitle}>Expérience professionnelle</h4>
+                        <div className={styles.infoGrid}>
+                            {/* Afficher chaque champ seulement s'il est rempli */}
+                            {firstExperience.jobTitle && (
+                                <div className={styles.infoItem}>
+                                    <span className={styles.infoLabel}>Poste</span>
+                                    <span className={styles.infoValue}>{firstExperience.jobTitle}</span>
+                                </div>
+                            )}
+                            {firstExperience.company && (
+                                <div className={styles.infoItem}>
+                                    <span className={styles.infoLabel}>Entreprise</span>
+                                    <span className={styles.infoValue}>{firstExperience.company}</span>
+                                </div>
+                            )}
+                            {firstExperience.employmentType && (
+                                <div className={styles.infoItem}>
+                                    <span className={styles.infoLabel}>Type d'emploi</span>
+                                    <span className={styles.infoValue}>{firstExperience.employmentType}</span>
+                                </div>
+                            )}
+                            {firstExperience.location && (
+                                <div className={styles.infoItem}>
+                                    <span className={styles.infoLabel}>Lieu</span>
+                                    <span className={styles.infoValue}>{firstExperience.location}</span>
+                                </div>
+                            )}
+                            {/* Période pour l'expérience unique - seulement si startYear est rempli */}
+                            {firstExperience.startYear && (
+                                <div className={styles.infoItem}>
+                                    <span className={styles.infoLabel}>Période</span>
+                                    <span className={styles.infoValue}>
+                                        {formatExperiencePeriod(
+                                            firstExperience.startMonth, 
+                                            firstExperience.startYear, 
+                                            firstExperience.endMonth, 
+                                            firstExperience.endYear, 
+                                            firstExperience.isCurrent
+                                        )}
+                                    </span>
+                                </div>
+                            )}
+                            {/* Description pour l'expérience unique */}
+                            {firstExperience.description && (
+                                <div className={styles.infoItem}>
+                                    <span className={styles.infoLabel}>Description</span>
+                                    <p className={styles.bioText}>{firstExperience.description}</p>
                                 </div>
                             )}
                         </div>

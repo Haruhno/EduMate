@@ -1,4 +1,3 @@
-// controllers/profileController.js
 const profileService = require('../services/profileService');
 const authService = require('../services/authService');
 const multer = require('multer');
