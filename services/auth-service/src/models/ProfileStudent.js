@@ -40,7 +40,10 @@ const ProfileStudent = sequelize.define('ProfileStudent', {
     type: DataTypes.TEXT,
     allowNull: true
   },
-
+  bio: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
   // Localisation
   location: {
     type: DataTypes.JSON,

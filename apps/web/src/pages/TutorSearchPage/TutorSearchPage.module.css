@@ -4,9 +4,38 @@
 }
 
 .container {
-  max-width: 1200px;
+  width: 100%;
+  max-width: 1200px; 
   margin: 0 auto;
   padding: 0 1rem;
+}
+
+/* Pour les très grands écrans */
+@media (min-width: 1400px) {
+  .container {
+    max-width: 1400px;
+  }
+  
+  .tutorsGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+}
+
+@media (min-width: 1600px) {
+  .container {
+    max-width: 1600px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .container {
+    max-width: 1800px;
+  }
+  
+  .tutorsGrid {
+    grid-template-columns: repeat(4, 1fr); 
+  }
 }
 
 .mainContainer {
@@ -20,7 +49,6 @@
 .headerText {
   text-align: center;
 }
-
 
 .headerText h1 {
   font-size: 2.5rem;
@@ -80,6 +108,7 @@
   margin: 0;
   font-family: 'DMSans', sans-serif;
 }
+
 .resultsSubtitle {
   color: #6b7280;
   font-size: 0.875rem;
@@ -93,6 +122,7 @@
   font-size: 0.875rem;
 }
 
+/* GRILLE - 3 colonnes par défaut */
 .tutorsGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -131,7 +161,14 @@
   50% { opacity: 0.5; }
 }
 
-/* RESPONSIVE */
+/* RESPONSIVE POUR PETITS ÉCRANS */
+@media (max-width: 1200px) {
+  .tutorsGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+}
+
 @media (max-width: 1024px) {
   .layout {
     flex-direction: column;
@@ -148,7 +185,7 @@
 
 @media (max-width: 768px) {
   .headerText h1 {
-    font-size: 1.8rem;
+    font-size: 2rem;
   }
   
   .tutorsGrid {
@@ -163,6 +200,16 @@
   
   .mobileFilters {
     display: block;
+  }
+}
+
+@media (max-width: 480px) {
+  .headerText h1 {
+    font-size: 1.8rem;
+  }
+  
+  .tutorsGrid {
+    gap: 1rem;
   }
 }
 

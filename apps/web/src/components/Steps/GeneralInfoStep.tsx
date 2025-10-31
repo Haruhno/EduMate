@@ -42,6 +42,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
     const addressInputRef = useRef<HTMLInputElement>(null);
     const suggestionsRef = useRef<HTMLDivElement>(null);
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [hasBeenValidated, setHasBeenValidated] = useState(false); // ← AJOUT
 
     // États du recadrage
     const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -109,6 +110,81 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
     const onCropComplete = useCallback((_: any, croppedAreaPixels: any) => {
         setCroppedAreaPixels(croppedAreaPixels);
     }, []);
+
+    // AJOUT: Fonction de validation complète
+    const validateAllFields = () => {
+        const newErrors: { [key: string]: string } = { ...errors };
+        
+        // Supprimer les anciennes erreurs des champs obligatoires
+        delete newErrors.firstName;
+        delete newErrors.lastName;
+        delete newErrors.email;
+        delete newErrors.birthDate;
+
+        let hasAnyError = false;
+
+        // Validation des champs obligatoires
+        if (!profileData.firstName?.trim()) {
+            newErrors.firstName = "⚠ Le prénom est obligatoire";
+            hasAnyError = true;
+        }
+
+        if (!profileData.lastName?.trim()) {
+            newErrors.lastName = "⚠ Le nom est obligatoire";
+            hasAnyError = true;
+        }
+
+        if (!profileData.email?.trim()) {
+            newErrors.email = "⚠ L'email est obligatoire";
+            hasAnyError = true;
+        } else if (!/\S+@\S+\.\S+/.test(profileData.email)) {
+            newErrors.email = "⚠ L'adresse e-mail n'est pas valide";
+            hasAnyError = true;
+        }
+
+        // Date de naissance obligatoire seulement pour les tuteurs
+        if (role === 'tutor') {
+            if (!profileData.birthDate) {
+                newErrors.birthDate = "⚠ La date de naissance est obligatoire";
+                hasAnyError = true;
+            } else {
+                const birthDate = new Date(profileData.birthDate);
+                const today = new Date();
+                const age = today.getFullYear() - birthDate.getFullYear();
+                const monthDiff = today.getMonth() - birthDate.getMonth();
+                const isBirthdayPassed = monthDiff > 0 || (monthDiff === 0 && today.getDate() >= birthDate.getDate());
+                const actualAge = isBirthdayPassed ? age : age - 1;
+                
+                if (actualAge < 16) {
+                    newErrors.birthDate = "⚠ Vous devez avoir au moins 16 ans pour être tuteur";
+                    hasAnyError = true;
+                }
+            }
+        }
+
+        // Validation du téléphone (optionnel mais doit être valide si rempli)
+        if (profileData.phone && profileData.phone.trim() !== '') {
+            const digitsOnly = profileData.phone.replace(/\D/g, '');
+            if (
+                (profileData.phone.match(/\+/g)?.length || 0) > 1 ||
+                digitsOnly.length < 8 ||
+                digitsOnly.length > 15
+            ) {
+                newErrors.phone = 'Numéro de téléphone invalide';
+                hasAnyError = true;
+            }
+        }
+
+        setErrors(newErrors);
+        setHasBeenValidated(true);
+        return !hasAnyError;
+    };
+
+    // Exposer la fonction de validation au parent
+    useEffect(() => {
+        // @ts-ignore
+        window.validateGeneralInfoStep = validateAllFields;
+    }, [profileData, role]);
 
     // Fonction pour rechercher des suggestions d'adresses
     const searchAddressSuggestions = async (query: string) => {
@@ -237,16 +313,40 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
             [name]: value,
         }));
 
-        // Validation en temps réel
-        validateField(name, value);
+        // SUPPRIMER: La validation en temps réel
+        // validateField(name, value);
 
-        // Si c'est un étudiant et qu'il modifie la date de naissance, supprimer toute erreur
-        if (name === 'birthDate' && role === 'student') {
-            setErrors((prev) => {
-                const updated = { ...prev };
-                delete updated.birthDate;
-                return updated;
-            });
+        // Si on a déjà validé une fois, revalider le champ modifié
+        if (hasBeenValidated) {
+            const newErrors = { ...errors };
+            
+            // Supprimer l'erreur pour ce champ s'il est maintenant valide
+            if (value && value.trim() !== '') {
+                delete newErrors[name];
+                
+                // Validation spécifique pour l'email
+                if (name === 'email' && !/\S+@\S+\.\S+/.test(value)) {
+                    newErrors.email = "L'adresse e-mail n'est pas valide";
+                }
+                
+                // Validation spécifique pour la date de naissance des tuteurs
+                if (name === 'birthDate' && role === 'tutor' && value) {
+                    const birthDate = new Date(value);
+                    const today = new Date();
+                    const age = today.getFullYear() - birthDate.getFullYear();
+                    const monthDiff = today.getMonth() - birthDate.getMonth();
+                    const isBirthdayPassed = monthDiff > 0 || (monthDiff === 0 && today.getDate() >= birthDate.getDate());
+                    const actualAge = isBirthdayPassed ? age : age - 1;
+                    
+                    if (actualAge < 16) {
+                        newErrors.birthDate = "Vous devez avoir au moins 16 ans pour être tuteur";
+                    } else {
+                        delete newErrors.birthDate;
+                    }
+                }
+            }
+            
+            setErrors(newErrors);
         }
 
         setTouched((prev) => ({
@@ -260,67 +360,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         );
     };
 
-    const validateField = (name: string, value: any) => {
-        let error = '';
-
-        switch (name) {
-            case 'firstName':
-                if (!value?.trim()) error = '⚠ Le prénom est obligatoire.';
-                break;
-            case 'lastName':
-                if (!value?.trim()) error = '⚠ Le nom est obligatoire.';
-                break;
-            case 'email':
-                if (!value?.trim()) {
-                    error = '⚠ L\'adresse e-mail est obligatoire.';
-                } else if (!/\S+@\S+\.\S+/.test(value)) {
-                    error = '⚠ L\'adresse e-mail n\'est pas valide.';
-                }
-                break;
-            case 'birthDate':
-                // Date de naissance obligatoire seulement pour les tuteurs
-                if (role === 'tutor') {
-                    if (!value) {
-                        error = '⚠ La date de naissance est obligatoire pour les tuteurs.';
-                    } else {
-                        const birthDate = new Date(value);
-                        const today = new Date();
-                        const age = today.getFullYear() - birthDate.getFullYear();
-                        const monthDiff = today.getMonth() - birthDate.getMonth();
-                        const isBirthdayPassed = monthDiff > 0 || (monthDiff === 0 && today.getDate() >= birthDate.getDate());
-                        const actualAge = isBirthdayPassed ? age : age - 1;
-                        
-                        if (actualAge < 16) error = '⚠ Vous devez avoir au moins 16 ans pour être tuteur.';
-                    }
-                }
-                // Pour les étudiants, AUCUNE validation - même pas d'âge minimum
-                break;
-            case 'phone':
-                if (value && value.trim() !== '') {
-                    const digitsOnly = value.replace(/\D/g, '');
-                    if ((value.match(/\+/g)?.length || 0) > 1 || digitsOnly.length < 8 || digitsOnly.length > 15) {
-                        error = 'Numéro de téléphone invalide';
-                    }
-                }
-                break;
-        }
-
-        setErrors((prev) => {
-            const updated = { ...prev };
-            if (error) {
-                updated[name] = error;
-            } else {
-                // IMPORTANT: Supprimer l'erreur pour birthDate si l'utilisateur est étudiant
-                if (name === 'birthDate' && role === 'student') {
-                    delete updated.birthDate;
-                } else if (error === '') {
-                    delete updated[name];
-                }
-            }
-            return updated;
-        });
-    };
-
     const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         const cleaned = value.replace(/[^\d+]/g, '');
@@ -330,8 +369,19 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
             [name]: cleaned 
         }));
 
-        // Validation
-        validateField(name, cleaned);
+        // Si on a déjà validé une fois, revalider le téléphone
+        if (hasBeenValidated && cleaned && cleaned.trim() !== '') {
+            const digitsOnly = cleaned.replace(/\D/g, '');
+            const newErrors = { ...errors };
+            
+            if ((cleaned.match(/\+/g)?.length || 0) > 1 || digitsOnly.length < 8 || digitsOnly.length > 15) {
+                newErrors.phone = 'Numéro de téléphone invalide';
+            } else {
+                delete newErrors.phone;
+            }
+            
+            setErrors(newErrors);
+        }
 
         setTouched((prev) => ({
             ...prev,
@@ -371,27 +421,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
             fileInputRef.current.value = '';
         }
     };
-
-    // Validation des champs au chargement
-    useEffect(() => {
-        // Valider tous les champs obligatoires quand le composant est monté
-        validateField('firstName', profileData.firstName);
-        validateField('lastName', profileData.lastName);
-        validateField('email', profileData.email);
-        
-        // Pour la date de naissance, seulement valider si c'est un tuteur
-        if (role === 'tutor') {
-            validateField('birthDate', profileData.birthDate);
-        } else {
-            // Pour les étudiants, s'assurer qu'il n'y a pas d'erreur sur birthDate
-            setErrors((prev) => {
-                const updated = { ...prev };
-                delete updated.birthDate;
-                return updated;
-            });
-        }
-    }, []);
-
     return (
         <div className={styles.container}>
             <h2>Informations générales</h2>
@@ -547,9 +576,9 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         placeholder="Entrez votre prénom"
                         value={profileData.firstName}
                         onChange={handleInputChange}
-                        className={`${styles.input} ${errors.firstName ? styles.inputError : ''} ${touched.firstName ? styles.touched : ''}`}
+                        className={`${styles.input} ${hasBeenValidated && errors.firstName ? styles.inputError : ''}`} // ← MODIFICATION
                     />
-                    {errors.firstName && <p className={styles.errorText}>{errors.firstName}</p>}
+                    {hasBeenValidated && errors.firstName && <p className={styles.errorText}>{errors.firstName}</p>} {/* ← MODIFICATION */}
                 </div>
 
                 {/* Nom */}
@@ -564,9 +593,9 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         placeholder="Entrez votre nom"
                         value={profileData.lastName}
                         onChange={handleInputChange}
-                        className={`${styles.input} ${errors.lastName ? styles.inputError : ''} ${touched.lastName ? styles.touched : ''}`}
+                        className={`${styles.input} ${hasBeenValidated && errors.lastName ? styles.inputError : ''}`} // ← MODIFICATION
                     />
-                    {errors.lastName && <p className={styles.errorText}>{errors.lastName}</p>}
+                    {hasBeenValidated && errors.lastName && <p className={styles.errorText}>{errors.lastName}</p>} {/* ← MODIFICATION */}
                 </div>
 
                 {/* Email */}
@@ -581,9 +610,9 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         placeholder="exemple@mail.com"
                         value={profileData.email}
                         onChange={handleInputChange}
-                        className={`${styles.input} ${errors.email ? styles.inputError : ''} ${touched.email ? styles.touched : ''}`}
+                        className={`${styles.input} ${hasBeenValidated && errors.email ? styles.inputError : ''}`} // ← MODIFICATION
                     />
-                    {errors.email && <p className={styles.errorText}>{errors.email}</p>}
+                    {hasBeenValidated && errors.email && <p className={styles.errorText}>{errors.email}</p>} {/* ← MODIFICATION */}
                 </div>
 
                 {/* Téléphone */}
@@ -628,11 +657,11 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                             placeholder="Numéro de téléphone"
                             value={profileData.phone}
                             onChange={handlePhoneChange}
-                            className={`${styles.phoneField} ${errors.phone ? styles.inputError : ''} ${touched.phone ? styles.touched : ''}`}
+                            className={`${styles.phoneField} ${hasBeenValidated && errors.phone ? styles.inputError : ''}`} // ← MODIFICATION
                         />
                     </div>
 
-                    {errors.phone && <p className={styles.errorText}>{errors.phone}</p>}
+                    {hasBeenValidated && errors.phone && <p className={styles.errorText}>{errors.phone}</p>} {/* ← MODIFICATION */}
                 </div>
 
                 {/* Genre */}
@@ -645,13 +674,13 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         name="gender"
                         value={profileData.gender}
                         onChange={handleInputChange}
-                        className={`${styles.select} ${touched.gender ? styles.touched : ''}`}
+                        className={styles.select}
                     >
                         <option value="">Sélectionnez</option>
-                        <option value="female">Femme</option>
-                        <option value="male">Homme</option>
-                        <option value="other">Autre</option>
-                        <option value="prefer_not_to_say">Je préfère ne pas répondre</option>
+                        <option value="Femme">Femme</option>
+                        <option value="Homme">Homme</option>
+                        <option value="Autre">Autre</option>
+                        <option value="Autre">Je préfère ne pas répondre</option>
                     </select>
                 </div>
 
@@ -666,13 +695,13 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         name="birthDate"
                         value={profileData.birthDate}
                         onChange={handleInputChange}
-                        className={`${styles.input} ${errors.birthDate ? styles.inputError : ''} ${touched.birthDate ? styles.touched : ''}`}
+                        className={`${styles.input} ${hasBeenValidated && errors.birthDate ? styles.inputError : ''}`} // ← MODIFICATION
                         max={new Date().toISOString().split('T')[0]}
                     />
-                    {errors.birthDate && <p className={styles.errorText}>{errors.birthDate}</p>}
+                    {hasBeenValidated && errors.birthDate && <p className={styles.errorText}>{errors.birthDate}</p>} {/* ← MODIFICATION */}
                 </div>
 
-                {/* Adresse avec suggestions - NOUVEAU */}
+                {/* Adresse avec suggestions */}
                 <div className={`${styles.formGroup} ${styles.fullWidth}`}>
                     <label htmlFor="address" className={styles.label}>Adresse personnelle</label>
                     <div className={styles.autocompleteContainer}>
@@ -717,9 +746,22 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         Tapez au moins 3 caractères pour voir les suggestions d'adresses internationales
                     </p>
                 </div>
+                 {/* Description */}
+                <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+                    <label htmlFor="description" className={styles.label}>À propos</label>
+                    <textarea
+                        id="bio"
+                        name="bio"
+                        placeholder="Décrivez-vous en quelques mots... (votre parcours, vos centres d'intérêt, etc.)"
+                        value={profileData.bio || ''}
+                        onChange={handleInputChange}
+                        className={styles.textarea}
+                        rows={4}
+                    />
+                </div>
             </div>
 
-            {/* Indication des champs obligatoires - En bas comme avant */}
+            {/* Indication des champs obligatoires */}
             <div className={styles.requiredInfo}>
                 <span className={styles.requiredMarker}>*</span> Champs obligatoires
             </div>

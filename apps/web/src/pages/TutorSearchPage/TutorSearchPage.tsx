@@ -176,7 +176,7 @@ const TutorSearchPage: React.FC = () => {
       setShowSuggestions(false);
     } else {
       const filtered = allSubjects.filter(subject =>
-        subject.toLowerCase().includes(searchQuery.toLowerCase())
+        subject.toLowerCase().startsWith(searchQuery.toLowerCase())
       );
       setFilteredSubjects(filtered.slice(0, 10));
       setShowSuggestions(true);

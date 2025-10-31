@@ -3,7 +3,6 @@
   background-color: #fffaf6;
 }
 
-/* ProfilePage.module.css */
 .container {
   min-height: 100vh;
   background-color: #fffaf6;
@@ -217,7 +216,7 @@
 
 .sectionIcon {
   width: 30px;
-  height: 0px;
+  height: 30px;
   color: #FBBF24;
 }
 
@@ -255,6 +254,37 @@
   color: #333;
   font-size: 1rem;
   font-family: 'DMSans', sans-serif;
+}
+
+/* InfoItem pleine largeur */
+.infoItemFullWidth {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.infoItemFullWidth label {
+  font-weight: 600;
+  color: #555;
+  font-size: 0.9rem;
+  font-family: 'DMSans', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.infoItemFullWidth .bio {
+  font-size: 0.9rem;
+  color: #333;
+  line-height: 1.5;
+  margin: 0;
+  font-style: italic;
+  background: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border-left: 3px solid #FBBF24;
+  font-weight: 600;
 }
 
 /* Texte éducation avec gestion du débordement */
@@ -354,6 +384,104 @@
   color: #FB923C;
   text-decoration: underline;
 }
+
+/* Styles pour les expériences dans ProfilePage */
+.experiencesList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.experienceItem {
+  background: #f8f9fa;
+  border: 1px solid #e1e5e9;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.experienceItem:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+
+.experienceHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.experienceTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.experiencePeriod {
+  background: #fff9e7;
+  color: #FB923C;
+  padding: 0.375rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid #ffb907;
+}
+
+.experienceDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.experienceCompany,
+.experienceType,
+.experienceLocation {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.experienceCompany strong,
+.experienceType strong,
+.experienceLocation strong {
+  color: #374151;
+}
+
+
+.experienceDescriptionText {
+  font-size: 0.9rem;
+  color: #333;
+  line-height: 1.5;
+  margin: 0;
+  font-style: italic;
+  background: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border-left: 3px solid #FBBF24;
+  font-weight: 600;
+}
+
+/* Responsive pour expériences */
+@media (max-width: 768px) {
+  .experienceHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .experiencePeriod {
+    align-self: flex-start;
+  }
+  
+  .experienceItem {
+    padding: 1rem;
+  }
+} 
 
 /* Responsive */
 @media (max-width: 768px) {
@@ -499,9 +627,6 @@
     grid-template-columns: 1fr;
   }
   
-  .sidebar {
-    order: -1;
-  }
 }
 
 @media (max-width: 768px) {

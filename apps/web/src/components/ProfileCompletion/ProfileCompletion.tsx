@@ -230,14 +230,62 @@ const ProfileCompletion: React.FC = () => {
     }
   }, [isInitializing, profileData, currentStep]);
 
+  // Dans la fonction eNext, ajouter la validation pour EducationStep
   const eNext = () => {
     const newErrors = validateCurrentStep();
     setErrors(newErrors);
 
-    // Vérifier s'il y a des erreurs d'années dans EducationStep
-    const hasDiplomaErrors = Object.keys(newErrors).some(key => key.startsWith('diploma-'));
+    // Validation spéciale pour GeneralInfoStep
+    if (steps[currentStep].title === 'Informations générales') {
+      // @ts-ignore - Appeler la validation spécifique à GeneralInfoStep
+      const isGeneralInfoStepValid = window.validateGeneralInfoStep?.();
+      if (!isGeneralInfoStepValid) {
+        const firstErrorField = Object.keys(newErrors).find(key => 
+          ['firstName', 'lastName', 'email', 'birthDate', 'phone'].includes(key)
+        );
+        if (firstErrorField) {
+          const errorElement = document.getElementById(firstErrorField);
+          if (errorElement) {
+            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+        return;
+      }
+    }
 
-    if (Object.keys(newErrors).length === 0 && !hasDiplomaErrors) {
+    // Validation spéciale pour ExperienceStep
+    if (steps[currentStep].title === 'Expérience') {
+      // @ts-ignore - Appeler la validation spécifique à ExperienceStep
+      const isExperienceStepValid = window.validateExperienceStep?.();
+      if (!isExperienceStepValid) {
+        const firstErrorField = Object.keys(newErrors).find(key => key.startsWith('experience-'));
+        if (firstErrorField) {
+          const errorElement = document.querySelector(`.${styles.experienceCard}`);
+          if (errorElement) {
+            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+        return;
+      }
+    }
+
+    // Validation spéciale pour EducationStep
+    if (steps[currentStep].title === 'Études' || steps[currentStep].title === 'Diplômes') {
+      // @ts-ignore - Appeler la validation spécifique à EducationStep
+      const isEducationStepValid = window.validateEducationStep?.();
+      if (!isEducationStepValid) {
+        const firstErrorField = Object.keys(newErrors).find(key => key.startsWith('diploma-'));
+        if (firstErrorField) {
+          const errorElement = document.querySelector(`.${styles.diplomaCard}`);
+          if (errorElement) {
+            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+        return;
+      }
+    }
+
+    if (Object.keys(newErrors).length === 0) {
       if (!isFinalStep) {
         setCurrentStep((prev) => prev + 1);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -245,15 +293,14 @@ const ProfileCompletion: React.FC = () => {
         eSubmit();
       }
     } else {
-      // Trouver le premier champ en erreur pour le scroll
       const firstErrorField = Object.keys(newErrors)[0];
       if (firstErrorField) {
         let errorElement;
         
-        // Gestion spéciale pour les erreurs de diplômes
         if (firstErrorField.startsWith('diploma-')) {
-          // Pour les erreurs de diplômes, on scroll vers le premier diplôme en erreur
           errorElement = document.querySelector(`.${styles.diplomaCard}`);
+        } else if (firstErrorField.startsWith('experience-')) {
+          errorElement = document.querySelector(`.${styles.experienceCard}`);
         } else {
           errorElement = document.getElementById(firstErrorField);
         }

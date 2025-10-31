@@ -1,8 +1,8 @@
-// models/associations.js
 const User = require('./User');
 const ProfileTutor = require('./ProfileTutor');
 const ProfileStudent = require('./ProfileStudent');
 const Diploma = require('./Diploma');
+const Experience = require('./Experience');
 
 // Associations User - Profil
 User.hasOne(ProfileTutor, { 
@@ -39,9 +39,22 @@ Diploma.belongsTo(User, {
   as: 'user'
 });
 
+// NOUVELLE ASSOCIATION : User - Expériences
+User.hasMany(Experience, {
+  foreignKey: 'userId',
+  as: 'experiences',
+  onDelete: 'CASCADE'
+});
+
+Experience.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'user'
+});
+
 module.exports = {
   User,
   ProfileTutor,
   ProfileStudent,
-  Diploma
+  Diploma,
+  Experience
 };
