@@ -51,7 +51,7 @@ const Navbar: React.FC = () => {
       if (currentUser) {
         try {
           const status = await profileService.getProfileStatus();
-          setProfileStatus(status);
+          setProfileStatus(status.data);
         } catch (error) {
           console.error('Erreur chargement statut profil:', error);
         }
