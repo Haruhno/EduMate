@@ -1,0 +1,626 @@
+.container {
+  min-height: 100vh;
+  background-color: #fffaf6;
+  padding: 0;
+}
+
+/* Header */
+.header {
+  background: white;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e9ecef;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.backButton {
+  background: none;
+  border: none;
+  color: #666;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-family: 'DMSans', sans-serif;
+}
+
+.backButton:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #333;
+}
+
+.backIcon {
+  width: 20px;
+  height: 20px;
+}
+
+.progressContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.progressBar {
+  width: 100%;
+  height: 6px;
+  background: #e9ecef;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.progressText {
+  font-size: 0.875rem;
+  color: #666;
+  font-family: 'DMSans', sans-serif;
+  text-align: right;
+}
+
+/* Contenu principal */
+.content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+
+/* Section question */
+.questionSection {
+  background: white;
+  border-radius: 20px;
+  padding: 3rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin-bottom: 2rem;
+  border: 1px solid #f1f3f4;
+}
+
+.questionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  gap: 2rem;
+}
+
+.question {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+  line-height: 1.3;
+  font-family: 'Poppins', sans-serif;
+  flex: 1;
+}
+
+.stepIndicator {
+  background: linear-gradient(135deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: 'DMSans', sans-serif;
+}
+
+/* Grille d'options */
+.optionsGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+.optionButton {
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 1.5rem;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'DMSans', sans-serif;
+}
+
+.optionButton:hover {
+  border-color: #FBBF24;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(251, 191, 36, 0.1);
+}
+
+.optionButton.selected {
+  background: linear-gradient(135deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  border-color: #FBBF24;
+}
+
+.optionText {
+  flex: 1;
+}
+
+.checkmark {
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+/* Bouton Suivant */
+.nextButtonContainer {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.nextButton {
+  background: linear-gradient(135deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'DMSans', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nextButton:hover:not(.disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(251, 191, 36, 0.4);
+}
+
+.nextButton.disabled {
+  background: #e9ecef;
+  color: #999;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.nextIcon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Slider pour le tarif */
+.sliderContainer {
+  padding: 2rem 0;
+}
+
+.sliderHeader {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.sliderValue {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #FBBF24;
+  font-family: 'Poppins', sans-serif;
+}
+
+.sliderLabel {
+  font-size: 1.5rem;
+  color: #666;
+  font-family: 'DMSans', sans-serif;
+}
+
+.slider {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: #e9ecef;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FBBF24 0%, #FB923C 100%);
+  cursor: pointer;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
+}
+
+.slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FBBF24 0%, #FB923C 100%);
+  cursor: pointer;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
+}
+
+.sliderLabels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  color: #666;
+  font-family: 'DMSans', sans-serif;
+  font-size: 0.9rem;
+}
+
+/* Composant Spécialités */
+.specialtiesContainer {
+  margin-top: 1rem;
+}
+
+.inputWrapper {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.specialtiesInput {
+  width: 100%;
+  padding: 1rem 1.5rem;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  font-family: 'DMSans', sans-serif;
+}
+
+.specialtiesInput:focus {
+  outline: none;
+  border-color: #FBBF24;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+}
+
+.suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.suggestion {
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f8f9fa;
+  transition: background-color 0.2s ease;
+  font-family: 'DMSans', sans-serif;
+}
+
+.suggestion:hover {
+  background: #f8f9fa;
+}
+
+.suggestion:last-child {
+  border-bottom: none;
+}
+
+.selectedSpecialties {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.specialtyTag {
+  background: linear-gradient(135deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'DMSans', sans-serif;
+}
+
+.removeTag {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+
+.removeTag:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.specialtiesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.specialtyButton {
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'DMSans', sans-serif;
+}
+
+.specialtyButton:hover {
+  border-color: #FBBF24;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(251, 191, 36, 0.1);
+}
+
+.specialtyButton.selected {
+  background: linear-gradient(135deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  border-color: #FBBF24;
+}
+
+.helpText {
+  color: #666;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  text-align: center;
+  font-family: 'DMSans', sans-serif;
+}
+
+/* Section de confirmation */
+.confirmationSection {
+  text-align: center;
+}
+
+.summary {
+  background: #f8f9fa;
+  border-radius: 16px;
+  padding: 2.5rem;
+  margin-bottom: 2rem;
+  text-align: left;
+  border: 1px solid #e9ecef;
+}
+
+.summaryTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 1.5rem 0;
+  font-family: 'Poppins', sans-serif;
+  text-align: center;
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.summaryGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+.summaryItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.summaryItem:last-child {
+  border-bottom: none;
+}
+
+.summaryLabel {
+  font-weight: 600;
+  color: #333;
+  font-family: 'DMSans', sans-serif;
+  min-width: 120px;
+}
+
+.summaryValue {
+  color: #666;
+  text-align: right;
+  font-family: 'DMSans', sans-serif;
+  flex: 1;
+  margin-left: 1rem;
+}
+
+.confirmationOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.confirmButton {
+  background: linear-gradient(135deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 1.2rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'DMSans', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.confirmButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(251, 191, 36, 0.4);
+}
+
+.confirmButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.cancelButton {
+  background: none;
+  border: 2px solid #e9ecef;
+  color: #666;
+  border-radius: 12px;
+  padding: 1.2rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'DMSans', sans-serif;
+}
+
+.cancelButton:hover {
+  border-color: #FBBF24;
+  color: #FBBF24;
+}
+
+/* Points de progression */
+.progressDots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 2rem;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.dot.active {
+  background: #FBBF24;
+  transform: scale(1.2);
+}
+
+.dot.completed {
+  background: #FBBF24;
+}
+
+/* Loading */
+.loading {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 50vh;
+  color: #666;
+  font-size: 1.2rem;
+  font-family: 'DMSans', sans-serif;
+  gap: 1rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f1f5f9;
+  border-left: 4px solid #FBBF24;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header {
+    padding: 1rem;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .content {
+    padding: 1rem;
+  }
+  
+  .questionSection {
+    padding: 2rem 1.5rem;
+  }
+  
+  .questionHeader {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+  
+  .question {
+    font-size: 1.5rem;
+  }
+  
+  .summary {
+    padding: 1.5rem;
+  }
+  
+  .summaryItem {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+  
+  .summaryValue {
+    text-align: center;
+    margin-left: 0;
+  }
+  
+  .sliderValue {
+    font-size: 2rem;
+  }
+  
+  .specialtiesGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .nextButtonContainer {
+    justify-content: center;
+  }
+}
+

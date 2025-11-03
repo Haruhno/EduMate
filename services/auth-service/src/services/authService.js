@@ -93,6 +93,65 @@ class AuthService {
       throw new Error(`Erreur lors de la vérification de l'email: ${error.message}`);
     }
   }
+
+  async migrateToTutor(userId, tutorData) {
+    try {
+      const user = await User.findByPk(userId);
+      if (!user) {
+        throw new Error('Utilisateur non trouvé');
+      }
+
+      // Vérifier que c'est un étudiant
+      if (user.role !== 'student') {
+        throw new Error('Seuls les étudiants peuvent devenir tuteurs');
+      }
+
+      // Mettre à jour le rôle
+      await user.update({ role: 'tutor' });
+
+      // Créer ou mettre à jour le profil tuteur
+      let tutorProfile = await ProfileTutor.findOne({ where: { userId } });
+      
+      if (tutorProfile) {
+        // Mettre à jour le profil existant
+        await tutorProfile.update({
+          specialties: tutorData.specialties,
+          hourlyRate: tutorData.hourlyRate,
+          availability: tutorData.availability,
+          isCompleted: true,
+          completionPercentage: 100
+        });
+      } else {
+        // Créer un nouveau profil tuteur
+        tutorProfile = await ProfileTutor.create({
+          userId,
+          specialties: tutorData.specialties,
+          hourlyRate: tutorData.hourlyRate,
+          availability: tutorData.availability,
+          isCompleted: true,
+          completionPercentage: 100
+        });
+      }
+
+      // Récupérer l'utilisateur mis à jour
+      const updatedUser = await User.findByPk(userId);
+
+      return {
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          role: updatedUser.role,
+          isVerified: updatedUser.isVerified
+        },
+        tutorProfile
+      };
+    } catch (error) {
+      console.error('Erreur migration tuteur:', error);
+      throw new Error(`Erreur lors de la migration vers tuteur: ${error.message}`);
+    }
+  }
 }
 
 module.exports = new AuthService();

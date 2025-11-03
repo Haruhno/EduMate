@@ -125,6 +125,67 @@ class AuthController {
       });
     }
   }
+
+  // Dans authController.js - méthode migrateToTutor
+  async migrateToTutor(req, res) {
+    try {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (!token) {
+        return res.status(401).json({
+          success: false,
+          message: 'Token manquant'
+        });
+      }
+
+      const user = await authService.validateToken(token);
+      const { specialties, hourlyRate, experience, availability } = req.body;
+
+      // Vérifier si l'utilisateur est déjà tuteur
+      if (user.role === 'tutor') {
+        return res.status(400).json({
+          success: false,
+          message: 'Vous êtes déjà tuteur'
+        });
+      }
+
+      // Vérifier que c'est bien un étudiant
+      if (user.role !== 'student') {
+        return res.status(400).json({
+          success: false,
+          message: 'Seuls les étudiants peuvent devenir tuteurs'
+        });
+      }
+
+      // Migrer vers tuteur
+      const result = await authService.migrateToTutor(
+        user.id,
+        {
+          specialties,
+          hourlyRate,
+          experience,
+          availability
+        }
+      );
+
+      res.json({
+        success: true,
+        message: 'Migration vers tuteur réussie',
+        data: {
+          user: result.user,
+          tutorProfile: result.tutorProfile
+        }
+      });
+    } catch (error) {
+      console.error('Erreur migration tuteur:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 }
+
+
+
 
 module.exports = new AuthController();
