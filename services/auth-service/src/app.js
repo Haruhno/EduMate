@@ -25,6 +25,7 @@ app.use('/uploads', express.static('uploads'));
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 
+
 // Après les autres routes
 
 app.use('/api/tutors', tutorRoutes);

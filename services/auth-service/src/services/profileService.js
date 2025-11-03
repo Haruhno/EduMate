@@ -128,7 +128,6 @@ class ProfileService {
 
       // Bien récupérer les diplômes
       const diplomas = await this.getDiplomasByUser(userId, role);
-      console.log('Diplômes récupérés depuis la BDD:', diplomas);
 
       const profileData = profile.toJSON();
       

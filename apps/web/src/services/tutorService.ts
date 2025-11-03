@@ -34,7 +34,30 @@ export interface TutorsResponse {
   };
 }
 
+export interface TutorSettings {
+  hourlyRate: number;
+  specialties: string[];
+  bio?: string;
+  experience: string;
+  availability: any;
+}
+
+
 class TutorService {
+  async updateTutorSettings(settings: TutorSettings) {
+    const response = await api.put('/tutor/settings', settings);
+    return response.data;
+  }
+
+  async getTutorStats() {
+    const response = await api.get('/tutor/stats');
+    return response.data;
+  }
+
+  async requestVerification() {
+    const response = await api.post('/tutor/request-verification');
+    return response.data;
+  }
   // Rechercher des tuteurs avec filtres et pagination
   async searchTutors(filters: {
     page?: number;

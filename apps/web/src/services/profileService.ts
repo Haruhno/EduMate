@@ -42,7 +42,7 @@ export interface ProfileData {
     };
   };
 
-  [key: string]: any; // Add this index signature to allow dynamic property access
+  [key: string]: any;
 }
 
 export interface ProfileResponse {
@@ -61,6 +61,12 @@ export interface ProfileStatus {
   isVerified: boolean;
   completionPercentage: number;
   role: string;
+}
+
+export interface ProfileStatusResponse {
+  success: boolean;
+  message: string;
+  data: ProfileStatus;
 }
 
 export interface FullProfileResponse {
@@ -89,13 +95,12 @@ class ProfileService {
     return response.data;
   }
 
-  // Récupérer le profil complet - CORRIGÉ
+  // Récupérer le profil complet
   async getProfile(): Promise<FullProfileResponse> {
     try {
       const response = await api.get('/profile');
       return response.data;
     } catch (error: any) {
-      // Si c'est une erreur 400 due à un profil manquant, retourner une réponse vide
       if (error.response?.status === 400) {
         return {
           success: true,
@@ -124,27 +129,30 @@ class ProfileService {
   }
 
   // Récupérer le statut du profil - CORRIGÉ
-  async getProfileStatus(): Promise<ProfileStatus> {
+  async getProfileStatus(): Promise<ProfileStatusResponse> {
     try {
       const response = await api.get('/profile/status');
-      return response.data.data;
+      return response.data;
     } catch (error: any) {
-      // Si erreur, retourner un statut par défaut
+      // Si erreur, retourner une réponse structurée
       if (error.response?.status === 400 || error.response?.status === 401) {
         return {
-          hasProfile: false,
-          isCompleted: false,
-          isVerified: false,
-          completionPercentage: 0,
-          role: 'student'
+          success: false,
+          message: error.response?.data?.message || 'Erreur de récupération du statut',
+          data: {
+            hasProfile: false,
+            isCompleted: false,
+            isVerified: false,
+            completionPercentage: 0,
+            role: 'student'
+          }
         };
       }
       throw error;
     }
   }
 
-
-  // Uploader un fichier (diplôme, etc.)
+  // Uploader un fichier
   async uploadFile(file: File): Promise<{ url: string }> {
     const formData = new FormData();
     formData.append('file', file);
