@@ -129,7 +129,7 @@ class ProfileService {
   }
 
   // Récupérer le statut du profil 
-  async getProfileStatus(): Promise<ProfileStatus> {
+  async getProfileStatus(): Promise<ProfileStatusResponse> {
     try {
       const response = await api.get('/profile/status');
       return response.data;
