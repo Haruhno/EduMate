@@ -17,9 +17,14 @@ const DashboardPage: React.FC = () => {
         const currentUser = authService.getCurrentUser();
         setUser(currentUser);
 
-        if (currentUser) {
-          const status = await profileService.getProfileStatus();
-          setProfileStatus(status);
+        if (currentUser) {  
+          const statusResponse = await profileService.getProfileStatus();
+          console.log('📊 Statut profil reçu:', statusResponse);
+          setProfileStatus(statusResponse.data);
+          
+          // Debug: Vérifier aussi le profil complet
+          const fullProfile = await profileService.getProfile();
+          console.log('👤 Profil complet reçu:', fullProfile);
         }
       } catch (error) {
         console.error('Erreur lors du chargement du dashboard:', error);
@@ -53,6 +58,7 @@ const DashboardPage: React.FC = () => {
   const isTutor = user?.role === 'tutor';
   const isStudent = user?.role === 'student';
   const hasCompleteProfile = profileStatus?.isCompleted;
+  console.log('isCompleted:', hasCompleteProfile);
 
   return (
     <div className={styles.container}>

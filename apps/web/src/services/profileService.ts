@@ -134,23 +134,20 @@ class ProfileService {
       const response = await api.get('/profile/status');
       return response.data;
     } catch (error: any) {
-      // Si erreur, retourner une réponse structurée
-      if (error.response?.status === 400 || error.response?.status === 401) {
-        return {
-          success: false,
-          message: error.response?.data?.message || 'Erreur de récupération du statut',
-          data: {
-            hasProfile: false,
-            isCompleted: false,
-            isVerified: false,
-            completionPercentage: 0,
-            role: 'student'
-          }
-        };
-      }
-      throw error;
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Erreur de récupération du statut',
+        data: {
+          hasProfile: false,
+          isCompleted: false,
+          isVerified: false,
+          completionPercentage: 0,
+          role: 'student'
+        }
+      };
     }
   }
+
 
   // Uploader un fichier
   async uploadFile(file: File): Promise<{ url: string }> {

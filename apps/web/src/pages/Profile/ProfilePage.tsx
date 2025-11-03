@@ -34,7 +34,7 @@ interface Experience {
   isCurrent: boolean;
   description: string;
 }
-
+  
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
