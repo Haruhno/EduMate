@@ -61,16 +61,8 @@ class AuthController {
 
   async getProfile(req, res) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      
-      if (!token) {
-        return res.status(401).json({
-          success: false,
-          message: 'Token manquant'
-        });
-      }
 
-      const user = await authService.validateToken(token);
+      const user = req.user;
 
       if (!user) {
         return res.status(401).json({
@@ -95,16 +87,9 @@ class AuthController {
   // Nouvelle route pour vérifier l'authentification
   async checkAuth(req, res) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      
-      if (!token) {
-        return res.json({
-          success: false,
-          message: 'Non authentifié'
-        });
-      }
 
-      const user = await authService.validateToken(token);
+      const user = req.user;
+
       
       if (!user) {
         return res.json({
@@ -129,15 +114,8 @@ class AuthController {
   // Dans authController.js - méthode migrateToTutor
   async migrateToTutor(req, res) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) {
-        return res.status(401).json({
-          success: false,
-          message: 'Token manquant'
-        });
-      }
+      const user = req.user;
 
-      const user = await authService.validateToken(token);
       const { specialties, hourlyRate, experience, availability } = req.body;
 
       // Vérifier si l'utilisateur est déjà tuteur

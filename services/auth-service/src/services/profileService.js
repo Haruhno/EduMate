@@ -230,6 +230,12 @@ class ProfileService {
 
   // Calculer le pourcentage de complétion avec les diplômes et expériences
   async calculateCompletionPercentage(profile, role, userId) {
+    // Récupérer les données de l'utilisateur
+    const user = await User.findByPk(userId);
+
+    // Fusionner user + profile pour vérifier tous les champs
+    const profileData = { ...user.toJSON(), ...profile.toJSON() };
+
     let completedFields = 0;
     let totalFields = 8; // Champs de base
 
@@ -240,7 +246,7 @@ class ProfileService {
     ];
 
     basicFields.forEach(field => {
-      const value = profile[field];
+      const value = profileData[field];
       if (value !== null && value !== undefined && value !== '') {
         if (Array.isArray(value) && value.length > 0) {
           completedFields++;
@@ -273,6 +279,7 @@ class ProfileService {
 
     return Math.round((completedFields / totalFields) * 100);
   }
+
 
   // Marquer le profil comme complété
   async completeProfile(userId, role) {

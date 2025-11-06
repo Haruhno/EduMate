@@ -88,10 +88,28 @@ export interface FullProfileResponse {
 class ProfileService {
   // Sauvegarder le profil
   async saveProfile(profileData: ProfileData, currentStep: number): Promise<ProfileResponse> {
+    // Nettoyage des champs sensibles
+    const sanitizedProfileData = {
+      ...profileData,
+      specialties: profileData.specialties || [],
+      schedule: profileData.schedule || [],
+      location: {
+        address: profileData.location?.address || '',
+        radius: profileData.location?.radius || 8,
+        city: profileData.location?.city || '',
+        coordinates: {
+          lat: profileData.location?.coordinates?.lat || 0,
+          lng: profileData.location?.coordinates?.lng || 0
+        }
+      },
+      birthDate: profileData.birthDate || null,
+    };
+
     const response = await api.post('/profile/save', {
-      profileData,
+      profileData: sanitizedProfileData,
       currentStep
     });
+
     return response.data;
   }
 

@@ -58,6 +58,23 @@ class TutorService {
     const response = await api.post('/tutor/request-verification');
     return response.data;
   }
+
+  async getTutorById(tutorId: string): Promise<{
+    success: boolean;
+    data?: TutorFromDB;
+    message?: string;
+  }> {
+    try {
+      const response = await api.get(`/tutors/${tutorId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors de la récupération du tuteur:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Erreur lors de la récupération du tuteur'
+      };
+    }
+  }
   // Rechercher des tuteurs avec filtres et pagination
   async searchTutors(filters: {
     page?: number;

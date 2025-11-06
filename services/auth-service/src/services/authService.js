@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const { User, ProfileTutor, ProfileStudent } = require('../models/associations');
 
+const { isTokenBlacklisted, addToken } = require('./tokenBlacklist');
+
 class AuthService {
   async register(userData) {
     try {
@@ -68,22 +70,23 @@ class AuthService {
 
   async validateToken(token) {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'votre_secret_jwt');
-      
-      const user = await User.findByPk(decoded.id, {
-        attributes: { exclude: ['password'] }
-      });
-      
-      if (!user) {
-        throw new Error('Utilisateur non trouvé');
-      }
+      if (isTokenBlacklisted(token)) throw new Error('Token invalide');
 
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'votre_secret_jwt');
+      const user = await User.findByPk(decoded.id, { attributes: { exclude: ['password'] } });
+
+      if (!user) throw new Error('Utilisateur non trouvé');
       return user;
     } catch (error) {
       throw new Error('Token invalide');
     }
   }
 
+  async logout(token) {
+    addToken(token);
+    return true;
+  }
+  
   // Vérifier l'email
   async verifyEmail(userId) {
     try {

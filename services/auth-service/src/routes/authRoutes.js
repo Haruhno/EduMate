@@ -1,22 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const authMiddleware = require('../middlewares/authMiddleware');
 
-// Route d'inscription
+// Routes publiques
 router.post('/register', authController.register);
-
-// Route de connexion
 router.post('/login', authController.login);
 
-
-router.post('/migrate-to-tutor', authController.migrateToTutor);
-
-// Route pour récupérer le profil utilisateur
-router.get('/profile', authController.getProfile);
-
-
-
-// Route pour vérifier l'authentification
-router.get('/check', authController.checkAuth);
+// Routes protégées
+router.post('/migrate-to-tutor', authMiddleware, authController.migrateToTutor);
+router.get('/profile', authMiddleware, authController.getProfile);
+router.get('/check', authMiddleware, authController.checkAuth);
 
 module.exports = router;

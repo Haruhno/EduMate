@@ -3,8 +3,9 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { User, ProfileTutor } = require('../models/associations');
+const authMiddleware = require('../middlewares/authMiddleware');
 
-router.post('/migrate-to-tutor', auth, async (req, res) => {
+router.post('/migrate-to-tutor', authMiddleware, auth, async (req, res) => {
   try {
     const { specialties, hourlyRate, experience, availability } = req.body;
     const userId = req.user.id;

@@ -7,15 +7,9 @@ class ProfileController {
   // Sauvegarder le profil
    async saveProfile(req, res) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) {
-        return res.status(401).json({
-          success: false,
-          message: 'Token manquant'
-        });
-      }
 
-      const user = await authService.validateToken(token);
+      const user = req.user;
+
       const { profileData, currentStep } = req.body;
 
       // Inclure l'étape actuelle dans les données du profil
@@ -51,15 +45,9 @@ class ProfileController {
   // Récupérer le profil (inclut les diplômes)
   async getProfile(req, res) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) {
-        return res.status(401).json({
-          success: false,
-          message: 'Token manquant'
-        });
-      }
 
-      const user = await authService.validateToken(token);
+      const user = req.user;
+
       const profile = await profileService.getProfile(user.id, user.role);
 
       res.json({
@@ -100,15 +88,9 @@ class ProfileController {
   // Finaliser le profil
   async completeProfile(req, res) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) {
-        return res.status(401).json({
-          success: false,
-          message: 'Token manquant'
-        });
-      }
 
-      const user = await authService.validateToken(token);
+      const user = req.user;
+
       const profile = await profileService.completeProfile(user.id, user.role);
 
       res.json({
@@ -127,15 +109,8 @@ class ProfileController {
   // Vérifier le statut du profil
   async getProfileStatus(req, res) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) {
-        return res.status(401).json({
-          success: false,
-          message: 'Token manquant'
-        });
-      }
+      const user = req.user;
 
-      const user = await authService.validateToken(token);
       const hasProfile = await profileService.profileExists(user.id, user.role);
       
       let profile = null;
