@@ -3,10 +3,10 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  role: string; // Changed to string to match the authService implementation
+  role: string; 
   isVerified: boolean;
-  createdAt?: string; // Made optional to match the authService implementation
-  updatedAt?: string; // Made optional to match the authService implementation
+  createdAt?: string; 
+  updatedAt?: string; 
 }
 
 export interface LoginResponse {
