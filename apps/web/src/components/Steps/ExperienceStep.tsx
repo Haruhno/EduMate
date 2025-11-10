@@ -40,7 +40,6 @@ type DropdownField = 'employmentType' | 'startMonth' | 'startYear' | 'endMonth' 
 const ExperienceStep: React.FC<ExperienceStepProps> = ({
   profileData,
   setProfileData,
-  role,
   errors,
   setErrors
 }) => {
@@ -85,7 +84,7 @@ const ExperienceStep: React.FC<ExperienceStepProps> = ({
         startYear: '',
         endMonth: '',
         endYear: '',
-        isCurrent: true,
+        isCurrent: false,
         description: ''
       }]);
     }
@@ -263,7 +262,7 @@ const ExperienceStep: React.FC<ExperienceStepProps> = ({
       startYear: '',
       endMonth: '',
       endYear: '',
-      isCurrent: true,
+      isCurrent: false,
       description: ''
     };
     

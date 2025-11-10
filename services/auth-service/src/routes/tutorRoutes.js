@@ -3,7 +3,6 @@ const { Op, Sequelize } = require('sequelize');
 const router = express.Router();
 const { ProfileTutor, User } = require('../models/associations');
 
-// routes/tutorRoutes.js - Partie seed corrigée
 router.post('/seed', async (req, res) => {
   try {
     const { count = 20 } = req.body;

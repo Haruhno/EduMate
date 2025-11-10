@@ -1,4 +1,3 @@
-// models/ProfileTutor.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -17,7 +16,6 @@ const ProfileTutor = sequelize.define('ProfileTutor', {
     }
   },
   
-  // AJOUTEZ CES CHAMPS MANQUANTS
   hourlyRate: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 30.00,
@@ -75,7 +73,7 @@ const ProfileTutor = sequelize.define('ProfileTutor', {
     defaultValue: [],
   },
   
-  // Disponibilité
+  // Disponibilité 
   availability: {
     type: DataTypes.JSON,
     defaultValue: {
@@ -83,6 +81,8 @@ const ProfileTutor = sequelize.define('ProfileTutor', {
       inPerson: false
     }
   },
+  
+  // Schedule séparé 
   schedule: {
     type: DataTypes.JSON,
     defaultValue: []

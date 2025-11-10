@@ -21,7 +21,7 @@ const ProfileCompletion: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true); // Nouvel état pour l'initialisation
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const [profileData, setProfileData] = useState<ProfileData>({
     profilePicture: '/assets/images/avatar.jpg',
@@ -53,7 +53,78 @@ const ProfileCompletion: React.FC = () => {
     },
   });
 
-  // Si on arrive en mode "modification" avec des données existantes, préremplir
+  // SUPPRIMER le deuxième useEffect qui duplique le chargement
+  // Charger les données utilisateur et le profil complet
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const user = authService.getCurrentUser();
+        let userData = {
+          firstName: location.state?.firstName || '',
+          lastName: location.state?.lastName || '',
+          email: location.state?.email || '',
+        };
+
+        if (user) {
+          userData = {
+            firstName: user.firstName || userData.firstName,
+            lastName: user.lastName || userData.lastName,
+            email: user.email || userData.email,
+          };
+        }
+
+        // Charger le profil complet
+        try {
+          const response = await profileService.getProfile();
+          if (response.success && response.data.profile) {
+            const profile = response.data.profile;
+            
+            // Formater la date de naissance si elle existe
+            const formattedBirthDate = profile.birthDate 
+              ? new Date(profile.birthDate).toISOString().split('T')[0]
+              : '';
+
+            setProfileData(prev => ({
+              ...prev,
+              ...profile,
+              // Appliquer le format correct pour la date de naissance
+              birthDate: formattedBirthDate,
+              // Garder les données utilisateur prioritaires
+              firstName: userData.firstName || profile.firstName || prev.firstName,
+              lastName: userData.lastName || profile.lastName || prev.lastName,
+              email: userData.email || profile.email || prev.email,
+            }));
+          } else {
+            // Si pas de profil, utiliser les données utilisateur de base
+            setProfileData(prev => ({
+              ...prev,
+              ...userData
+            }));
+          }
+        } catch (profileError) {
+          console.error('Erreur chargement profil complet:', profileError);
+          // En cas d'erreur, utiliser les données utilisateur de base
+          setProfileData(prev => ({
+            ...prev,
+            ...userData
+          }));
+        }
+
+      } catch (error) {
+        console.error('Erreur lors du chargement des données utilisateur:', error);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    if (authService.isAuthenticated()) {
+      loadUserData();
+    } else {
+      setIsInitializing(false);
+    }
+  }, []); // Supprimer isInitializing des dépendances
+
+  // Gérer le mode modification avec données existantes
   useEffect(() => {
     if (location.state?.continueProfile && location.state?.profileData) {
       const profile = location.state.profileData;
@@ -64,75 +135,16 @@ const ProfileCompletion: React.FC = () => {
       setProfileData((prev) => ({
         ...prev,
         ...profile,
-        // Convertir la date de naissance au format YYYY-MM-DD pour les champs de type date
+        // Convertir la date de naissance au format YYYY-MM-DD
         birthDate: formattedBirthDate,
-        // Garder les champs nom, prénom et email intacts
+        // NE PAS écraser le prénom, nom et email
         firstName: prev.firstName,
         lastName: prev.lastName,
         email: prev.email,
-        // Sécurité : garder une image par défaut si manquante
         profilePicture: profile.profilePicture || '/assets/images/avatar.jpg',
       }));
     }
   }, [location.state]);
-
-  // Charger uniquement les données de l'utilisateur (nom, prénom, email)
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const user = authService.getCurrentUser();
-        if (user) {
-          setProfileData((prev) => ({
-            ...prev,
-            firstName: user.firstName || prev.firstName,
-            lastName: user.lastName || prev.lastName,
-            email: user.email || prev.email,
-          }));
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des données utilisateur:', error);
-      } finally {
-        setIsInitializing(false); // Fin de l'initialisation
-      }
-    };
-
-    if (authService.isAuthenticated()) {
-      loadUserData();
-    } else {
-      setIsInitializing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const loadProfileData = async () => {
-      try {
-        const response = await profileService.getProfile();
-        if (response.success && response.data.profile) {
-          console.log('Données du profil chargées:', response.data.profile);
-          
-          // Formater correctement la date de naissance si elle existe
-          const profile = response.data.profile;
-          const formattedBirthDate = profile.birthDate 
-            ? new Date(profile.birthDate).toISOString().split('T')[0]
-            : '';
-          
-          setProfileData(prev => ({
-            ...prev,
-            ...profile,
-            birthDate: formattedBirthDate, // Utiliser la date formatée
-            // Assurez-vous que les diplômes sont bien inclus
-            diplomas: profile.diplomas || []
-          }));
-        }
-      } catch (error) {
-        console.error('Erreur chargement profil:', error);
-      }
-    };
-
-    if (authService.isAuthenticated()) {
-      loadProfileData();
-    }
-  }, []);
 
   // Étapes selon le rôle
   const steps = role === 'student'
@@ -158,12 +170,10 @@ const ProfileCompletion: React.FC = () => {
   const validateCurrentStep = () => {
     const newErrors: { [key: string]: string } = {};
 
-    // Ne pas valider pendant l'initialisation
     if (isInitializing) {
       return newErrors;
     }
 
-    // Seulement la première étape (Informations générales) est obligatoire
     if (steps[currentStep].title === 'Informations générales') {
       if (!profileData.firstName?.trim())
         newErrors.firstName = 'Le prénom est obligatoire.';
@@ -174,7 +184,6 @@ const ProfileCompletion: React.FC = () => {
       else if (!/\S+@\S+\.\S+/.test(profileData.email))
         newErrors.email = "L'adresse e-mail n'est pas valide.";
       
-      // Date de naissance obligatoire seulement pour les tuteurs
       if (role === 'tutor') {
         if (!profileData.birthDate)
           newErrors.birthDate = 'La date de naissance est obligatoire pour les tuteurs.';
@@ -190,7 +199,6 @@ const ProfileCompletion: React.FC = () => {
         }
       }
 
-      // Validation du téléphone (optionnel mais doit être valide si rempli)
       setTouched({ ...touched, phone: true });
       const phoneValue = profileData.phone?.trim() || '';
       if (phoneValue !== '') {
@@ -205,9 +213,7 @@ const ProfileCompletion: React.FC = () => {
       }
     }
     
-    // Validation pour l'étape EducationStep - Vérifier les erreurs d'années
     else if (steps[currentStep].title === 'Études' || steps[currentStep].title === 'Diplômes') {
-      // Vérifier s'il y a des erreurs d'années dans les diplômes existants
       if (profileData.diplomas && profileData.diplomas.length > 0) {
         profileData.diplomas.forEach((diploma: any, index: number) => {
           if (diploma.startYear && diploma.endYear && !diploma.isCurrent) {
@@ -222,7 +228,6 @@ const ProfileCompletion: React.FC = () => {
     return newErrors;
   };
 
-  // Effet pour nettoyer les erreurs après l'initialisation
   useEffect(() => {
     if (!isInitializing) {
       const newErrors = validateCurrentStep();
@@ -230,15 +235,12 @@ const ProfileCompletion: React.FC = () => {
     }
   }, [isInitializing, profileData, currentStep]);
 
-  // Dans la fonction eNext, ajouter la validation pour EducationStep
   const eNext = () => {
     const newErrors = validateCurrentStep();
     setErrors(newErrors);
 
-    // Validation spéciale pour GeneralInfoStep
     if (steps[currentStep].title === 'Informations générales') {
-      // @ts-ignore - Appeler la validation spécifique à GeneralInfoStep
-      const isGeneralInfoStepValid = window.validateGeneralInfoStep?.();
+      const isGeneralInfoStepValid = (window as any).validateGeneralInfoStep?.();
       if (!isGeneralInfoStepValid) {
         const firstErrorField = Object.keys(newErrors).find(key => 
           ['firstName', 'lastName', 'email', 'birthDate', 'phone'].includes(key)
@@ -253,10 +255,8 @@ const ProfileCompletion: React.FC = () => {
       }
     }
 
-    // Validation spéciale pour ExperienceStep
     if (steps[currentStep].title === 'Expérience') {
-      // @ts-ignore - Appeler la validation spécifique à ExperienceStep
-      const isExperienceStepValid = window.validateExperienceStep?.();
+      const isExperienceStepValid = (window as any).validateExperienceStep?.();
       if (!isExperienceStepValid) {
         const firstErrorField = Object.keys(newErrors).find(key => key.startsWith('experience-'));
         if (firstErrorField) {
@@ -269,10 +269,8 @@ const ProfileCompletion: React.FC = () => {
       }
     }
 
-    // Validation spéciale pour EducationStep
     if (steps[currentStep].title === 'Études' || steps[currentStep].title === 'Diplômes') {
-      // @ts-ignore - Appeler la validation spécifique à EducationStep
-      const isEducationStepValid = window.validateEducationStep?.();
+      const isEducationStepValid = (window as any).validateEducationStep?.();
       if (!isEducationStepValid) {
         const firstErrorField = Object.keys(newErrors).find(key => key.startsWith('diploma-'));
         if (firstErrorField) {
@@ -323,6 +321,7 @@ const ProfileCompletion: React.FC = () => {
     setIsLoading(true);
     try {
       await profileService.saveProfile(profileData, currentStep);
+      
       const response = await profileService.completeProfile();
 
       if (response.success) {
@@ -331,6 +330,7 @@ const ProfileCompletion: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Erreur lors de la soumission du profil:', error);
+      console.error('Détails de l\'erreur:', error.response?.data);
       setErrors(prev => ({
         ...prev,
         submit: error.response?.data?.message || 'Erreur lors de la soumission du profil',
@@ -340,7 +340,6 @@ const ProfileCompletion: React.FC = () => {
     }
   };
 
-  // Afficher un loader pendant l'initialisation si nécessaire
   if (isInitializing) {
     return (
       <div className={styles.container}>

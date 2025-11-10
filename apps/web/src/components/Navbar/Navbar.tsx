@@ -36,7 +36,7 @@ const Navbar: React.FC = () => {
 
     window.addEventListener('storage', handleStorageChange);
     
-    // Vérifier périodiquement (au cas où)
+    // Vérifier périodiquement 
     const interval = setInterval(checkAuth, 1000);
 
     return () => {
@@ -60,6 +60,31 @@ const Navbar: React.FC = () => {
 
     loadProfileStatus();
   }, [currentUser]);
+
+  //Navigation différente selon le statut du profil
+  const getNavLinks = () => {
+    if (currentUser?.role === 'tutor') {
+      return [
+        { name: 'Tableau de bord', path: '/dashboard' },
+        { name: 'Créer des annonces', path: '/annonces' },
+        { name: 'Mes cours', path: '/cours' },
+        { name: 'Messages', path: '/messages' },
+      ];
+    } else if (currentUser?.role === 'student') {
+      return [
+        { name: 'Tableau de bord', path: '/dashboard' },
+        { name: 'Trouver un tuteur', path: '/recherche-tuteur' },   
+        { name: 'Mes séances', path: '/seances' },
+        { name: 'Messages', path: '/messages' },
+      ];
+    } else {
+      return [
+        { name: 'Comment ça marche', path: '/fonctionnement' },
+        { name: 'Actualités', path: '/actualites' },
+        { name: 'Nous contacter', path: '/contact' },
+      ];
+    }
+  };
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const toggleUserMenu = (e: React.MouseEvent) => {
@@ -123,6 +148,8 @@ const Navbar: React.FC = () => {
       document.removeEventListener('click', handleClickOutside);
     };
   }, [isUserMenuOpen]);
+  
+  const navLinks = getNavLinks();
 
   return (
     <nav className={styles.navbar}>
@@ -136,10 +163,11 @@ const Navbar: React.FC = () => {
 
       {/* Liens de navigation */}
       <ul className={`${styles.navLinks} ${isMenuOpen ? styles.active : ""}`}>
-        <li><a href="#about" onClick={closeMenu}>Qui sommes-nous</a></li>
-        <li><a href="#services" onClick={closeMenu}>Nos services</a></li>
-        <li><a href="#news" onClick={closeMenu}>Actualités</a></li>
-        <li><a href="#contact" onClick={closeMenu}>Nous contacter</a></li>
+        {navLinks.map((link) => (
+          <li key={link.name}>
+            <Link to={link.path} onClick={closeMenu} className={styles.navLink}> {link.name} </Link>
+          </li>
+        ))}
 
         {/* Boutons auth pour mobile */}
         {!currentUser ? (
@@ -168,7 +196,7 @@ const Navbar: React.FC = () => {
             <li className={styles.mobileAuth}>
               <button 
                 onClick={handleProfileClick}
-                className={styles.profileButtonMobile}
+                className={`${styles.profileButtonMobile} ${isMenuOpen ? styles.active : ""}`}
               >
                 Mon profil
               </button>
@@ -176,7 +204,7 @@ const Navbar: React.FC = () => {
             <li className={styles.mobileAuth}>
               <button 
                 onClick={handleLogout}
-                className={styles.logoutButtonMobile}
+                className={`${styles.logoutButtonMobile} ${isMenuOpen ? styles.active : ""}`}
               >
                 Déconnexion
               </button>
@@ -230,7 +258,7 @@ const Navbar: React.FC = () => {
                 <div className={styles.dropdownActions}>
                   <button 
                     onClick={handleProfileClick}
-                    className={styles.dropdownAction}
+                    className={styles.dropdownAction} 
                   >
                     {profileStatus?.isCompleted ? 'Voir mon profil' : 'Compléter mon profil'}
                   </button>

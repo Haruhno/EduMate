@@ -34,7 +34,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
     role,
     errors,
     setErrors,
-    touched,
     setTouched
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -42,7 +41,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
     const addressInputRef = useRef<HTMLInputElement>(null);
     const suggestionsRef = useRef<HTMLDivElement>(null);
     const [dropdownOpen, setDropdownOpen] = useState(false);
-    const [hasBeenValidated, setHasBeenValidated] = useState(false); // ← AJOUT
+    const [hasBeenValidated, setHasBeenValidated] = useState(false); 
 
     // États du recadrage
     const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -72,6 +71,34 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
             .map((char) => 127397 + char.charCodeAt(0));
         return String.fromCodePoint(...codePoints);
     }
+
+    // Fonction pour formater les dates au format YYYY-MM-DD
+    const formatDateForInput = (dateString: string): string => {
+        if (!dateString) return '';
+        
+        try {
+            // Si c'est déjà au format YYYY-MM-DD, retourner tel quel
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+            return dateString;
+            }
+            
+            // Sinon, convertir depuis le format ISO
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) {
+            console.warn('Date invalide:', dateString);
+            return '';
+            }
+            
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            
+            return `${year}-${month}-${day}`;
+        } catch (error) {
+            console.error('Erreur formatage date:', error, dateString);
+            return '';
+        }
+    };
 
     // Définit la France par défaut au chargement
     useEffect(() => {
@@ -686,19 +713,19 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
 
                 {/* Date de naissance */}
                 <div className={styles.formGroup}>
-                    <label htmlFor="birthDate" className={styles.label}>
-                        Date de naissance {role === 'tutor' && <span className={styles.requiredMarker}>*</span>}
-                    </label>
-                    <input
-                        type="date"
-                        id="birthDate"
-                        name="birthDate"
-                        value={profileData.birthDate}
-                        onChange={handleInputChange}
-                        className={`${styles.input} ${hasBeenValidated && errors.birthDate ? styles.inputError : ''}`} // ← MODIFICATION
-                        max={new Date().toISOString().split('T')[0]}
-                    />
-                    {hasBeenValidated && errors.birthDate && <p className={styles.errorText}>{errors.birthDate}</p>} {/* ← MODIFICATION */}
+                <label htmlFor="birthDate" className={styles.label}>
+                    Date de naissance {role === 'tutor' && <span className={styles.requiredMarker}>*</span>}
+                </label>
+                <input
+                    type="date"
+                    id="birthDate"
+                    name="birthDate"
+                    value={formatDateForInput(profileData.birthDate)} // ← UTILISER LA FONCTION DE FORMATAGE
+                    onChange={handleInputChange}
+                    className={`${styles.input} ${hasBeenValidated && errors.birthDate ? styles.inputError : ''}`}
+                    max={new Date().toISOString().split('T')[0]}
+                />
+                {hasBeenValidated && errors.birthDate && <p className={styles.errorText}>{errors.birthDate}</p>}
                 </div>
 
                 {/* Adresse avec suggestions */}

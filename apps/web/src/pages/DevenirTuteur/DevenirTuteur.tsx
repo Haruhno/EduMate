@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './DevenirTuteur.module.css';
 import authService from '../../services/authService';
@@ -31,15 +31,51 @@ const SpecialtiesInput: React.FC<SpecialtiesInputProps> = ({
   const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>(initialValue);
   const [inputValue, setInputValue] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showAllSpecialties, setShowAllSpecialties] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Liste des matières disponibles
+  // Liste complète des matières disponibles (triées par ordre alphabétique)
   const availableSpecialties = [
-    "Mathématiques", "Physique", "Chimie", "Français", "Anglais",
-    "Histoire-Géographie", "SVT", "Philosophie", "Économie", "Informatique",
-    "Espagnol", "Allemand", "Programmation", "Statistiques", "Biologie",
-    "Sciences de l'ingénieur", "Arts", "Musique", "Sport", "Marketing",
-    "Droit", "Médecine", "Psychologie", "Sociologie", "Communication"
-  ];
+    "Allemand", "Anglais", "Arabe", "Archéologie", "Architecture",
+    "Arts", "Arts plastiques", "Biologie", "Chimie", "Chinois", "Commerce International",
+    "Communication", "Comptabilité", "Culture générale", "Dessin",
+    "Droit", "Économie", "Éducation civique", "Électrotechnique",
+    "Espagnol", "Finance", "Français", "Géographie", "Gestion",
+    "Graphisme", "Histoire", "Histoire-Géographie", "Histoire de l'art",
+    "Informatique", "Italien", "Japonais", "Latin", "Littérature",
+    "Marketing", "Management et gestion des entreprises", "Mathématiques", "Mécanique", "Médecine", "Méthodologie", "Musique",
+    "Philosophie", "Physique", "Portugais", "Programmation",
+    "Psychologie", "Russe", "SES", "SVT", "Sciences de l'ingénieur",
+    "Sciences politiques", "Sociologie", "Statistiques", "Sport",
+    "Théâtre", "Électronique", "Génie civil", "Génie électrique",
+    "Génie mécanique", "Biochimie", "Géologie", "Astronomie",
+    "Écologie", "Bureautique", "Rédaction", "Préparation aux concours",
+    "Aide aux devoirs", "Méthodologie", "Orientation scolaire",
+    "Soutien scolaire", "Russe", "Néerlandais", "Coréen"
+  ].sort(); // Tri alphabétique
+
+  // Nombre de spécialités à afficher initialement
+  const INITIAL_DISPLAY_COUNT = 9;
+  
+  // Spécialités à afficher (soit les premières, soit toutes)
+  const displayedSpecialties = showAllSpecialties 
+    ? availableSpecialties 
+    : availableSpecialties.slice(0, INITIAL_DISPLAY_COUNT);
+
+  // Fermer les suggestions quand on clique dehors
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (inputRef.current && !inputRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const updateSelectedSpecialties = useCallback((newSpecialties: string[]) => {
     setSelectedSpecialties(newSpecialties);
@@ -52,7 +88,7 @@ const SpecialtiesInput: React.FC<SpecialtiesInputProps> = ({
       updateSelectedSpecialties(newSpecialties);
     }
     setInputValue('');
-    setSuggestions([]);
+    setShowSuggestions(false);
   };
 
   const handleRemoveSpecialty = (specialty: string) => {
@@ -65,13 +101,28 @@ const SpecialtiesInput: React.FC<SpecialtiesInputProps> = ({
     setInputValue(value);
 
     if (value.trim()) {
-      const filtered = availableSpecialties.filter(specialty =>
-        specialty.toLowerCase().includes(value.toLowerCase()) &&
+      const searchTerm = value.toLowerCase();
+      
+      // D'abord les résultats qui commencent par la recherche
+      const startsWithMatches = availableSpecialties.filter(specialty =>
+        specialty.toLowerCase().startsWith(searchTerm) &&
         !selectedSpecialties.includes(specialty)
       );
-      setSuggestions(filtered.slice(0, 5));
+      
+      // Ensuite les résultats qui contiennent la recherche (mais ne commencent pas par)
+      const includesMatches = availableSpecialties.filter(specialty =>
+        specialty.toLowerCase().includes(searchTerm) &&
+        !specialty.toLowerCase().startsWith(searchTerm) &&
+        !selectedSpecialties.includes(specialty)
+      );
+      
+      // Combiner les résultats (startsWith d'abord, puis includes)
+      const filtered = [...startsWithMatches, ...includesMatches].slice(0, 8);
+      setSuggestions(filtered);
+      setShowSuggestions(true);
     } else {
       setSuggestions([]);
+      setShowSuggestions(false);
     }
   };
 
@@ -89,21 +140,52 @@ const SpecialtiesInput: React.FC<SpecialtiesInputProps> = ({
     }
   };
 
+  const toggleShowAll = () => {
+    setShowAllSpecialties(!showAllSpecialties);
+  };
+
+  // Fonction pour mettre en évidence le texte correspondant
+  const highlightMatch = (text: string, search: string) => {
+    if (!search.trim()) return text;
+    
+    const lowerText = text.toLowerCase();
+    const lowerSearch = search.toLowerCase();
+    const matchIndex = lowerText.indexOf(lowerSearch);
+    
+    if (matchIndex === -1) return text;
+    
+    const before = text.substring(0, matchIndex);
+    const match = text.substring(matchIndex, matchIndex + search.length);
+    const after = text.substring(matchIndex + search.length);
+    
+    return (
+      <>
+        {before}
+        <strong style={{ color: '#FBBF24' }}>{match}</strong>
+        {after}
+      </>
+    );
+  };
+
   return (
-    <div className={styles.specialtiesContainer}>
+     <div className={styles.specialtiesContainer}>
+      <p className={styles.helpText}>
+        Cliquez sur les matières pour les sélectionner. <br></br>Vous pouvez aussi en ajouter de nouvelles en les tapant.
+      </p>
       {/* Input avec autocomplétion */}
-      <div className={styles.inputWrapper}>
+      <div className={styles.inputWrapper} ref={inputRef}>
         <input
           type="text"
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleInputKeyDown}
+          onFocus={() => inputValue.trim() && setShowSuggestions(true)}
           placeholder="Rechercher une matière..."
           className={styles.specialtiesInput}
         />
         
         {/* Suggestions d'autocomplétion */}
-        {suggestions.length > 0 && (
+        {showSuggestions && suggestions.length > 0 && (
           <div className={styles.suggestions}>
             {suggestions.map((specialty, index) => (
               <div
@@ -111,7 +193,7 @@ const SpecialtiesInput: React.FC<SpecialtiesInputProps> = ({
                 className={styles.suggestion}
                 onClick={() => handleAddSpecialty(specialty)}
               >
-                {specialty}
+                {highlightMatch(specialty, inputValue)}
               </div>
             ))}
           </div>
@@ -135,7 +217,7 @@ const SpecialtiesInput: React.FC<SpecialtiesInputProps> = ({
 
       {/* Grille des matières populaires */}
       <div className={styles.specialtiesGrid}>
-        {availableSpecialties.map((specialty, index) => (
+        {displayedSpecialties.map((specialty, index) => (
           <button
             key={index}
             className={`${styles.specialtyButton} ${
@@ -151,9 +233,207 @@ const SpecialtiesInput: React.FC<SpecialtiesInputProps> = ({
         ))}
       </div>
 
-      <p className={styles.helpText}>
-        Cliquez sur les matières pour les sélectionner. Vous pouvez aussi en ajouter de nouvelles en les tapant.
-      </p>
+      {/* Bouton Afficher plus/moins */}
+      {availableSpecialties.length > INITIAL_DISPLAY_COUNT && (
+        <div className={styles.showMoreContainer}>
+          <button
+            onClick={toggleShowAll}
+            className={styles.showMoreButton}
+          >
+            {showAllSpecialties ? 'Afficher moins' : `Afficher plus (${availableSpecialties.length - INITIAL_DISPLAY_COUNT} autres)`}
+            <svg 
+              className={`${styles.showMoreIcon} ${showAllSpecialties ? styles.rotated : ''}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Composant pour le slider de prix
+interface PriceSliderProps {
+  question: TutorQuestion;
+  value: number;
+  onChange: (value: number) => void;
+}
+
+// Composant pour le slider de prix
+interface PriceSliderProps {
+  question: TutorQuestion;
+  value: number;
+  onChange: (value: number) => void;
+}
+
+const PriceSlider: React.FC<PriceSliderProps> = ({ question, value, onChange }) => {
+  // Utiliser des valeurs par défaut pour min et max
+  const minValue = question.min ?? 15;
+  const maxValue = question.max ?? 100;
+  const stepValue = 1;
+  const currentValue = value || minValue;
+  
+  // État pour gérer l'édition du tarif
+  const [isEditing, setIsEditing] = useState(false);
+  const [inputValue, setInputValue] = useState(currentValue.toString());
+  const [error, setError] = useState<string | null>(null);
+
+  // Synchroniser l'input avec la valeur actuelle
+  useEffect(() => {
+    setInputValue(currentValue.toString());
+    setError(null);
+  }, [currentValue]);
+
+  const handlePriceClick = () => {
+    setIsEditing(true);
+    setInputValue(currentValue.toString());
+    setError(null);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInputValue(value);
+    
+    // Validation en temps réel pendant la frappe
+    if (value === '') {
+      setError(null);
+      return;
+    }
+    
+    const numericValue = parseInt(value);
+    
+    if (isNaN(numericValue)) {
+      setError('Veuillez entrer un nombre valide');
+      return;
+    }
+    
+    if (numericValue < minValue) {
+      setError(`Le tarif ne doit pas être inférieur à ${minValue} €`);
+      return;
+    }
+    
+    if (numericValue > maxValue) {
+      setError(`Le tarif ne peut pas être supérieur à ${maxValue} €`);
+      return;
+    }
+    
+    // Si la valeur est valide, appliquer immédiatement et effacer l'erreur
+    onChange(numericValue);
+    setError(null);
+  };
+
+  const handleInputBlur = () => {
+    setIsEditing(false);
+    
+    if (inputValue === '') {
+      setInputValue(currentValue.toString());
+      setError(null);
+      return;
+    }
+    
+    const numericValue = parseInt(inputValue);
+    
+    // Validation finale au blur
+    if (isNaN(numericValue)) {
+      // Corriger automatiquement vers la dernière valeur valide
+      setInputValue(currentValue.toString());
+      setError(null);
+      return;
+    }
+    
+    if (numericValue < minValue) {
+      // Corriger automatiquement vers le minimum
+      onChange(minValue);
+      setInputValue(minValue.toString());
+      setError(null);
+      return;
+    }
+    
+    if (numericValue > maxValue) {
+      // Corriger automatiquement vers le maximum
+      onChange(maxValue);
+      setInputValue(maxValue.toString());
+      setError(null);
+      return;
+    }
+    
+    // Si la valeur est valide
+    onChange(numericValue);
+    setError(null);
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    }
+  };
+
+  return (
+    <div className={styles.priceContainer}>
+      {/* Affichage du tarif avec seul le nombre cliquable */}
+      <div className={styles.priceHeader}>
+        {isEditing ? (
+          <div className={styles.priceInputWrapper}>
+            <input
+              type="number"
+              value={inputValue}
+              onChange={handleInputChange}
+              onBlur={handleInputBlur}
+              onKeyDown={handleInputKeyDown}
+              className={`${styles.priceInput} ${error ? styles.inputError : ''}`}
+              autoFocus
+              min={minValue}
+              max={maxValue}
+            />
+            <span className={styles.priceInputSuffix}>€/h</span>
+          </div>
+        ) : (
+          <div className={styles.priceDisplay}>
+            <span 
+              className={styles.priceValue}
+              onClick={handlePriceClick}
+            >
+              {currentValue}
+            </span>
+            <span className={styles.priceUnit}>€/h</span>
+          </div>
+        )}
+      </div>
+
+      {/* Message d'erreur instantané (pendant la frappe) */}
+      {error && <div className={styles.errorMessage}>{error}</div>}
+
+      {/* Slider */}
+      <div className={styles.priceSliderContainer}>
+        <div className={styles.priceSliderBackground}></div>
+        <div 
+          className={styles.priceSliderProgress}
+          style={{ width: `${((currentValue - minValue) / (maxValue - minValue)) * 100}%` }}
+        ></div>
+        <div 
+          className={styles.priceSliderThumb}
+          style={{ left: `${((currentValue - minValue) / (maxValue - minValue)) * 100}%` }}
+        ></div>
+        <input
+          type="range"
+          min={minValue}
+          max={maxValue}
+          step={stepValue}
+          value={currentValue}
+          onChange={(e) => onChange(parseInt(e.target.value))}
+          className={styles.priceSliderInput}
+        />
+      </div>
+      
+      {/* Bornes min et max */}
+      <div className={styles.priceRangeLabels}>
+        <span>{minValue} €</span>
+        <span>{maxValue} €</span>
+      </div>
     </div>
   );
 };
@@ -169,7 +449,7 @@ const DevenirTuteur: React.FC = () => {
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [isAlreadyTutor, setIsAlreadyTutor] = useState(false);
 
-  // Questions pour devenir tuteur (sans la question sur l'expérience)
+  // Questions pour devenir tuteur 
   const tutorQuestions: TutorQuestion[] = [
     {
       id: 'specialties',
@@ -178,24 +458,27 @@ const DevenirTuteur: React.FC = () => {
       field: 'specialties'
     },
     {
+      id: 'levels',
+      question: "À quel(s) niveau(x) voulez-vous enseigner ?",
+      type: 'multi-select',
+      options: [
+        "Tous niveaux",
+        "Primaire",
+        "Collège", 
+        "Lycée",
+        "Supérieur",
+        "Prépa"
+      ],
+      field: 'teachingLevels'
+    },
+    {
       id: 'rate',
       question: "Quel tarif horaire proposez-vous ?",
       type: 'slider',
       field: 'hourlyRate',
-      min: 15,
+      min: 7,
       max: 100,
       step: 5
-    },
-    {
-      id: 'availability',
-      question: "Comment souhaitez-vous donner des cours ?",
-      type: 'choice',
-      options: [
-        "En ligne",
-        "En présentiel",
-        "Les deux"
-      ],
-      field: 'availability'
     },
     {
       id: 'confirmation',
@@ -277,8 +560,6 @@ const DevenirTuteur: React.FC = () => {
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep(prev => prev - 1);
-    } else {
-      navigate(-1);
     }
   };
 
@@ -287,12 +568,9 @@ const DevenirTuteur: React.FC = () => {
     try {
       const migrationData: MigrationData = {
         specialties: Array.isArray(answers.specialties) ? answers.specialties : [answers.specialties],
+        teachingLevels: Array.isArray(answers.levels) ? answers.levels : [answers.levels],
         hourlyRate: answers.rate || 30,
-        experience: '', // Plus utilisé mais gardé pour la compatibilité
-        availability: {
-          online: answers.availability === 'En ligne' || answers.availability === 'Les deux',
-          inPerson: answers.availability === 'En présentiel' || answers.availability === 'Les deux'
-        }
+        experience: ''
       };
 
       const response = await migrationService.migrateToTutor(migrationData);
@@ -304,7 +582,6 @@ const DevenirTuteur: React.FC = () => {
       }
     } catch (error) {
       console.error('Erreur lors de la migration vers tuteur:', error);
-      // Vous pouvez ajouter une notification d'erreur ici
     } finally {
       setIsLoading(false);
     }
@@ -320,11 +597,8 @@ const DevenirTuteur: React.FC = () => {
       const updateData = {
         ...currentProfile.data.profile, // Garder les données existantes
         specialties: Array.isArray(answers.specialties) ? answers.specialties : [answers.specialties],
-        hourlyRate: answers.rate || 30,
-        availability: {
-          online: answers.availability === 'En ligne' || answers.availability === 'Les deux',
-          inPerson: answers.availability === 'En présentiel' || answers.availability === 'Les deux'
-        }
+        teachingLevels: Array.isArray(answers.levels) ? answers.levels : [answers.levels],
+        hourlyRate: answers.rate || 30
       };
 
       const response = await profileService.saveProfile(updateData, 0);
@@ -384,6 +658,47 @@ const DevenirTuteur: React.FC = () => {
           </div>
         );
 
+      case 'multi-select':
+        return (
+          <div className={styles.optionsGrid}>
+            {question.options?.map((option, index) => {
+              const currentAnswers: string[] = answers[question.id] || [];
+              const isSelected = Array.isArray(currentAnswers) && currentAnswers.includes(option);
+              
+              return (
+                <button
+                  key={index}
+                  className={`${styles.optionButton} ${
+                    isSelected ? styles.selected : ''
+                  }`}
+                  onClick={() => {
+                    const currentAnswers: string[] = answers[question.id] || [];
+                    let newAnswers: string[];
+                    
+                    if (option === "Tous niveaux") {
+                      // Si "Tous niveaux" est sélectionné, désélectionner tout le reste
+                      newAnswers = ["Tous niveaux"];
+                    } else if (Array.isArray(currentAnswers) && currentAnswers.includes(option)) {
+                      // Désélectionner l'option
+                      newAnswers = currentAnswers.filter((item: string) => item !== option && item !== "Tous niveaux");
+                    } else {
+                      // Sélectionner l'option et retirer "Tous niveaux" si présent
+                      newAnswers = [...currentAnswers.filter((item: string) => item !== "Tous niveaux"), option];
+                    }
+                    
+                    handleAnswer(newAnswers);
+                  }}
+                >
+                  <span className={styles.optionText}>{option}</span>
+                  {isSelected && (
+                    <span className={styles.checkmark}>✓</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        );
+
       case 'specialties':
         return (
           <SpecialtiesInput
@@ -392,28 +707,14 @@ const DevenirTuteur: React.FC = () => {
           />
         );
 
-      case 'slider':
-        return (
-          <div className={styles.sliderContainer}>
-            <div className={styles.sliderHeader}>
-              <span className={styles.sliderValue}>€{answers[question.id] || question.min}</span>
-              <span className={styles.sliderLabel}>/heure</span>
-            </div>
-            <input
-              type="range"
-              min={question.min}
-              max={question.max}
-              step={question.step}
-              value={answers[question.id] || question.min}
-              onChange={(e) => handleAnswer(parseInt(e.target.value))}
-              className={styles.slider}
-            />
-            <div className={styles.sliderLabels}>
-              <span>€{question.min}</span>
-              <span>€{question.max}</span>
-            </div>
-          </div>
-        );
+    case 'slider':
+      return (
+          <PriceSlider
+            question={question}
+            value={answers[question.id]}
+            onChange={(value) => handleAnswer(value)}
+          />
+        );        
 
       case 'confirmation':
         return (
@@ -435,14 +736,16 @@ const DevenirTuteur: React.FC = () => {
                   </span>
                 </div>
                 <div className={styles.summaryItem}>
-                  <span className={styles.summaryLabel}>Tarif horaire:</span>
-                  <span className={styles.summaryValue}>€{answers.rate || '30'}/heure</span>
+                  <span className={styles.summaryLabel}>Niveaux enseignés:</span>
+                  <span className={styles.summaryValue}>
+                    {Array.isArray(answers.levels) 
+                      ? answers.levels.join(', ') 
+                      : answers.levels || 'Non spécifié'}
+                  </span>
                 </div>
                 <div className={styles.summaryItem}>
-                  <span className={styles.summaryLabel}>Mode d'enseignement:</span>
-                  <span className={styles.summaryValue}>
-                    {answers.availability || 'Non spécifié'}
-                  </span>
+                  <span className={styles.summaryLabel}>Tarif horaire:</span>
+                  <span className={styles.summaryValue}>€{answers.rate || '30'}/heure</span>
                 </div>
               </div>
             </div>
@@ -496,26 +799,12 @@ const DevenirTuteur: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      {/* Header avec progression */}
-      <div className={styles.header}>
-        <button onClick={handleBack} className={styles.backButton}>
-          <svg className={styles.backIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Retour
-        </button>
-        
-        <div className={styles.progressContainer}>
-          <div className={styles.progressBar}>
-            <div 
-              className={styles.progressFill}
-              style={{ width: `${getProgressPercentage()}%` }}
-            ></div>
-          </div>
-          <div className={styles.progressText}>
-            Étape {currentStep + 1} sur {tutorQuestions.length}
-          </div>
-        </div>
+      {/* Barre de progression */}
+      <div className={styles.progressBar}>
+        <div 
+          className={styles.progressFill}
+          style={{ width: `${getProgressPercentage()}%` }}
+        ></div>
       </div>
 
       {/* Contenu principal */}
@@ -531,15 +820,30 @@ const DevenirTuteur: React.FC = () => {
                   }
                 </h1>
                 <div className={styles.stepIndicator}>
-                  {currentStep + 1}/{tutorQuestions.length}
+                  Étape {currentStep + 1} sur {tutorQuestions.length}
                 </div>
               </div>
 
               {renderQuestion(currentQuestion)}
 
-              {/* Bouton Suivant */}
-              {currentQuestion.type !== 'confirmation' && (
-                <div className={styles.nextButtonContainer}>
+              {/* Boutons de navigation */}
+              <div className={styles.navigationButtons}>
+               {/* Bouton Retour */}
+                <button
+                  onClick={handleBack}
+                  disabled={currentStep === 0}
+                  className={`${styles.backButton} ${
+                    currentStep === 0 ? styles.disabled : ''
+                  }`}
+                >
+                  <svg className={styles.backIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Retour
+                </button>
+
+                {/* Bouton Suivant */}
+                {currentQuestion.type !== 'confirmation' && (
                   <button
                     onClick={handleNext}
                     disabled={!canProceed()}
@@ -552,8 +856,8 @@ const DevenirTuteur: React.FC = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Indicateurs de progression */}

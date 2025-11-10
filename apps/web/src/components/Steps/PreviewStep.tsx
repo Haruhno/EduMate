@@ -33,6 +33,17 @@ interface Experience {
   description: string;
 }
 
+interface TimeSlot {
+  startTime: string;
+  endTime: string;
+  allDay: boolean;
+}
+
+interface DayAvailability {
+  date: string;
+  timeSlots: TimeSlot[];
+}
+
 const PreviewStep: React.FC<PreviewStepProps> = ({ profileData, role }) => {
     const previewRef = useRef<HTMLDivElement>(null);
     const lastProfileDataRef = useRef<string>("");
@@ -67,6 +78,47 @@ const PreviewStep: React.FC<PreviewStepProps> = ({ profileData, role }) => {
         return `${startMonth} ${startYear} - ${endMonth} ${endYear}`;
     };
 
+    // Fonction pour trier les dates chronologiquement
+    const sortDatesChronologically = (dates: DayAvailability[]): DayAvailability[] => {
+        return [...dates].sort((a, b) => {
+            return new Date(a.date).getTime() - new Date(b.date).getTime();
+        });
+    };
+
+    // Fonction pour trier les créneaux horaires par heure de début
+    const sortTimeSlotsChronologically = (timeSlots: TimeSlot[]): TimeSlot[] => {
+        return [...timeSlots].sort((a, b) => {
+            const getMinutes = (time: string) => {
+            const [hours, minutes] = time.split(':').map(Number);
+            return hours * 60 + minutes;
+            };
+            return getMinutes(a.startTime) - getMinutes(b.startTime);
+        });
+    };
+    // Fonction pour formater l'affichage des dates
+    const formatDateDisplay = (dateString: string): string => {
+        const date = new Date(dateString);
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        const isToday = date.toDateString() === today.toDateString();
+        const isTomorrow = date.toDateString() === tomorrow.toDateString();
+        
+        if (isToday) {
+            return `Aujourd'hui (${date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })})`;
+        } else if (isTomorrow) {
+            return `Demain (${date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })})`;
+        } else {
+            return date.toLocaleDateString('fr-FR', { 
+                weekday: 'long', 
+                day: 'numeric', 
+                month: 'long',
+                year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+            });
+        }
+    };
+
     // Vérifier s'il y a des diplômes multiples
     const hasMultipleDiplomas = profileData.diplomas && profileData.diplomas.length > 1;
     const hasSingleDiploma = profileData.diplomas && profileData.diplomas.length === 1;
@@ -76,6 +128,11 @@ const PreviewStep: React.FC<PreviewStepProps> = ({ profileData, role }) => {
     const hasMultipleExperiences = profileData.experiences && profileData.experiences.length > 1;
     const hasSingleExperience = profileData.experiences && profileData.experiences.length === 1;
     const firstExperience = hasSingleExperience ? profileData.experiences[0] : null;
+
+    // Obtenir les disponibilités triées
+    const sortedSchedule = profileData.schedule 
+        ? sortDatesChronologically(profileData.schedule)
+        : [];
 
     return (
         <div className={styles.container} ref={previewRef}>
@@ -417,22 +474,41 @@ const PreviewStep: React.FC<PreviewStepProps> = ({ profileData, role }) => {
                 </>
             )}
 
-            {/* Disponibilité (tuteurs) */}
-            {role === 'tutor' && profileData.availability && (profileData.availability.online || profileData.availability.inPerson) && (
-                <>
-                    <div className={styles.separator}></div>
-                    <div className={styles.section}>
-                        <h4 className={styles.sectionTitle}>Disponibilité</h4>
-                        <div className={styles.availability}>
-                            {profileData.availability.online && (
-                                <span className={styles.availabilityBadge}>En ligne</span>
-                            )}
-                            {profileData.availability.inPerson && (
-                                <span className={styles.availabilityBadge}>En présentiel</span>
-                            )}
-                        </div>
-                    </div>
-                </>
+            {/* Disponibilités détaillées */}
+            {role === 'tutor' && sortedSchedule.length > 0 && (
+            <>
+                <div className={styles.separator}></div>
+                <div className={styles.section}>
+                <h4 className={styles.sectionTitle}>Disponibilités détaillées</h4>
+                <div className={styles.scheduleList}>
+                    {sortedSchedule.map((day: DayAvailability, index: number) => {
+                        // Trier aussi les créneaux horaires par heure de début
+                        const sortedTimeSlots = sortTimeSlotsChronologically(day.timeSlots);
+                        
+                        return (
+                            <div key={index} className={styles.scheduleItem}>
+                                <div className={styles.infoLabel}>
+                                    {formatDateDisplay(day.date)}
+                                </div>
+                                <div className={styles.scheduleSlots}>
+                                    {sortedTimeSlots.map((slot: TimeSlot, slotIndex: number) => (
+                                        <div key={slotIndex} className={styles.scheduleSlot}>
+                                        {slot.allDay ? (
+                                            <span className={styles.allDaySlot}>Toute la journée</span>
+                                        ) : (
+                                            <span className={styles.timeSlot}>
+                                            {slot.startTime} - {slot.endTime}
+                                            </span>
+                                        )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+                </div>
+            </>
             )}
 
             {/* Localisation */}

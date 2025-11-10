@@ -14,8 +14,6 @@ router.post('/migrate-to-tutor', authController.migrateToTutor);
 // Route pour récupérer le profil utilisateur
 router.get('/profile', authController.getProfile);
 
-
-
 // Route pour vérifier l'authentification
 router.get('/check', authController.checkAuth);
 

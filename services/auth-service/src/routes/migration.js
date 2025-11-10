@@ -1,4 +1,3 @@
-// backend/routes/migration.js
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
@@ -30,7 +29,7 @@ router.post('/migrate-to-tutor', auth, async (req, res) => {
       hourlyRate,
       experience,
       availability,
-      isVerified: false, // À vérifier par l'admin
+      isVerified: false, 
       isCompleted: true,
       completionPercentage: 100
     });

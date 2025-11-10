@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styles from './WhyChooseUs.module.css';
 
-// Images pour chaque bloc (à adapter avec vos images)
+// Images pour chaque bloc 
 const defaultImages = [
   'https://observatorio.tec.mx/wp-content/uploads/2024/08/IMG.png', // IA
   'https://media.istockphoto.com/id/1583207917/vector/make-money-get-rich-salary-investment.jpg?s=612x612&w=0&k=20&c=bPBF5JNULyr1eklbkGXahzNGfRGylA5xyUDXcBH2JX8=', // Argent
@@ -65,15 +65,14 @@ const WhyChooseUs: React.FC = () => {
                   activeIndex === index ? styles.active : ''
                 }`}
                 style={{
-                  borderLeft: `4px solid ${feature.color}`,
-                  backgroundColor: activeIndex === index ? `${feature.color}10` : 'transparent'
-                }}
+                  '--feature-color': feature.color
+                } as React.CSSProperties}
                 onClick={() => setActiveIndex(index)}
               >
                 <div className={styles.featureHeader}>
                   <h3 className={styles.featureTitle}>{feature.title}</h3>
                   <div className={styles.arrow}>
-                    {activeIndex === index ? '▼' : '►'}
+                    ▼
                   </div>
                 </div>
                 
@@ -93,10 +92,7 @@ const WhyChooseUs: React.FC = () => {
               alt={features[activeIndex].title}
               className={styles.featureImage}
             />
-            <div 
-              className={styles.imageOverlay}
-              style={{ backgroundColor: `${features[activeIndex].color}20` }}
-            ></div>
+            <div className={styles.imageOverlay}></div>
           </div>
         </div>
 

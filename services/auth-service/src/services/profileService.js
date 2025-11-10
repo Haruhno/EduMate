@@ -34,7 +34,7 @@ class ProfileService {
         await this.saveExperiences(userId, role, experiences);
       }
 
-      // Recalculer le pourcentage de complétion
+      // Calculer le pourcentage de complétion
       const completionPercentage = await this.calculateCompletionPercentage(profile, role, userId);
       await profile.update({ completionPercentage });
 
@@ -48,8 +48,6 @@ class ProfileService {
   // Sauvegarder les diplômes
   async saveDiplomas(userId, profileType, diplomasData) {
     try {
-      console.log('Sauvegarde des diplômes:', { userId, profileType, diplomasData });
-
       // Supprimer les anciens diplômes
       await Diploma.destroy({
         where: { userId, profileType }
@@ -60,7 +58,7 @@ class ProfileService {
       for (const diplomaData of diplomasData) {
         // Vérifier que le diplôme a au moins un niveau d'éducation
         if (!diplomaData.educationLevel || diplomaData.educationLevel.trim() === '') {
-          continue; // Ignorer les diplômes sans niveau d'éducation
+          continue; 
         }
 
         const diploma = await Diploma.create({
@@ -81,7 +79,6 @@ class ProfileService {
         diplomas.push(diploma);
       }
 
-      console.log(`✅ ${diplomas.length} diplôme(s) sauvegardé(s) pour l'utilisateur ${userId}`);
       return diplomas;
     } catch (error) {
       console.error('Erreur détaillée sauvegarde diplômes:', error);
@@ -124,7 +121,6 @@ class ProfileService {
   // Sauvegarder les expériences
   async saveExperiences(userId, profileType, experiencesData) {
     try {
-      console.log('Sauvegarde des expériences:', { userId, profileType, experiencesData });
 
       // Supprimer les anciennes expériences
       await Experience.destroy({
@@ -160,7 +156,6 @@ class ProfileService {
         }
       }
 
-      console.log(`✅ ${experiences.length} expérience(s) sauvegardée(s) pour l'utilisateur ${userId}`);
       return experiences;
     } catch (error) {
       console.error('Erreur détaillée sauvegarde expériences:', error);

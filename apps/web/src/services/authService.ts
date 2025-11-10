@@ -57,7 +57,7 @@ class AuthService {
     return !!this.getToken();
   }
 
-  // Récupérer l'utilisateur courant - CORRIGÉ
+  // Récupérer l'utilisateur courant 
   getCurrentUser(): User | null {
     try {
       const user = localStorage.getItem(this.userKey);
@@ -89,7 +89,7 @@ class AuthService {
     localStorage.setItem(this.userKey, JSON.stringify(user));
   }
 
-  // Vérifier le token (optionnel - pour valider côté serveur)
+  // Vérifier le token pour valider côté serveur)
   async validateToken(): Promise<User | null> {
     try {
       const token = this.getToken();

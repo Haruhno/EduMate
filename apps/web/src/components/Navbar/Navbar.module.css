@@ -28,7 +28,6 @@ body {
   background: #ffffff;
   display: flex;
   align-items: center;
-  justify-content: space-between; 
   padding: 0 2%; 
   box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
   z-index: 1000;
@@ -42,6 +41,9 @@ body {
   font-weight: 700;
   height: 100%;
   flex-shrink: 0;
+  margin-right: auto;
+  min-width: 180px; 
+  max-width: 200px;
 }
 
 .logo {
@@ -66,15 +68,13 @@ body {
 
 .navLinks {
   display: flex;
+  justify-content: center;
   list-style: none;
-  gap: 2.5rem;
+  gap: 4rem;
   margin: 0;
   padding: 0;
   height: 100%;
   align-items: center;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
 }
 
 .navLinks li {
@@ -121,7 +121,6 @@ body {
   margin-left: auto; 
 }
 
-/* ===== BOUTONS AUTH DESKTOP ===== */
 
 .connexionBtn {
   background: linear-gradient(135deg, #e6ca9b 0%, #fff4e1 100%);
@@ -176,8 +175,6 @@ body {
   background: linear-gradient(135deg, #d4b98a 0%, #f0e4cc 100%);
 }
 
-/* ===== STYLES MOBILE POUR LES BOUTONS AUTH ===== */
-
 .mobileAuth {
   display: none; 
 }
@@ -229,7 +226,39 @@ body {
   display: none !important;
 }
 
-/* ===== RESPONSIVE ===== */
+.profileButtonMobile, .logoutButtonMobile {
+  position: relative;
+  font-size: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #f5e6d3;
+  display: block;
+  color: black;
+  font-weight: 600;
+  font-family: 'DMSans', sans-serif;
+  transition: color 0.3s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.profileButtonMobile:hover, .logoutButtonMobile:hover {
+  color: #facc15;
+}
+
+.profileButtonMobile::after,
+.logoutButtonMobile::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: #facc15;
+  transition: width 0.3s ease;
+}
+
+.profileButtonMobile:hover::after, .logoutButtonMobile:hover::after {
+  width: 100%;
+}
 
 /* Tablettes */
 @media (max-width: 1024px) {
@@ -536,11 +565,11 @@ body {
   gap: 0.8rem;
 }
 
-/* Ajoutez ces styles à votre fichier Navbar.module.css */
-
 .userMenu {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .userName {
@@ -633,14 +662,11 @@ body {
   }
 }
 
-/* Supprimer les anciens styles pour les boutons de déconnexion/profil desktop */
 .userMenu .welcomeText,
 .userMenu .profileButton,
 .userMenu .logoutButton {
   display: none;
 }
-
-/* ===== BOUTON ICONE UTILISATEUR ===== */
 
 .userIconBtn {
   background: linear-gradient(135deg, #e6ca9b 0%, #fff4e1 100%);
@@ -818,7 +844,6 @@ body {
   }
 }
 
-/* Supprimer les anciens styles pour les boutons de déconnexion/profil desktop */
 .userMenu .welcomeText,
 .userMenu .profileButton,
 .userMenu .logoutButton {

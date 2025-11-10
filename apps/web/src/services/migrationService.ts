@@ -2,9 +2,10 @@ import api from './api';
 
 export interface MigrationData {
   specialties: string[];
+  teachingLevels: string[];
   hourlyRate: number;
   experience: string;
-  availability: {
+  availability?: {
     online: boolean;
     inPerson: boolean;
   };

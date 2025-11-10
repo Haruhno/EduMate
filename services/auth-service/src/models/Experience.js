@@ -40,17 +40,25 @@ const Experience = sequelize.define('Experience', {
     allowNull: false
   },
   startYear: {
-    type: DataTypes.INTEGER,
-    allowNull: false
-  },
+      type: DataTypes.INTEGER,
+      allowNull: true, 
+      validate: {
+        min: 1900,
+        max: new Date().getFullYear()
+      }
+    },
   endMonth: {
     type: DataTypes.STRING,
     allowNull: true
   },
-  endYear: {
-    type: DataTypes.INTEGER,
-    allowNull: true
-  },
+    endYear: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      validate: {
+        min: 1900,
+        max: new Date().getFullYear() + 5
+      }
+    },
   isCurrent: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
