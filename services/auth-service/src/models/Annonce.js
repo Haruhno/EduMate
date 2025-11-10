@@ -1,0 +1,70 @@
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+
+const Annonce = sequelize.define('Annonce', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
+  tutorId: {
+    type: DataTypes.UUID,
+    allowNull: false,
+    references: {
+      model: 'profile_tutors',
+      key: 'id'
+    }
+  },
+  title: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  subject: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  level: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  hourlyRate: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false
+  },
+  teachingMode: {
+    type: DataTypes.ENUM('En ligne', 'En présentiel', 'Les deux'),
+    defaultValue: 'Les deux'
+  },
+  location: {
+    type: DataTypes.JSON,
+    defaultValue: {
+      address: '',
+      city: '',
+      coordinates: { lat: 0, lng: 0 }
+    }
+  },
+  availability: {
+    type: DataTypes.JSON,
+    defaultValue: {
+      days: [],
+      timeSlots: []
+    }
+  },
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  },
+  isVerified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  }
+}, {
+  tableName: 'annonces',
+  timestamps: true
+});
+
+module.exports = Annonce;

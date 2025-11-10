@@ -58,6 +58,85 @@ class TutorService {
     const response = await api.post('/tutor/request-verification');
     return response.data;
   }
+
+  async getTutorById(tutorId: string): Promise<{
+    success: boolean;
+    data?: TutorFromDB;
+    message?: string;
+  }> {
+    // Try several plausible endpoints / query param shapes until one returns data
+    const attempts = [
+      `/tutors/${encodeURIComponent(tutorId)}`,
+      `/tutors/user/${encodeURIComponent(tutorId)}`,
+      `/tutors/by-user/${encodeURIComponent(tutorId)}`,
+      `/profile/tutors/${encodeURIComponent(tutorId)}`,
+      `/profile/tutors/user/${encodeURIComponent(tutorId)}`,
+      `/tutors?userId=${encodeURIComponent(tutorId)}`,
+      `/tutors?user_id=${encodeURIComponent(tutorId)}`,
+      `/profile/tutors?userId=${encodeURIComponent(tutorId)}`,
+      `/profile/tutors?user_id=${encodeURIComponent(tutorId)}`
+    ];
+
+    for (const url of attempts) {
+      try {
+        const response = await api.get(url);
+
+        // If API returns a single tutor object in data
+        if (response?.data?.success && response?.data?.data && !Array.isArray(response.data.data)) {
+          return { success: true, data: response.data.data as TutorFromDB };
+        }
+
+        // If API returns { success, data: { tutors: [...] } }
+        if (response?.data?.success && response?.data?.data?.tutors && Array.isArray(response.data.data.tutors)) {
+          const first = response.data.data.tutors[0];
+          if (first) return { success: true, data: first as TutorFromDB };
+        }
+
+        // Some endpoints may return tutor directly on data.tutor
+        if (response?.data && response.data.tutor) {
+          return { success: true, data: response.data.tutor as TutorFromDB };
+        }
+
+        // If response returned an array directly (e.g. /tutors?...) take first
+        if (response?.data && Array.isArray(response.data)) {
+          const first = response.data[0];
+          if (first) return { success: true, data: first as TutorFromDB };
+        }
+
+        // If 200 but no usable payload, continue to next attempt
+      } catch (err: any) {
+        const status = err?.response?.status;
+        // For 404/410 try next fallback
+        if (status === 404 || status === 410) continue;
+
+        // For other errors return immediately with message
+        console.error('Erreur lors de la récupération du tuteur (attempt):', url, err);
+        return {
+          success: false,
+          message: err?.response?.data?.message || err?.message || 'Erreur lors de la récupération du tuteur'
+        };
+      }
+    }
+
+    return {
+      success: false,
+      message: 'Tuteur non trouvé'
+    };
+  }
+
+  // AJOUTER cette méthode pour récupérer les annonces par tuteur
+  async getAnnoncesByTutor(tutorId: string) {
+    try {
+      const response = await api.get(`/annonces/tutor/${tutorId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur récupération annonces tuteur:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Erreur lors de la récupération des annonces'
+      };
+    }
+  }
   // Rechercher des tuteurs avec filtres et pagination
   async searchTutors(filters: {
     page?: number;

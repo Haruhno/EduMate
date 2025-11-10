@@ -3,20 +3,21 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const profileController = require('../controllers/profileController');
+const authMiddleware = require('../middlewares/authMiddleware');
 
-// Configuration multer directement dans les routes
+// Configuration multer pour l'upload
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
       cb(null, 'uploads/');
     },
     filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
       cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     }
   }),
   limits: {
-    fileSize: 5 * 1024 * 1024
+    fileSize: 5 * 1024 * 1024 // 5MB
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|pdf/;
@@ -31,11 +32,13 @@ const upload = multer({
   }
 });
 
-// Routes
-router.post('/save', profileController.saveProfile);
-router.get('/', profileController.getProfile);
-router.post('/complete', profileController.completeProfile);
-router.get('/status', profileController.getProfileStatus);
-router.post('/upload', upload.single('file'), profileController.uploadFile);
+// Routes sécurisées par middleware
+router.get('/status', authMiddleware, profileController.getProfileStatus);
+router.get('/', authMiddleware, profileController.getProfile);
+router.post('/save', authMiddleware, profileController.saveProfile);
+router.post('/complete', authMiddleware, profileController.completeProfile);
+router.post('/upload', authMiddleware, upload.single('file'), profileController.uploadFile);
+
+router.get('/tutor/:tutorId', profileController.getTutorById);
 
 module.exports = router;

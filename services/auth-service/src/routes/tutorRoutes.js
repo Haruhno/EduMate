@@ -2,8 +2,11 @@ const express = require('express');
 const { Op, Sequelize } = require('sequelize');
 const router = express.Router();
 const { ProfileTutor, User } = require('../models/associations');
+const authMiddleware = require('../middlewares/authMiddleware');
 
-router.post('/seed', async (req, res) => {
+
+// routes/tutorRoutes.js - Partie seed corrigée
+router.post('/seed', authMiddleware, async (req, res) => {
   try {
     const { count = 20 } = req.body;
     
@@ -106,7 +109,7 @@ router.post('/seed', async (req, res) => {
 });
 
 // Route pour forcer la création (écrase les existants)
-router.post('/seed-force', async (req, res) => {
+router.post('/seed-force', authMiddleware, async (req, res) => {
   try {
     const { count = 20 } = req.body;
     
@@ -208,7 +211,7 @@ router.post('/seed-force', async (req, res) => {
 });
 
 // routes/tutorRoutes.js - VERSION CORRIGÉE
-router.get('/search', async (req, res) => {
+router.get('/search', authMiddleware, async (req, res) => {
   try {
     const { 
       page = 1, 
@@ -336,7 +339,7 @@ router.get('/search', async (req, res) => {
 });
 
 // Récupérer tous les tuteurs (sans pagination)
-router.get('/', async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
     const tutors = await ProfileTutor.findAll({
       where: { isVerified: true, isCompleted: true },
@@ -357,6 +360,46 @@ router.get('/', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des tuteurs'
+    });
+  }
+});
+
+// routes/tutorRoutes.js - AJOUTEZ CETTE ROUTE
+router.get('/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const tutor = await ProfileTutor.findOne({
+      where: { 
+        id,
+        isVerified: true,
+        isCompleted: true 
+      },
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['id', 'firstName', 'lastName', 'email']
+      }]
+    });
+
+    if (!tutor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tuteur non trouvé'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Tuteur récupéré avec succès',
+      data: tutor
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération du tuteur:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération du tuteur',
+      error: error.message
     });
   }
 });

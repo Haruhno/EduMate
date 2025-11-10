@@ -1,11 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const authMiddleware = require('../middlewares/authMiddleware');
 
-// Route d'inscription
+// Routes publiques
 router.post('/register', authController.register);
-
-// Route de connexion
 router.post('/login', authController.login);
 
 

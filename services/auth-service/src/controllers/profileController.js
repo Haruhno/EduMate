@@ -5,6 +5,44 @@ const path = require('path');
 
 class ProfileController {
   // Sauvegarder le profil
+   async saveProfile(req, res) {
+    try {
+
+      const user = req.user;
+
+      const { profileData, currentStep } = req.body;
+
+      // Inclure l'étape actuelle dans les données du profil
+      const profileDataWithStep = {
+        ...profileData,
+        currentStep: currentStep || 0
+      };
+
+      const profile = await profileService.createOrUpdateProfile(
+        user.id, 
+        user.role, 
+        profileDataWithStep
+      );
+
+      res.json({
+        success: true,
+        message: 'Profil sauvegardé avec succès',
+        data: {
+          profile,
+          currentStep,
+          completionPercentage: profile.completionPercentage
+        }
+      });
+    } catch (error) {
+      console.error('Erreur sauvegarde profil:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  // Récupérer le profil (inclut les diplômes)
  // controllers/profileController.js - méthode saveProfile
 async saveProfile(req, res) {
   try {
@@ -88,15 +126,9 @@ async saveProfile(req, res) {
   // Récupérer le profil 
   async getProfile(req, res) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) {
-        return res.status(401).json({
-          success: false,
-          message: 'Token manquant'
-        });
-      }
 
-      const user = await authService.validateToken(token);
+      const user = req.user;
+
       const profile = await profileService.getProfile(user.id, user.role);
 
       res.json({
@@ -137,15 +169,9 @@ async saveProfile(req, res) {
   // Finaliser le profil
   async completeProfile(req, res) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) {
-        return res.status(401).json({
-          success: false,
-          message: 'Token manquant'
-        });
-      }
 
-      const user = await authService.validateToken(token);
+      const user = req.user;
+
       const profile = await profileService.completeProfile(user.id, user.role);
 
       res.json({
@@ -164,15 +190,8 @@ async saveProfile(req, res) {
   // Vérifier le statut du profil
   async getProfileStatus(req, res) {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) {
-        return res.status(401).json({
-          success: false,
-          message: 'Token manquant'
-        });
-      }
+      const user = req.user;
 
-      const user = await authService.validateToken(token);
       const hasProfile = await profileService.profileExists(user.id, user.role);
       
       let profile = null;
@@ -196,6 +215,45 @@ async saveProfile(req, res) {
     } catch (error) {
       console.error('Erreur statut profil:', error);
       
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  // Dans profileController.js - AJOUTER
+  async getTutorById(req, res) {
+    try {
+      const { tutorId } = req.params;
+
+      const { ProfileTutor, User } = require('../models/associations');
+      
+      const tutor = await ProfileTutor.findOne({
+        where: { 
+          id: tutorId
+        },
+        include: [{
+          model: User,
+          as: 'user',
+          attributes: ['id', 'firstName', 'lastName', 'email']
+        }]
+      });
+
+      if (!tutor) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tuteur non trouvé'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Tuteur récupéré avec succès',
+        data: tutor
+      });
+    } catch (error) {
+      console.error('Erreur récupération tuteur:', error);
       res.status(400).json({
         success: false,
         message: error.message

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styles from './TutorCard.module.css';
 
 interface Tutor {
@@ -21,6 +22,7 @@ interface TutorCardProps {
 
 const TutorCard: React.FC<TutorCardProps> = ({ tutor }) => {
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
+  const navigate = useNavigate();
 
   const getBadgeClass = (badge: string): string => {
     switch (badge) {
@@ -32,6 +34,10 @@ const TutorCard: React.FC<TutorCardProps> = ({ tutor }) => {
       case 'Mentor': return styles.badgeMentor;
       default: return styles.badgeFree;
     }
+  };
+
+  const goToProfile = () => {
+    navigate(`/tuteur/${tutor.id}`);
   };
 
   return (
@@ -86,7 +92,12 @@ const TutorCard: React.FC<TutorCardProps> = ({ tutor }) => {
           <div className={styles.tutorPrice}>
             {tutor.price}<span className={styles.priceUnit}>/heure</span>
           </div>
-          <button className={styles.profileButton}>Voir le profil</button>
+          <button
+            onClick={goToProfile}
+            className={styles.profileButton}
+          >
+            Voir le profil
+          </button>
         </div>
       </div>
     </div>

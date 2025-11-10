@@ -16,11 +16,8 @@ const ProfileTutor = sequelize.define('ProfileTutor', {
     }
   },
   
-  hourlyRate: {
-    type: DataTypes.DECIMAL(10, 2),
-    defaultValue: 30.00,
-    allowNull: false
-  },
+  // SUPPRIMER hourlyRate d'ici - il sera dans Annonce
+  
   rating: {
     type: DataTypes.DECIMAL(3, 2),
     defaultValue: 0.00,
@@ -73,6 +70,7 @@ const ProfileTutor = sequelize.define('ProfileTutor', {
     defaultValue: [],
   },
   
+  // Disponibilité générale (pour le profil)
   // Disponibilité 
   availability: {
     type: DataTypes.JSON,
@@ -88,12 +86,11 @@ const ProfileTutor = sequelize.define('ProfileTutor', {
     defaultValue: []
   },
   
-  // Localisation
+  // Localisation générale
   location: {
     type: DataTypes.JSON,
     defaultValue: {
       address: '',
-      radius: 8,
       city: '',
       coordinates: { lat: 0, lng: 0 }
     }
