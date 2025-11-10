@@ -3,12 +3,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import styles from './DashboardPage.module.css';
 import profileService from '../../services/profileService';
 import authService from '../../services/authService';
+import annonceService from '../../services/annonceService';
+import EditAnnonceForm from '../../components/EditAnnonceForm/EditAnnonceForm';
+import type { AnnonceFromDB } from '../../services/annonceService';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [profileStatus, setProfileStatus] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [annonces, setAnnonces] = useState<AnnonceFromDB[]>([]);
+  const [editingAnnonce, setEditingAnnonce] = useState<AnnonceFromDB | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -21,6 +26,18 @@ const DashboardPage: React.FC = () => {
           const statusResponse = await profileService.getProfileStatus();
           console.log('📊 Statut profil reçu:', statusResponse);
           setProfileStatus(statusResponse.data);
+          
+          // Charger les annonces si c'est un tuteur
+          if (currentUser.role === 'tutor') {
+            try {
+              const annoncesResponse = await annonceService.getMyAnnonces();
+              console.log('📚 Annonces reçues:', annoncesResponse);
+              setAnnonces(annoncesResponse.data || []);
+            } catch (error) {
+              console.error('Erreur lors du chargement des annonces:', error);
+              setAnnonces([]);
+            }
+          }
           
           // Debug: Vérifier aussi le profil complet
           const fullProfile = await profileService.getProfile();
@@ -47,6 +64,21 @@ const DashboardPage: React.FC = () => {
     });
   };
 
+  const handleEditAnnonce = (annonce: AnnonceFromDB) => {
+    setEditingAnnonce(annonce);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingAnnonce(null);
+  };
+
+  const handleUpdateAnnonce = (updatedAnnonce: AnnonceFromDB) => {
+    setAnnonces(prev => prev.map(annonce => 
+      annonce.id === updatedAnnonce.id ? updatedAnnonce : annonce
+    ));
+    setEditingAnnonce(null);
+  };
+
   if (isLoading) {
     return (
       <div className={styles.container}>
@@ -65,7 +97,7 @@ const DashboardPage: React.FC = () => {
       {/* En-tête de bienvenue */}
       <div className={styles.welcomeSection}>
         <h1 className={styles.welcomeTitle}>
-          Bonjour, {user?.firstName} {user?.lastName} 👋
+          Bonjour, {user?.firstName} {user?.lastName}
         </h1>
         <p className={styles.welcomeSubtitle}>
           Bienvenue sur votre tableau de bord {isTutor ? 'Tuteur' : 'Étudiant'}
@@ -204,6 +236,70 @@ const DashboardPage: React.FC = () => {
         </div>
       </div>
 
+      {/* NOUVEAU BLOC : Mes Annonces (pour les tuteurs) */}
+      {isTutor && (
+        <div className={styles.annoncesSection}>
+          <h2 className={styles.sectionTitle}>Mes annonces de cours</h2>
+          
+          {annonces.length > 0 ? (
+            <div className={styles.annoncesGrid}>
+              {annonces.map((annonce) => (
+                <div key={annonce.id} className={styles.annonceCard}>
+                  <div className={styles.annonceHeader}>
+                    <h3 className={styles.annonceTitle}>{annonce.title}</h3>
+                    <span className={`${styles.statusBadge} ${annonce.isActive ? styles.active : styles.inactive}`}>
+                      {annonce.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  
+                  <div className={styles.annonceDetails}>
+                    <div className={styles.detailItem}>
+                      <span className={styles.detailLabel}>Matière:</span>
+                      <span className={styles.detailValue}>{annonce.subject}</span>
+                    </div>
+                    <div className={styles.detailItem}>
+                      <span className={styles.detailLabel}>Niveau:</span>
+                      <span className={styles.detailValue}>{annonce.level}</span>
+                    </div>
+                    <div className={styles.detailItem}>
+                      <span className={styles.detailLabel}>Tarif:</span>
+                      <span className={styles.detailValue}>{annonce.hourlyRate}€/h</span>
+                    </div>
+                    <div className={styles.detailItem}>
+                      <span className={styles.detailLabel}>Mode:</span>
+                      <span className={styles.detailValue}>{annonce.teachingMode}</span>
+                    </div>
+                  </div>
+
+                  {annonce.description && (
+                    <p className={styles.annonceDescription}>
+                      {annonce.description}
+                    </p>
+                  )}
+
+                  <div className={styles.annonceActions}>
+                    <button
+                      onClick={() => handleEditAnnonce(annonce)}
+                      className={styles.editButton}
+                    >
+                      Modifier
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.noAnnonces}>
+              <h3>Vous n'avez pas encore créé d'annonce</h3>
+              <p>Créez votre première annonce pour commencer à recevoir des demandes de cours</p>
+              <Link to="/creer-annonce" className={styles.createAnnonceButton}>
+                Créer une annonce
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Prochaines étapes pour les nouveaux utilisateurs */}
       {!hasCompleteProfile && (
         <div className={styles.nextSteps}>
@@ -246,6 +342,15 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de modification d'annonce */}
+      {editingAnnonce && (
+        <EditAnnonceForm
+          annonce={editingAnnonce}
+          onCancel={handleCancelEdit}
+          onUpdate={handleUpdateAnnonce}
+        />
       )}
     </div>
   );

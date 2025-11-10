@@ -1,15 +1,14 @@
-// app.js (votre fichier principal)
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
 const sequelize = require('./config/database');
-// Importez les associations pour que les modèles soient enregistrés
 require('./models/associations');
 
 const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const tutorRoutes = require('./routes/tutorRoutes');
+const annonceRoutes = require('./routes/annonceRoutes'); // NOUVEAU
 
 const app = express();
 
@@ -24,11 +23,8 @@ app.use('/uploads', express.static('uploads'));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
-
-
-// Après les autres routes
-
 app.use('/api/tutors', tutorRoutes);
+app.use('/api/annonces', annonceRoutes); // NOUVEAU
 
 // Route de santé
 app.get('/health', (req, res) => {
@@ -37,7 +33,9 @@ app.get('/health', (req, res) => {
     service: 'Auth Service',
     routes: [
       '/api/auth',
-      '/api/profile', 
+      '/api/profile',
+      '/api/tutors',
+      '/api/annonces' // NOUVEAU
     ]
   });
 });
@@ -53,7 +51,6 @@ app.use((error, req, res, next) => {
 
 const PORT = process.env.PORT || 3001;
 
-// Synchronisation de la base de données et démarrage du serveur
 sequelize.sync({ alter: true })
   .then(() => {
     console.log('Base de données synchronisée');
@@ -61,13 +58,16 @@ sequelize.sync({ alter: true })
     console.log('   - users');
     console.log('   - profile_tutors'); 
     console.log('   - profile_students');
-    console.log('   - diplomas'); 
+    console.log('   - diplomas');
+    console.log('   - annonces'); // NOUVEAU
     
     app.listen(PORT, () => {
       console.log(`Auth Service démarré sur le port ${PORT}`);
       console.log('Routes disponibles:');
       console.log('   - /api/auth');
       console.log('   - /api/profile');
+      console.log('   - /api/tutors');
+      console.log('   - /api/annonces'); // NOUVEAU
     });
   })
   .catch(error => {

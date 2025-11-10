@@ -1,29 +1,37 @@
-// TutorSearchPage.tsx - VERSION CORRIGÉE SANS BOUTON TEST
 import React, { useState, useEffect, useRef } from 'react';
 import styles from './TutorSearchPage.module.css';
 import TutorCard from '../../components/TutorCard/TutorCard';
 import SearchBar from '../../components/SearchBar/SearchBar';
 import FiltersSidebar from '../../components/FiltersSideBar/FiltersSidebar';
-import tutorService from '../../services/tutorService';
-import type { TutorFromDB } from '../../services/tutorService';
+import annonceService from '../../services/annonceService';
+import type { AnnonceFromDB } from '../../services/annonceService';
 
-
-export interface Tutor {
+export interface Annonce {
   id: string;
-  name: string;
+  tutorId: string;
+  title: string;
+  description: string;
   subject: string;
-  rating: number;
-  reviews: number;
-  price: string;
-  emoji: string;
-  status: string;
-  badge: string;
-  specialties: string[];
-  gradient: string;
-  bio?: string;
-  experience?: string;
-  educationLevel?: string;
-  profilePicture?: string;
+  level: string;
+  hourlyRate: number;
+  teachingMode: string;
+  location: any;
+  availability: any;
+  tutor: {
+    id: string;
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    };
+    rating: number;
+    reviewsCount: number;
+    profilePicture?: string;
+    bio?: string;
+    experience?: string;
+    specialties: string[];
+  };
 }
 
 export interface Filters {
@@ -45,7 +53,7 @@ const TutorSearchPage: React.FC = () => {
     location: ''
   });
 
-  const [tutors, setTutors] = useState<Tutor[]>([]);
+  const [annonces, setAnnonces] = useState<Annonce[]>([]);
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -53,10 +61,10 @@ const TutorSearchPage: React.FC = () => {
   const [filteredSubjects, setFilteredSubjects] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalTutors, setTotalTutors] = useState(0);
+  const [totalAnnonces, setTotalAnnonces] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const tutorsPerPage = 9;
+  const annoncesPerPage = 9;
   
   const allSubjects: string[] = [
     'Mathématiques', 'Physique', 'Chimie', 'Français', 'Anglais',
@@ -77,65 +85,35 @@ const TutorSearchPage: React.FC = () => {
   const teachingModes: string[] = ['En ligne', 'En présentiel', 'Les deux'];
   const availabilityOptions: string[] = ['Disponible maintenant', 'Cette semaine', 'Ce mois-ci'];
 
-  // Fonction pour mapper les données de la BDD vers le format frontend
-  const mapTutorFromDB = (tutor: TutorFromDB): Tutor => {
-    const availability = typeof tutor.availability === 'string' 
-      ? JSON.parse(tutor.availability) 
-      : tutor.availability;
-    
+  // Fonction pour mapper les annonces vers le format Tutor
+  const mapAnnonceToTutor = (annonce: AnnonceFromDB): any => {
     return {
-      id: tutor.id,
-      name: `${tutor.user?.firstName || ''} ${tutor.user?.lastName || ''}`.trim() || 'Tuteur Expert',
-      subject: tutor.specialties?.[0] || 'Tutorat général',
-      rating: tutor.rating || 4,
-      reviews: tutor.reviewsCount || 0,
-      price: `€${tutor.hourlyRate || 30}`,
+      // Utiliser l'ID du profil tuteur (ProfileTutor.id) en priorité.
+      // Ne pas utiliser user.id ni l'id de l'annonce comme identifiant principal du tutor.
+      id: annonce.tutor?.id || annonce.tutorId, // <-- profile_tutors.id preferred
+      tutorId: annonce.tutorId, // conserve l'ID de l'annonce si besoin
+      name: `${annonce.tutor?.user?.firstName || ''} ${annonce.tutor?.user?.lastName || ''}`.trim() || 'Tuteur Expert',
+      subject: annonce.subject || 'Tutorat général',
+      rating: annonce.tutor?.rating || 4,
+      reviews: annonce.tutor?.reviewsCount || 0,
+      price: `€${annonce.hourlyRate || 30}`,
       emoji: "👨‍🏫",
-      status: availability?.online ? "En ligne" : "Disponible",
-      badge: getBadgeFromRating(tutor.rating || 4),
-      specialties: tutor.specialties || [],
-      gradient: getGradientFromSpecialties(tutor.specialties || []),
-      bio: tutor.bio,
-      experience: tutor.experience,
-      educationLevel: tutor.educationLevel,
-      profilePicture: tutor.profilePicture
-    };
-  };
-
-  // Récupérer les tuteurs avec pagination et filtres
-  const fetchTutors = async (page: number = 1, subject?: string) => {
-    setLoading(true);
-    try {
-      const response = await tutorService.searchTutors({
-        page,
-        limit: tutorsPerPage,
-        subject: subject || searchQuery,
-        level: filters.level,
-        minRating: filters.rating,
-        maxPrice: filters.priceRange[1],
-        teachingMode: filters.teachingMode,
-        location: filters.location
-      });
-
-      if (response.success) {
-        const dbTutors = response.data.tutors.map(mapTutorFromDB);
-        
-        console.log('Tutors from DB:', dbTutors);
-        
-        setTutors(dbTutors);
-        setTotalPages(response.data.totalPages || 1);
-        setTotalTutors(response.data.totalTutors || 0);
-        setCurrentPage(page);
+      status: "Disponible",
+      badge: getBadgeFromRating(annonce.tutor?.rating || 4),
+      specialties: annonce.tutor?.specialties || [annonce.subject],
+      gradient: getGradientFromSubject(annonce.subject),
+      bio: annonce.tutor?.bio,
+      experience: annonce.tutor?.experience,
+      educationLevel: annonce.level,
+      profilePicture: annonce.tutor?.profilePicture,
+      // Données supplémentaires de l'annonce
+      annonceData: {
+        title: annonce.title,
+        description: annonce.description,
+        teachingMode: annonce.teachingMode,
+        location: annonce.location
       }
-    } catch (error) {
-      console.error('Erreur lors de la récupération des tuteurs:', error);
-      setTutors([]);
-      setTotalPages(1);
-      setTotalTutors(0);
-      setCurrentPage(1);
-    } finally {
-      setLoading(false);
-    }
+    };
   };
 
   // Helper functions
@@ -146,7 +124,7 @@ const TutorSearchPage: React.FC = () => {
     return "Free Trial";
   };
 
-  const getGradientFromSpecialties = (specialties: string[]): string => {
+  const getGradientFromSubject = (subject: string): string => {
     const gradients = [
       "from-blue-500 to-indigo-500",
       "from-green-500 to-emerald-600", 
@@ -162,11 +140,48 @@ const TutorSearchPage: React.FC = () => {
     const mathSubjects = ['Mathématiques', 'Algèbre', 'Géométrie', 'Analyse', 'Statistiques'];
     const languageSubjects = ['Français', 'Anglais', 'Espagnol', 'Allemand', 'Italien'];
     
-    if (specialties.some(s => scienceSubjects.includes(s))) return gradients[0];
-    if (specialties.some(s => mathSubjects.includes(s))) return gradients[1];
-    if (specialties.some(s => languageSubjects.includes(s))) return gradients[2];
+    if (scienceSubjects.includes(subject)) return gradients[0];
+    if (mathSubjects.includes(subject)) return gradients[1];
+    if (languageSubjects.includes(subject)) return gradients[2];
     
     return gradients[Math.floor(Math.random() * gradients.length)];
+  };
+
+  // Récupérer les annonces avec pagination et filtres
+  const fetchAnnonces = async (page: number = 1, subject?: string) => {
+    setLoading(true);
+    try {
+      const response = await annonceService.searchAnnonces({
+        page,
+        limit: annoncesPerPage,
+        subject: subject || searchQuery,
+        level: filters.level,
+        minRating: filters.rating,
+        maxPrice: filters.priceRange[1],
+        minPrice: filters.priceRange[0],
+        teachingMode: filters.teachingMode,
+        location: filters.location
+      });
+
+      if (response.success) {
+        const dbAnnonces = response.data.annonces.map(mapAnnonceToTutor);
+        
+        console.log('Annonces from DB:', dbAnnonces);
+        
+        setAnnonces(dbAnnonces);
+        setTotalPages(response.data.totalPages || 1);
+        setTotalAnnonces(response.data.totalAnnonces || 0);
+        setCurrentPage(page);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération des annonces:', error);
+      setAnnonces([]);
+      setTotalPages(1);
+      setTotalAnnonces(0);
+      setCurrentPage(1);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Gestion des suggestions de recherche
@@ -196,7 +211,7 @@ const TutorSearchPage: React.FC = () => {
 
   // Recherche principale
   const handleSearch = async (): Promise<void> => {
-    await fetchTutors(1, searchQuery);
+    await fetchAnnonces(1, searchQuery);
   };
 
   const handleReset = (): void => {
@@ -210,14 +225,14 @@ const TutorSearchPage: React.FC = () => {
     });
     setSearchQuery('');
     setCurrentPage(1);
-    fetchTutors(1);
+    fetchAnnonces(1);
   };
 
   const handleSubjectSelect = (subject: string): void => {
     setSearchQuery(subject);
     setShowSuggestions(false);
     setCurrentPage(1);
-    fetchTutors(1, subject);
+    fetchAnnonces(1, subject);
   };
 
   const handleQuickSearch = (): void => {
@@ -241,13 +256,13 @@ const TutorSearchPage: React.FC = () => {
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
-      fetchTutors(page, searchQuery);
+      fetchAnnonces(page, searchQuery);
     }
   };
 
   // Chargement initial
   useEffect(() => {
-    fetchTutors(1);
+    fetchAnnonces(1);
   }, []);
 
   // Générer les numéros de page
@@ -274,9 +289,8 @@ const TutorSearchPage: React.FC = () => {
       <div className={styles.searchHeader}>
         <div className={styles.headerText}>
           <h1>Trouvez votre tuteur</h1>
-          <p>Des tuteurs experts pour vous accompagner dans votre réussite</p>
+          <p>Des annonces de cours personnalisées pour vous accompagner dans votre réussite</p>
         </div>
-        {/* Bouton de test supprimé */}
       </div>
 
       <div className={`${styles.container} ${styles.mainContainer}`}>
@@ -330,9 +344,9 @@ const TutorSearchPage: React.FC = () => {
 
             <div className={styles.resultsHeader}>
               <div className={styles.resultsInfo}>
-                <h2 className={styles.resultsCount}>{totalTutors} tuteurs trouvés</h2>
+                <h2 className={styles.resultsCount}>{totalAnnonces} annonces trouvées</h2>
                 <p className={styles.resultsSubtitle}>
-                  {searchQuery ? `Résultats pour "${searchQuery}"` : 'Tous les tuteurs disponibles'}
+                  {searchQuery ? `Résultats pour "${searchQuery}"` : 'Toutes les annonces disponibles'}
                   {currentPage > 1 && ` - Page ${currentPage}`}
                 </p>
               </div>
@@ -348,7 +362,7 @@ const TutorSearchPage: React.FC = () => {
 
             {loading ? (
               <div className={styles.tutorsGrid}>
-                {[...Array(tutorsPerPage)].map((_, i: number) => (
+                {[...Array(annoncesPerPage)].map((_, i: number) => (
                   <div key={i} className={styles.skeletonLoader}>
                     <div className={styles.skeletonAvatar}></div>
                     <div className={`${styles.skeletonText} ${styles.short}`}></div>
@@ -357,11 +371,11 @@ const TutorSearchPage: React.FC = () => {
                   </div>
                 ))}
               </div>
-            ) : tutors.length > 0 ? (
+            ) : annonces.length > 0 ? (
               <>
                 <div className={styles.tutorsGrid}>
-                  {tutors.map((tutor: Tutor) => (
-                    <TutorCard key={tutor.id} tutor={tutor} />
+                  {annonces.map((annonce: any) => (
+                    <TutorCard key={annonce.id} tutor={annonce} />
                   ))}
                 </div>
 
@@ -397,7 +411,7 @@ const TutorSearchPage: React.FC = () => {
               </>
             ) : (
               <div className={styles.noResults}>
-                <h3>Aucun tuteur trouvé</h3>
+                <h3>Aucune annonce trouvée</h3>
                 <p>Essayez de modifier vos critères de recherche ou vos filtres.</p>
                 <div className={styles.noResultsActions}>
                   <button 
@@ -406,7 +420,6 @@ const TutorSearchPage: React.FC = () => {
                   >
                     Réinitialiser les filtres
                   </button>
-                  {/* Bouton de test supprimé ici aussi */}
                 </div>
               </div>
             )}

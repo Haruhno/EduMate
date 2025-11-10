@@ -141,6 +141,45 @@ class ProfileController {
     }
   }
 
+  // Dans profileController.js - AJOUTER
+  async getTutorById(req, res) {
+    try {
+      const { tutorId } = req.params;
+
+      const { ProfileTutor, User } = require('../models/associations');
+      
+      const tutor = await ProfileTutor.findOne({
+        where: { 
+          id: tutorId
+        },
+        include: [{
+          model: User,
+          as: 'user',
+          attributes: ['id', 'firstName', 'lastName', 'email']
+        }]
+      });
+
+      if (!tutor) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tuteur non trouvé'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Tuteur récupéré avec succès',
+        data: tutor
+      });
+    } catch (error) {
+      console.error('Erreur récupération tuteur:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
   // Configuration de multer pour l'upload de fichiers
   upload = multer({
     storage: multer.diskStorage({

@@ -8,6 +8,8 @@ export interface MigrationData {
     online: boolean;
     inPerson: boolean;
   };
+  bio?: string;
+  level?: string;
 }
 
 class MigrationService {

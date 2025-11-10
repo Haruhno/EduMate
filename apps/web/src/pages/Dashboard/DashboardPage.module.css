@@ -299,3 +299,209 @@
     align-items: center;
   }
 }
+
+/* ===== SECTION MES ANNONCES ===== */
+.annoncesSection {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-bottom: 2rem;
+}
+
+.annoncesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.annonceCard {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.annonceCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-color: #fbbf24;
+}
+
+.annonceHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.annonceTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+  font-family: 'DMSans', sans-serif;
+  line-height: 1.3;
+}
+
+.statusBadge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: 'DMSans', sans-serif;
+  white-space: nowrap;
+}
+
+.statusBadge.active {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.statusBadge.inactive {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.annonceDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.detailItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.detailItem:last-child {
+  border-bottom: none;
+}
+
+.detailLabel {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+  font-family: 'DMSans', sans-serif;
+}
+
+.detailValue {
+  font-size: 0.85rem;
+  color: #333;
+  font-weight: 600;
+  font-family: 'DMSans', sans-serif;
+}
+
+.annonceDescription {
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.4;
+  margin: 1rem 0;
+  font-family: 'DMSans', sans-serif;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.annonceActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.editButton {
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'DMSans', sans-serif;
+}
+
+.editButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
+}
+
+.noAnnonces {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px dashed #dee2e6;
+}
+
+.noAnnonces h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 0.5rem 0;
+  font-family: 'DMSans', sans-serif;
+}
+
+.noAnnonces p {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0 0 1.5rem 0;
+  font-family: 'DMSans', sans-serif;
+}
+
+.createAnnonceButton {
+  display: inline-block;
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  text-decoration: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  font-family: 'DMSans', sans-serif;
+}
+
+.createAnnonceButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .annoncesSection {
+    padding: 1.5rem;
+  }
+  
+  .annoncesGrid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .annonceCard {
+    padding: 1.25rem;
+  }
+  
+  .annonceHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .detailItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+}

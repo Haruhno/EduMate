@@ -39,4 +39,6 @@ router.post('/save', authMiddleware, profileController.saveProfile);
 router.post('/complete', authMiddleware, profileController.completeProfile);
 router.post('/upload', authMiddleware, upload.single('file'), profileController.uploadFile);
 
+router.get('/tutor/:tutorId', profileController.getTutorById);
+
 module.exports = router;

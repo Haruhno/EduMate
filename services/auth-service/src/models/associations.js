@@ -3,6 +3,7 @@ const ProfileTutor = require('./ProfileTutor');
 const ProfileStudent = require('./ProfileStudent');
 const Diploma = require('./Diploma');
 const Experience = require('./Experience');
+const Annonce = require('./Annonce');
 
 // Associations User - Profil
 User.hasOne(ProfileTutor, { 
@@ -39,7 +40,7 @@ Diploma.belongsTo(User, {
   as: 'user'
 });
 
-// NOUVELLE ASSOCIATION : User - Expériences
+// Associations User - Expériences
 User.hasMany(Experience, {
   foreignKey: 'userId',
   as: 'experiences',
@@ -51,10 +52,30 @@ Experience.belongsTo(User, {
   as: 'user'
 });
 
+// NOUVELLE ASSOCIATION : ProfileTutor - Annonces
+ProfileTutor.hasMany(Annonce, {
+  foreignKey: 'tutorId',
+  as: 'annonces',
+  onDelete: 'CASCADE'
+});
+
+Annonce.belongsTo(ProfileTutor, {
+  foreignKey: 'tutorId',
+  as: 'tutor'
+});
+
+// Association Annonce - User via ProfileTutor
+Annonce.belongsTo(User, {
+  through: ProfileTutor,
+  foreignKey: 'tutorId',
+  as: 'user'
+});
+
 module.exports = {
   User,
   ProfileTutor,
   ProfileStudent,
   Diploma,
-  Experience
+  Experience,
+  Annonce
 };

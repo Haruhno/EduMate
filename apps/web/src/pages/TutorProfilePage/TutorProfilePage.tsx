@@ -2,37 +2,59 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import styles from './TutorProfilePage.module.css';
 import tutorService from '../../services/tutorService';
-import type { Tutor } from '../TutorSearchPage/TutorSearchPage';
+import annonceService from '../../services/annonceService';
 import type { TutorFromDB } from '../../services/tutorService';
+import type { AnnonceFromDB } from '../../services/annonceService';
+
+// Interface Tutor locale
+interface Tutor {
+  id: string;
+  name: string;
+  subject: string;
+  rating: number;
+  reviews: number;
+  price: string;
+  emoji: string;
+  status: string;
+  badge: string;
+  specialties: string[];
+  gradient: string;
+  bio?: string;
+  experience?: string;
+  educationLevel?: string;
+  profilePicture?: string;
+}
 
 const TutorProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [tutor, setTutor] = useState<Tutor | null>(null);
+  const [annonces, setAnnonces] = useState<AnnonceFromDB[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'about' | 'reviews' | 'schedule'>('about');
+  const [activeTab, setActiveTab] = useState<'about' | 'annonces' | 'reviews'>('about');
+  const [minPrice, setMinPrice] = useState<number>(0);
 
-  const mapTutorFromDB = (tutor: TutorFromDB): Tutor => {
-    const availability = typeof tutor.availability === 'string' 
-      ? JSON.parse(tutor.availability) 
-      : tutor.availability;
+  const mapTutorFromDB = (tutorData: TutorFromDB): Tutor => {
+    const availability = typeof tutorData.availability === 'string' 
+      ? JSON.parse(tutorData.availability) 
+      : tutorData.availability;
     
     return {
-      id: tutor.id,
-      name: `${tutor.user?.firstName || ''} ${tutor.user?.lastName || ''}`.trim() || 'Tuteur Expert',
-      subject: tutor.specialties?.[0] || 'Tutorat général',
-      rating: tutor.rating || 4,
-      reviews: tutor.reviewsCount || 0,
-      price: `€${tutor.hourlyRate || 30}`,
+      id: tutorData.id,
+      name: `${tutorData.user?.firstName || ''} ${tutorData.user?.lastName || ''}`.trim() || 'Tuteur Expert',
+      subject: tutorData.specialties?.[0] || 'Tutorat général',
+      rating: tutorData.rating || 4,
+      reviews: tutorData.reviewsCount || 0,
+      price: `À partir de €${minPrice || 30}`,
       status: availability?.online ? "En ligne" : "Disponible",
       emoji: "👨‍🏫",
-      badge: getBadgeFromRating(tutor.rating || 4),
-      specialties: tutor.specialties || [],
-      gradient: getGradientFromSpecialties(tutor.specialties || []),
-      bio: tutor.bio,
-      experience: tutor.experience,
-      educationLevel: tutor.educationLevel,
-      profilePicture: tutor.profilePicture
+      badge: getBadgeFromRating(tutorData.rating || 4),
+      specialties: tutorData.specialties || [],
+      gradient: getGradientFromSpecialties(tutorData.specialties || []),
+      bio: tutorData.bio,
+      experience: tutorData.experience,
+      educationLevel: tutorData.educationLevel,
+      profilePicture: tutorData.profilePicture
     };
   };
 
@@ -48,22 +70,45 @@ const TutorProfilePage: React.FC = () => {
     const mathSubjects = ['Mathématiques', 'Algèbre', 'Géométrie', 'Analyse', 'Statistiques'];
     const languageSubjects = ['Français', 'Anglais', 'Espagnol', 'Allemand', 'Italien'];
     
-    if (specialties.some(s => scienceSubjects.includes(s))) return "science-gradient";
-    if (specialties.some(s => mathSubjects.includes(s))) return "math-gradient";
-    if (specialties.some(s => languageSubjects.includes(s))) return "language-gradient";
+    if (specialties.some((s: string) => scienceSubjects.includes(s))) return "science-gradient";
+    if (specialties.some((s: string) => mathSubjects.includes(s))) return "math-gradient";
+    if (specialties.some((s: string) => languageSubjects.includes(s))) return "language-gradient";
     
     return "default-gradient";
   };
 
+  // Dans TutorProfilePage.tsx - CORRIGER le useEffect
   useEffect(() => {
-    const fetchTutorProfile = async () => {
+    const fetchTutorData = async () => {
       if (!id) return;
       
       try {
         setLoading(true);
-        const response = await tutorService.getTutorById(id);
-        if (response.success && response.data) {
-          const mappedTutor = mapTutorFromDB(response.data);
+        
+        // Récupérer le profil du tuteur (service gère userId/profile id fallbacks)
+        const tutorResponse = await tutorService.getTutorById(id);
+        if (tutorResponse.success && tutorResponse.data) {
+          // IMPORTANT: utiliser l'id interne du profil tuteur retourné (tutorResponse.data.id)
+          // pour récupérer les annonces associées (la table annonces référence profile_tutors.id)
+          const profileTutorId = tutorResponse.data.id;
+          const annoncesResponse = await annonceService.getAnnoncesByTutor(profileTutorId);
+
+          let calculatedMinPrice = 30; // Prix par défaut
+          
+          if (annoncesResponse.success && annoncesResponse.data.length > 0) {
+            setAnnonces(annoncesResponse.data);
+            
+            // Calculer le prix minimum
+            const prices = annoncesResponse.data.map((a: AnnonceFromDB) => a.hourlyRate);
+            calculatedMinPrice = Math.min(...prices);
+          }
+          
+          setMinPrice(calculatedMinPrice);
+          
+          // Mapper le tuteur avec le prix minimum calculé
+          const mappedTutor = mapTutorFromDB(tutorResponse.data);
+          mappedTutor.price = `À partir de €${calculatedMinPrice}`;
+          
           setTutor(mappedTutor);
         } else {
           setTutor(null);
@@ -76,15 +121,15 @@ const TutorProfilePage: React.FC = () => {
       }
     };
 
-    fetchTutorProfile();
-  }, [id]);
+    fetchTutorData();
+  }, [id]); // Retenir id seulement
 
   const handleContact = () => {
     console.log('Contacter le tuteur:', tutor?.id);
   };
 
-  const handleBookSession = () => {
-    console.log('Réserver avec le tuteur:', tutor?.id);
+  const handleBookSession = (annonceId?: string) => {
+    console.log('Réserver avec le tuteur:', tutor?.id, 'Annonce:', annonceId);
   };
 
   if (loading) {
@@ -141,7 +186,7 @@ const TutorProfilePage: React.FC = () => {
                   <img src={tutor.profilePicture} alt={tutor.name} className={styles.avatarImage} />
                 ) : (
                   <span className={styles.avatarFallback}>
-                    {tutor.name.split(' ').map(n => n[0]).join('')}
+                    {tutor.name.split(' ').map((n: string) => n[0]).join('')}
                   </span>
                 )}
                 <div className={styles.statusIndicator}>
@@ -158,7 +203,7 @@ const TutorProfilePage: React.FC = () => {
               <div className={styles.ratingSection}>
                 <div className={styles.rating}>
                   <div className={styles.stars}>
-                    {'★'.repeat(5).split('').map((star, index) => (
+                    {'★'.repeat(5).split('').map((star: string, index: number) => (
                       <span 
                         key={index} 
                         className={`${styles.star} ${index < Math.floor(tutor.rating) ? styles.filled : ''}`}
@@ -181,7 +226,7 @@ const TutorProfilePage: React.FC = () => {
 
               <div className={styles.actionButtons}>
                 <button 
-                  onClick={handleBookSession}
+                  onClick={() => handleBookSession()}
                   className={styles.primaryButton}
                 >
                   Réserver un cours
@@ -196,8 +241,8 @@ const TutorProfilePage: React.FC = () => {
 
               <div className={styles.statsGrid}>
                 <div className={styles.statItem}>
-                  <div className={styles.statValue}>{tutor.experience?.split(' ')[0] || '2+'}</div>
-                  <div className={styles.statLabel}>ans d'exp.</div>
+                  <div className={styles.statValue}>{annonces.length}</div>
+                  <div className={styles.statLabel}>annonces</div>
                 </div>
                 <div className={styles.statItem}>
                   <div className={styles.statValue}>{tutor.reviews}+</div>
@@ -221,16 +266,16 @@ const TutorProfilePage: React.FC = () => {
                 Présentation
               </button>
               <button 
+                className={`${styles.tab} ${activeTab === 'annonces' ? styles.active : ''}`}
+                onClick={() => setActiveTab('annonces')}
+              >
+                Annonces ({annonces.length})
+              </button>
+              <button 
                 className={`${styles.tab} ${activeTab === 'reviews' ? styles.active : ''}`}
                 onClick={() => setActiveTab('reviews')}
               >
                 Avis ({tutor.reviews})
-              </button>
-              <button 
-                className={`${styles.tab} ${activeTab === 'schedule' ? styles.active : ''}`}
-                onClick={() => setActiveTab('schedule')}
-              >
-                Disponibilités
               </button>
             </div>
 
@@ -247,7 +292,7 @@ const TutorProfilePage: React.FC = () => {
                   <div className={styles.section}>
                     <h4>Domaines d'expertise</h4>
                     <div className={styles.specialtiesGrid}>
-                      {tutor.specialties.map((specialty, index) => (
+                      {tutor.specialties.map((specialty: string, index: number) => (
                         <span key={index} className={styles.specialtyTag}>
                           {specialty}
                         </span>
@@ -265,30 +310,52 @@ const TutorProfilePage: React.FC = () => {
                       <p>{tutor.educationLevel || 'Diplôme universitaire'}</p>
                     </div>
                   </div>
+                </div>
+              )}
 
-                  <div className={styles.section}>
-                    <h4>Méthode pédagogique</h4>
-                    <div className={styles.methodologyList}>
-                      <div className={styles.methodItem}>
-                        <div>
-                          <strong>Objectifs personnalisés</strong>
-                          <p>Programme adapté à vos besoins spécifiques</p>
-                        </div>
-                      </div>
-                      <div className={styles.methodItem}>
-                        <div>
-                          <strong>Suivi régulier</strong>
-                          <p>Évaluations et retours constants sur votre progression</p>
-                        </div>
-                      </div>
-                      <div className={styles.methodItem}>
-                        <div>
-                          <strong>Pédagogie active</strong>
-                          <p>Apprentissage par la pratique et l'échange</p>
-                        </div>
-                      </div>
-                    </div>
+              {activeTab === 'annonces' && (
+                <div className={styles.annoncesSection}>
+                  <div className={styles.annoncesHeader}>
+                    <h3>Mes annonces de cours</h3>
+                    <p>Découvrez toutes mes offres de cours disponibles</p>
                   </div>
+
+                  <div className={styles.annoncesGrid}>
+                    {annonces.map((annonce: AnnonceFromDB) => (
+                      <div key={annonce.id} className={styles.annonceCard}>
+                        <div className={styles.annonceHeader}>
+                          <h4>{annonce.title}</h4>
+                          <div className={styles.annoncePrice}>€{annonce.hourlyRate}/heure</div>
+                        </div>
+                        <p className={styles.annonceDescription}>
+                          {annonce.description}
+                        </p>
+                        <div className={styles.annonceDetails}>
+                          <div className={styles.detail}>
+                            <strong>Niveau:</strong> {annonce.level}
+                          </div>
+                          <div className={styles.detail}>
+                            <strong>Mode:</strong> {annonce.teachingMode}
+                          </div>
+                          <div className={styles.detail}>
+                            <strong>Matière:</strong> {annonce.subject}
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => handleBookSession(annonce.id)}
+                          className={styles.reserveButton}
+                        >
+                          Réserver ce cours
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {annonces.length === 0 && (
+                    <div className={styles.noAnnonces}>
+                      <p>Ce tuteur n'a pas encore d'annonces publiées.</p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -299,7 +366,7 @@ const TutorProfilePage: React.FC = () => {
                       <div className={styles.overallScore}>
                         <div className={styles.score}>{tutor.rating}</div>
                         <div className={styles.scoreStars}>
-                          {'★'.repeat(5).split('').map((star, index) => (
+                          {'★'.repeat(5).split('').map((star: string, index: number) => (
                             <span 
                               key={index} 
                               className={`${styles.star} ${index < Math.floor(tutor.rating) ? styles.filled : ''}`}
@@ -347,54 +414,6 @@ const TutorProfilePage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              )}
-
-              {activeTab === 'schedule' && (
-                <div className={styles.scheduleSection}>
-                  <div className={styles.scheduleHeader}>
-                    <h3>Disponibilités</h3>
-                    <p>Sélectionnez un créneau pour réserver votre cours</p>
-                  </div>
-
-                  <div className={styles.scheduleOverview}>
-                    <div className={styles.availabilityCard}>
-                      <div>
-                        <strong>Prochaine disponibilité</strong>
-                        <p><strong>Demain à 14h00</strong></p>
-                      </div>
-                    </div>
-                    <div className={styles.availabilityCard}>
-                      <div>
-                        <strong>Créneaux habituels</strong>
-                        <p><strong>Lun - Ven, 14h-20h</strong></p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={styles.calendarSection}>
-                    <h4>Calendrier de la semaine</h4>
-                    <div className={styles.calendarGrid}>
-                      {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day, index) => (
-                        <div key={day} className={styles.calendarDay}>
-                          <div className={styles.dayHeader}>{day}</div>
-                          <div className={styles.timeSlots}>
-                            {index < 5 && (
-                              <>
-                                <div className={styles.timeSlot}>14:00</div>
-                                <div className={styles.timeSlot}>16:00</div>
-                                <div className={styles.timeSlot}>18:00</div>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <button className={styles.primaryButton}>
-                    Voir le calendrier complet
-                  </button>
-                </div>
               )}    
             </div>
           </div>
@@ -404,4 +423,4 @@ const TutorProfilePage: React.FC = () => {
   );
 };
 
-export default TutorProfilePage;    
+export default TutorProfilePage;
