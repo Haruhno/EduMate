@@ -12,6 +12,7 @@ router.put('/:id', authMiddleware, annonceController.updateAnnonce);
 router.delete('/:id', authMiddleware, annonceController.deleteAnnonce);
 
 router.get('/tutor/:id', authMiddleware, annonceController.getAnnoncesByTutorId);
-
+// Dans vos routes
+router.patch('/:id/toggle', authMiddleware, annonceController.toggleAnnonce);
 
 module.exports = router;

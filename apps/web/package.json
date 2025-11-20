@@ -13,6 +13,7 @@
     "@remix-run/router": "^1.23.0",
     "axios": "^1.12.2",
     "country-telephone-data": "^0.6.3",
+    "emoji-picker-react": "^4.15.1",
     "leaflet": "^1.9.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

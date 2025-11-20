@@ -44,85 +44,85 @@ class ProfileController {
 
   // Récupérer le profil (inclut les diplômes)
  // controllers/profileController.js - méthode saveProfile
-async saveProfile(req, res) {
-  try {
-    console.log('🔍 === DEBUG COMPLET saveProfile ===');
-    
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      console.log('❌ Token manquant');
-      return res.status(401).json({
+  async saveProfile(req, res) {
+    try {
+      console.log('🔍 === DEBUG COMPLET saveProfile ===');
+      
+      const token = req.headers.authorization?.split(' ')[1];
+      if (!token) {
+        console.log('❌ Token manquant');
+        return res.status(401).json({
+          success: false,
+          message: 'Token manquant'
+        });
+      }
+
+      const user = await authService.validateToken(token);
+      console.log('✅ User validé:', user.id, user.role);
+      
+      const { profileData, currentStep } = req.body;
+      
+      // ⭐⭐⭐ DEBUG DÉTAILLÉ DES DONNÉES REÇUES ⭐⭐⭐
+      console.log('📥 Données brutes reçues:');
+      console.log('Current Step:', currentStep);
+      console.log('Toutes les clés de profileData:', Object.keys(profileData));
+      
+      // Vérifier la structure de schedule
+      console.log('📅 Schedule reçu:', profileData.schedule);
+      console.log('📅 Type de schedule:', typeof profileData.schedule);
+      console.log('📅 Est un array?', Array.isArray(profileData.schedule));
+      
+      if (profileData.schedule && Array.isArray(profileData.schedule)) {
+        console.log('📅 Longueur du schedule:', profileData.schedule.length);
+        if (profileData.schedule.length > 0) {
+          console.log('📅 Premier élément:', JSON.stringify(profileData.schedule[0], null, 2));
+        }
+      }
+      
+      // Vérifier availability
+      console.log('🎯 Availability reçu:', profileData.availability);
+      
+      // Vérifier les autres champs importants
+      if (profileData.diplomas) {
+        console.log('📚 Diplômes reçus:', profileData.diplomas.length);
+      }
+      
+      if (profileData.experiences) {
+        console.log('💼 Expériences reçues:', profileData.experiences.length);
+      }
+
+      console.log('🔍 === FIN DEBUG ===');
+
+      // Appeler le service
+      const profile = await profileService.createOrUpdateProfile(
+        user.id, 
+        user.role, 
+        profileData
+      );
+
+      console.log('✅ Profil sauvegardé avec succès');
+      
+      res.json({
+        success: true,
+        message: 'Profil sauvegardé avec succès',
+        data: {
+          profile,
+          currentStep,
+          completionPercentage: profile.completionPercentage
+        }
+      });
+    } catch (error) {
+      console.error('❌ ERREUR CRITIQUE dans saveProfile:');
+      console.error('Message:', error.message);
+      console.error('Stack:', error.stack);
+      console.error('Nom:', error.name);
+      
+      res.status(400).json({
         success: false,
-        message: 'Token manquant'
+        message: error.message
       });
     }
-
-    const user = await authService.validateToken(token);
-    console.log('✅ User validé:', user.id, user.role);
-    
-    const { profileData, currentStep } = req.body;
-    
-    // ⭐⭐⭐ DEBUG DÉTAILLÉ DES DONNÉES REÇUES ⭐⭐⭐
-    console.log('📥 Données brutes reçues:');
-    console.log('Current Step:', currentStep);
-    console.log('Toutes les clés de profileData:', Object.keys(profileData));
-    
-    // Vérifier la structure de schedule
-    console.log('📅 Schedule reçu:', profileData.schedule);
-    console.log('📅 Type de schedule:', typeof profileData.schedule);
-    console.log('📅 Est un array?', Array.isArray(profileData.schedule));
-    
-    if (profileData.schedule && Array.isArray(profileData.schedule)) {
-      console.log('📅 Longueur du schedule:', profileData.schedule.length);
-      if (profileData.schedule.length > 0) {
-        console.log('📅 Premier élément:', JSON.stringify(profileData.schedule[0], null, 2));
-      }
-    }
-    
-    // Vérifier availability
-    console.log('🎯 Availability reçu:', profileData.availability);
-    
-    // Vérifier les autres champs importants
-    if (profileData.diplomas) {
-      console.log('📚 Diplômes reçus:', profileData.diplomas.length);
-    }
-    
-    if (profileData.experiences) {
-      console.log('💼 Expériences reçues:', profileData.experiences.length);
-    }
-
-    console.log('🔍 === FIN DEBUG ===');
-
-    // Appeler le service
-    const profile = await profileService.createOrUpdateProfile(
-      user.id, 
-      user.role, 
-      profileData
-    );
-
-    console.log('✅ Profil sauvegardé avec succès');
-    
-    res.json({
-      success: true,
-      message: 'Profil sauvegardé avec succès',
-      data: {
-        profile,
-        currentStep,
-        completionPercentage: profile.completionPercentage
-      }
-    });
-  } catch (error) {
-    console.error('❌ ERREUR CRITIQUE dans saveProfile:');
-    console.error('Message:', error.message);
-    console.error('Stack:', error.stack);
-    console.error('Nom:', error.name);
-    
-    res.status(400).json({
-      success: false,
-      message: error.message
-    });
   }
-}
   // Récupérer le profil 
   async getProfile(req, res) {
     try {
@@ -317,6 +317,115 @@ async saveProfile(req, res) {
       });
     }
   }
+
+  async getStudentById(req, res) {
+    try {
+      const { studentId } = req.params;
+      const { ProfileStudent, User } = require('../models/associations');
+
+      const student = await ProfileStudent.findOne({
+        where: { id: studentId },
+        include: [{ model: User, as: 'user', attributes: ['id','firstName','lastName','email'] }]
+      });
+
+      if (!student) {
+        return res.status(404).json({ success: false, message: 'Étudiant non trouvé' });
+      }
+
+      res.json({ success: true, message: 'Étudiant récupéré', data: student });
+    } catch (error) {
+      console.error('Erreur récupération étudiant:', error);
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  // Récupérer le profil tutor par User.id
+  async getTutorByUserId(req, res) {
+    try {
+      const { userId } = req.params;
+      const { ProfileTutor, User } = require('../models/associations');
+
+      const tutor = await ProfileTutor.findOne({
+        where: { userId },
+        include: [{ model: User, as: 'user', attributes: ['id','firstName','lastName','email','role'] }]
+      });
+
+      if (!tutor) {
+        return res.status(404).json({ success: false, message: 'Tuteur non trouvé' });
+      }
+
+      res.json({ success: true, message: 'Tuteur récupéré', data: tutor });
+    } catch (error) {
+      console.error('Erreur getTutorByUserId:', error);
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  async getTutorProfileById(req, res) {
+    try {
+      const { id } = req.params;
+      console.log('🔍 Récupération du tuteur avec ID:', id);
+
+      const { ProfileTutor, User } = require('../models/associations');
+      
+      const tutor = await ProfileTutor.findOne({
+        where: { 
+          id: id
+        },
+        include: [{
+          model: User,
+          as: 'user',
+          attributes: ['id', 'firstName', 'lastName', 'email']
+        }]
+      });
+
+      if (!tutor) {
+        console.log('❌ Tuteur non trouvé avec ID:', id);
+        return res.status(404).json({
+          success: false,
+          message: 'Tuteur non trouvé'
+        });
+      }
+
+      console.log('✅ Tuteur trouvé:', tutor.id, 'Vérifié:', tutor.isVerified, 'Complété:', tutor.isCompleted);
+      
+      res.json({
+        success: true,
+        message: 'Tuteur récupéré avec succès',
+        data: tutor
+      });
+    } catch (error) {
+      console.error('❌ Erreur récupération tuteur:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erreur serveur lors de la récupération du tuteur',
+        error: error.message
+      });
+    }
+  }
+
+  // Récupérer le profil student par User.id
+  async getStudentByUserId(req, res) {
+    try {
+      const { userId } = req.params;
+      const { ProfileStudent, User } = require('../models/associations');
+
+      const student = await ProfileStudent.findOne({
+        where: { userId },
+        include: [{ model: User, as: 'user', attributes: ['id','firstName','lastName','email','role'] }]
+      });
+
+      if (!student) {
+        return res.status(404).json({ success: false, message: 'Étudiant non trouvé' });
+      }
+
+      res.json({ success: true, message: 'Étudiant récupéré', data: student });
+    } catch (error) {
+      console.error('Erreur getStudentByUserId:', error);
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
 }
 
 module.exports = new ProfileController();

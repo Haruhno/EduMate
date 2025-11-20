@@ -40,5 +40,11 @@ router.post('/complete', authMiddleware, profileController.completeProfile);
 router.post('/upload', authMiddleware, upload.single('file'), profileController.uploadFile);
 
 router.get('/tutor/:tutorId', profileController.getTutorById);
+router.get('/student/:studentId', profileController.getStudentById);
+
+router.get('/tutor/byUser/:userId', profileController.getTutorByUserId);
+router.get('/student/byUser/:userId', profileController.getStudentByUserId);
+
+router.get('/tutors/:id', profileController.getTutorProfileById);
 
 module.exports = router;

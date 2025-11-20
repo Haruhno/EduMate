@@ -4,7 +4,6 @@ const router = express.Router();
 const { ProfileTutor, User } = require('../models/associations');
 const authMiddleware = require('../middlewares/authMiddleware');
 
-
 // routes/tutorRoutes.js - Partie seed corrigée
 router.post('/seed', authMiddleware, async (req, res) => {
   try {

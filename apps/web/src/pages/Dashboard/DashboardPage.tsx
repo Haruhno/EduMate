@@ -140,8 +140,8 @@ const DashboardPage: React.FC = () => {
             <div className={styles.statCard}>
               <div className={styles.statIcon}>📚</div>
               <div className={styles.statContent}>
-                <h3 className={styles.statNumber}>0</h3>
-                <p className={styles.statLabel}>Cours donnés</p>
+                <h3 className={styles.statNumber}>{annonces.length}</h3>
+                <p className={styles.statLabel}>Annonces actives</p>
               </div>
             </div>
             <div className={styles.statCard}>
@@ -200,16 +200,23 @@ const DashboardPage: React.FC = () => {
 
           {isTutor && (
             <>
+              {/* NOUVELLE CARTE POUR LES ANNONCES */}
+              <Link to="/annonces" className={styles.actionCard}>
+                <div className={styles.actionIcon}>📋</div>
+                <h3>Mes annonces</h3>
+                <p>Gérer vos annonces de cours</p>
+              </Link>
+              
               <div className={styles.actionCard}>
                 <div className={styles.actionIcon}>📅</div>
                 <h3>Mes disponibilités</h3>
                 <p>Gérer votre emploi du temps</p>
               </div>
-              <div className={styles.actionCard}>
+              <Link to="/messages" className={styles.actionCard}>
                 <div className={styles.actionIcon}>💬</div>
                 <h3>Messages</h3>
                 <p>Consulter vos conversations</p>
-              </div>
+              </Link>
             </>
           )}
 
@@ -236,70 +243,6 @@ const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* NOUVEAU BLOC : Mes Annonces (pour les tuteurs) */}
-      {isTutor && (
-        <div className={styles.annoncesSection}>
-          <h2 className={styles.sectionTitle}>Mes annonces de cours</h2>
-          
-          {annonces.length > 0 ? (
-            <div className={styles.annoncesGrid}>
-              {annonces.map((annonce) => (
-                <div key={annonce.id} className={styles.annonceCard}>
-                  <div className={styles.annonceHeader}>
-                    <h3 className={styles.annonceTitle}>{annonce.title}</h3>
-                    <span className={`${styles.statusBadge} ${annonce.isActive ? styles.active : styles.inactive}`}>
-                      {annonce.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                  
-                  <div className={styles.annonceDetails}>
-                    <div className={styles.detailItem}>
-                      <span className={styles.detailLabel}>Matière:</span>
-                      <span className={styles.detailValue}>{annonce.subject}</span>
-                    </div>
-                    <div className={styles.detailItem}>
-                      <span className={styles.detailLabel}>Niveau:</span>
-                      <span className={styles.detailValue}>{annonce.level}</span>
-                    </div>
-                    <div className={styles.detailItem}>
-                      <span className={styles.detailLabel}>Tarif:</span>
-                      <span className={styles.detailValue}>{annonce.hourlyRate}€/h</span>
-                    </div>
-                    <div className={styles.detailItem}>
-                      <span className={styles.detailLabel}>Mode:</span>
-                      <span className={styles.detailValue}>{annonce.teachingMode}</span>
-                    </div>
-                  </div>
-
-                  {annonce.description && (
-                    <p className={styles.annonceDescription}>
-                      {annonce.description}
-                    </p>
-                  )}
-
-                  <div className={styles.annonceActions}>
-                    <button
-                      onClick={() => handleEditAnnonce(annonce)}
-                      className={styles.editButton}
-                    >
-                      Modifier
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className={styles.noAnnonces}>
-              <h3>Vous n'avez pas encore créé d'annonce</h3>
-              <p>Créez votre première annonce pour commencer à recevoir des demandes de cours</p>
-              <Link to="/creer-annonce" className={styles.createAnnonceButton}>
-                Créer une annonce
-              </Link>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Prochaines étapes pour les nouveaux utilisateurs */}
       {!hasCompleteProfile && (
         <div className={styles.nextSteps}>
@@ -316,11 +259,11 @@ const DashboardPage: React.FC = () => {
               <div className={styles.stepNumber}>2</div>
               <div className={styles.stepContent}>
                 <h3>
-                  {isTutor ? 'Définissez vos disponibilités' : 'Trouvez votre tuteur'}
+                  {isTutor ? 'Créez vos annonces' : 'Trouvez votre tuteur'}
                 </h3>
                 <p>
                   {isTutor 
-                    ? 'Indiquez quand vous êtes disponible pour donner des cours'
+                    ? 'Publiez vos annonces pour attirer des étudiants'
                     : 'Recherchez des tuteurs selon vos besoins'
                   }
                 </p>

@@ -82,6 +82,17 @@ class AuthService {
     }
   }
 
+  async getAllUsers() {
+    try {
+      const users = await User.findAll({ attributes: { exclude: ['password'] } });
+      return users;
+    } catch (error) {
+      console.error('Erreur getAllUsers:', error);
+      throw new Error(`Impossible de récupérer tous les utilisateurs: ${error.message}`);
+    }
+  }
+
+
   async logout(token) {
     addToken(token);
     return true;

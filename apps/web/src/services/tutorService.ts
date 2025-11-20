@@ -11,8 +11,8 @@ export interface TutorFromDB {
   bio?: string;
   experience?: string;
   educationLevel?: string;
-  availability: any; // JSON field
-  location: any; // JSON field
+  availability: any;
+  location: any;
   isVerified: boolean;
   isCompleted: boolean;
   user?: {
@@ -42,7 +42,6 @@ export interface TutorSettings {
   availability: any;
 }
 
-
 class TutorService {
   async updateTutorSettings(settings: TutorSettings) {
     const response = await api.put('/tutor/settings', settings);
@@ -59,72 +58,120 @@ class TutorService {
     return response.data;
   }
 
+  // Méthode principale pour récupérer un tuteur avec gestion des profils non vérifiés
   async getTutorById(tutorId: string): Promise<{
     success: boolean;
     data?: TutorFromDB;
     message?: string;
+    existsButUnverified?: boolean;
   }> {
-    // Try several plausible endpoints / query param shapes until one returns data
-    const attempts = [
-      `/tutors/${encodeURIComponent(tutorId)}`,
-      `/tutors/user/${encodeURIComponent(tutorId)}`,
-      `/tutors/by-user/${encodeURIComponent(tutorId)}`,
-      `/profile/tutors/${encodeURIComponent(tutorId)}`,
-      `/profile/tutors/user/${encodeURIComponent(tutorId)}`,
-      `/tutors?userId=${encodeURIComponent(tutorId)}`,
-      `/tutors?user_id=${encodeURIComponent(tutorId)}`,
-      `/profile/tutors?userId=${encodeURIComponent(tutorId)}`,
-      `/profile/tutors?user_id=${encodeURIComponent(tutorId)}`
-    ];
-
-    for (const url of attempts) {
+    try {
+      console.log('🔍 Tentative de récupération du tuteur:', tutorId);
+      
+      // Essayer d'abord l'endpoint principal (tuteurs vérifiés)
       try {
-        const response = await api.get(url);
-
-        // If API returns a single tutor object in data
-        if (response?.data?.success && response?.data?.data && !Array.isArray(response.data.data)) {
-          return { success: true, data: response.data.data as TutorFromDB };
+        const response = await api.get(`/tutors/${tutorId}`);
+        
+        if (response?.data?.success && response?.data?.data) {
+          console.log('✅ Tuteur vérifié trouvé');
+          return { 
+            success: true, 
+            data: response.data.data 
+          };
         }
-
-        // If API returns { success, data: { tutors: [...] } }
-        if (response?.data?.success && response?.data?.data?.tutors && Array.isArray(response.data.data.tutors)) {
-          const first = response.data.data.tutors[0];
-          if (first) return { success: true, data: first as TutorFromDB };
+      } catch (error: any) {
+        // Si 404, le tuteur n'est pas dans la liste des vérifiés
+        if (error?.response?.status === 404) {
+          console.log('⚠️ Tuteur non trouvé dans les vérifiés, recherche dans tous les profils...');
+        } else {
+          console.error('❌ Erreur endpoint vérifiés:', error.message);
         }
-
-        // Some endpoints may return tutor directly on data.tutor
-        if (response?.data && response.data.tutor) {
-          return { success: true, data: response.data.tutor as TutorFromDB };
-        }
-
-        // If response returned an array directly (e.g. /tutors?...) take first
-        if (response?.data && Array.isArray(response.data)) {
-          const first = response.data[0];
-          if (first) return { success: true, data: first as TutorFromDB };
-        }
-
-        // If 200 but no usable payload, continue to next attempt
-      } catch (err: any) {
-        const status = err?.response?.status;
-        // For 404/410 try next fallback
-        if (status === 404 || status === 410) continue;
-
-        // For other errors return immediately with message
-        console.error('Erreur lors de la récupération du tuteur (attempt):', url, err);
-        return {
-          success: false,
-          message: err?.response?.data?.message || err?.message || 'Erreur lors de la récupération du tuteur'
-        };
       }
-    }
 
-    return {
-      success: false,
-      message: 'Tuteur non trouvé'
-    };
+      // Essayer l'endpoint des profils (tous les tuteurs, vérifiés ou non)
+      try {
+        const response = await api.get(`/profile/tutors/${tutorId}`);
+        
+        if (response?.data?.success && response?.data?.data) {
+          const tutorData = response.data.data;
+          console.log('📋 Tuteur trouvé (tous profils):', {
+            id: tutorData.id,
+            vérifié: tutorData.isVerified,
+            complété: tutorData.isCompleted,
+            nom: `${tutorData.user?.firstName} ${tutorData.user?.lastName}`
+          });
+
+          // Vérifier si le profil n'est pas vérifié
+          if (!tutorData.isVerified || !tutorData.isCompleted) {
+            console.log('⏳ Tuteur non vérifié détecté');
+            return { 
+              success: false, 
+              data: tutorData,
+              existsButUnverified: true,
+              message: 'Profil non vérifié ou incomplet' 
+            };
+          }
+
+          // Le profil est vérifié mais n'était pas dans l'endpoint principal
+          console.log('✅ Tuteur vérifié trouvé via profile endpoint');
+          return { 
+            success: true, 
+            data: tutorData 
+          };
+        }
+      } catch (error: any) {
+        console.error('❌ Erreur endpoint profile:', error.message);
+      }
+
+      // Aucun tuteur trouvé
+      console.log('❌ Tuteur non trouvé dans aucune source');
+      return { 
+        success: false, 
+        message: 'Tuteur non trouvé' 
+      };
+      
+    } catch (error: any) {
+      console.error('💥 Erreur générale récupération tuteur:', error);
+      return {
+        success: false,
+        message: 'Erreur lors de la récupération du tuteur'
+      };
+    }
   }
 
-  // AJOUTER cette méthode pour récupérer les annonces par tuteur
+  // Méthode pour récupérer explicitement un tuteur non vérifié
+  async getUnverifiedTutor(tutorId: string): Promise<{
+    success: boolean;
+    data?: TutorFromDB;
+    message?: string;
+  }> {
+    try {
+      const response = await api.get(`/profile/tutors/${tutorId}`);
+      
+      if (response?.data?.success && response?.data?.data) {
+        const tutorData = response.data.data;
+        
+        // Retourner le tuteur même s'il n'est pas vérifié
+        return { 
+          success: true, 
+          data: tutorData,
+          message: !tutorData.isVerified ? 'Profil non vérifié' : 'Profil vérifié'
+        };
+      }
+      
+      return { 
+        success: false, 
+        message: response?.data?.message || 'Profil non trouvé' 
+      };
+    } catch (error: any) {
+      console.error('Erreur récupération tuteur non vérifié:', error);
+      return {
+        success: false,
+        message: error?.response?.data?.message || 'Erreur lors de la récupération du tuteur'
+      };
+    }
+  }
+
   async getAnnoncesByTutor(tutorId: string) {
     try {
       const response = await api.get(`/annonces/tutor/${tutorId}`);
@@ -137,7 +184,7 @@ class TutorService {
       };
     }
   }
-  // Rechercher des tuteurs avec filtres et pagination
+
   async searchTutors(filters: {
     page?: number;
     limit?: number;

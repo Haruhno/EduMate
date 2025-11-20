@@ -116,6 +116,12 @@ class AnnonceService {
     const response = await api.delete(`/annonces/${annonceId}`);
     return response.data;
   }
+
+  // Désactiver/activer une annonce
+  async toggleAnnonce(annonceId: string, isActive: boolean) {
+    const response = await api.patch(`/annonces/${annonceId}/toggle`, { isActive });
+    return response.data;
+  }
 }
 
 export default new AnnonceService();

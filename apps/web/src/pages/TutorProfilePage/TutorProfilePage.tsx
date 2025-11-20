@@ -33,6 +33,7 @@ const TutorProfilePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'about' | 'annonces' | 'reviews'>('about');
   const [minPrice, setMinPrice] = useState<number>(0);
+  const [errorType, setErrorType] = useState<'not_found' | 'unverified' | null>(null);
 
   const mapTutorFromDB = (tutorData: TutorFromDB): Tutor => {
     const availability = typeof tutorData.availability === 'string' 
@@ -77,52 +78,65 @@ const TutorProfilePage: React.FC = () => {
     return "default-gradient";
   };
 
-  // Dans TutorProfilePage.tsx - CORRIGER le useEffect
+  // Fonction pour retourner à la page précédente
+  const handleGoBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/recherche-tuteur');
+    }
+  };
+
   useEffect(() => {
     const fetchTutorData = async () => {
       if (!id) return;
       
       try {
         setLoading(true);
+        setErrorType(null);
         
-        // Récupérer le profil du tuteur (service gère userId/profile id fallbacks)
+        // Utiliser la méthode getTutorById qui existe
         const tutorResponse = await tutorService.getTutorById(id);
+        
         if (tutorResponse.success && tutorResponse.data) {
-          // IMPORTANT: utiliser l'id interne du profil tuteur retourné (tutorResponse.data.id)
-          // pour récupérer les annonces associées (la table annonces référence profile_tutors.id)
           const profileTutorId = tutorResponse.data.id;
           const annoncesResponse = await annonceService.getAnnoncesByTutor(profileTutorId);
 
-          let calculatedMinPrice = 30; // Prix par défaut
+          let calculatedMinPrice = 30;
           
           if (annoncesResponse.success && annoncesResponse.data.length > 0) {
             setAnnonces(annoncesResponse.data);
-            
-            // Calculer le prix minimum
             const prices = annoncesResponse.data.map((a: AnnonceFromDB) => a.hourlyRate);
             calculatedMinPrice = Math.min(...prices);
           }
           
           setMinPrice(calculatedMinPrice);
           
-          // Mapper le tuteur avec le prix minimum calculé
           const mappedTutor = mapTutorFromDB(tutorResponse.data);
           mappedTutor.price = `À partir de €${calculatedMinPrice}`;
           
           setTutor(mappedTutor);
         } else {
           setTutor(null);
+          // Détection améliorée du type d'erreur - utiliser existsButUnverified
+          if (tutorResponse.existsButUnverified) {
+            // Le profil existe mais n'est pas vérifié/complété
+            setErrorType('unverified');
+          } else {
+            setErrorType('not_found');
+          }
         }
       } catch (error) {
         console.error('Erreur lors du chargement du profil:', error);
         setTutor(null);
+        setErrorType('not_found');
       } finally {
         setLoading(false);
       }
     };
 
     fetchTutorData();
-  }, [id]); // Retenir id seulement
+  }, [id]);
 
   const handleContact = () => {
     console.log('Contacter le tuteur:', tutor?.id);
@@ -147,14 +161,45 @@ const TutorProfilePage: React.FC = () => {
     return (
       <div className={styles.container}>
         <div className={styles.error}>
-          <h2>Tuteur non trouvé</h2>
-          <p>Le profil que vous recherchez n'existe pas ou a été supprimé.</p>
-          <button 
-            onClick={() => navigate('/recherche-tuteur')}
-            className={styles.primaryButton}
-          >
-            Retour à la recherche
-          </button>
+          {errorType === 'unverified' ? (
+            <>
+              <div className={styles.unverifiedHeader}>
+                <div className={styles.unverifiedIcon}>⏳</div>
+                <h2>Profil en cours de validation</h2>
+              </div>
+              <p>Ce profil de tuteur n'est pas encore vérifié ou complété.</p>
+              <div className={styles.unverifiedDetails}>
+                <p>Le profil est actuellement :</p>
+                <div className={styles.statusList}>
+                  <div className={styles.statusItem}>
+                    <span className={styles.statusIcon}>📝</span>
+                    <span>En attente de vérification</span>
+                  </div>
+                  <div className={styles.statusItem}>
+                    <span className={styles.statusIcon}>⏰</span>
+                    <span>Validation en cours</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={styles.notFoundHeader}>
+                <div className={styles.notFoundIcon}>🔍</div>
+                <h2>Tuteur non trouvé</h2>
+              </div>
+              <p>Le profil que vous recherchez n'existe pas ou a été supprimé.</p>
+            </>
+          )}
+          
+          <div className={styles.errorActions}>
+            <button 
+              onClick={handleGoBack}
+              className={styles.primaryButton}
+            >
+              ← Retour
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -166,10 +211,10 @@ const TutorProfilePage: React.FC = () => {
         <div className={styles.container}>
           <div className={styles.headerContent}>
             <button 
-              onClick={() => navigate('/recherche-tuteur')}
+              onClick={handleGoBack}
               className={styles.backButton}
             >
-              ← Retour aux résultats
+              ← Retour
             </button>
             <h1 className={styles.headerTitle}>Profil du Tuteur</h1>
           </div>

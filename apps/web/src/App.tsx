@@ -14,6 +14,9 @@ import ProfilePage from './pages/Profile/ProfilePage';
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import DevenirTuteur from './pages/DevenirTuteur/DevenirTuteur';
 import TutorProfilePage from "./pages/TutorProfilePage/TutorProfilePage";
+import AnnoncesPage from "./pages/Annonces/AnnoncesPage";
+import CreerAnnoncePage from "./pages/CreerAnnonce/CreerAnnoncePage";
+import MessageTestPage from "./pages/Messages/MessagePage";
 
 // Composant pour protéger les routes d'authentification
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -87,6 +90,32 @@ const App: React.FC = () => {
           />
           <Route path="/tuteur/:id" element={<TutorProfilePage />} />
           <Route path="/devenir-tuteur" element={<DevenirTuteur />} />
+          // Ajoutez ces routes
+          <Route 
+            path="/annonces" 
+            element={
+              <PrivateRoute>
+                <AnnoncesPage />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/creer-annonce" 
+            element={
+              <PrivateRoute>
+                <CreerAnnoncePage />
+              </PrivateRoute>
+            } 
+          />
+        <Route 
+          path="/messages" 
+          element={
+            <PrivateRoute>
+              <MessageTestPage />
+            </PrivateRoute>
+          } 
+        />
+          
         </Routes>
       </div>
     </Router>

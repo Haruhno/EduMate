@@ -1,0 +1,336 @@
+.container {
+  min-height: 100vh;
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 1rem 0;
+  font-family: 'Recoleta', serif;
+}
+
+.subtitle {
+  font-size: 1.2rem;
+  color: #666;
+  margin: 0;
+  font-family: 'DMSans', sans-serif;
+}
+
+.createSection {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.createButton {
+  display: inline-block;
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  text-decoration: none;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  font-family: 'DMSans', sans-serif;
+}
+
+.createButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+.annoncesSection {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 1.5rem 0;
+  font-family: 'DMSans', sans-serif;
+}
+
+.annoncesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+/* --- Amélioration du design des cartes d'annonces --- */
+
+.annonceCard {
+  background: #ffffff;
+  border: 1px solid #eaeaea;
+  border-radius: 16px;
+  padding: 1.75rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.annonceCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  border-color: #fbbf24;
+}
+
+/* En-tête avec badge mieux intégré */
+.annonceHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid #f2f2f2;
+  padding-bottom: 0.75rem;
+}
+
+.annonceTitle {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #222;
+  margin: 0;
+  font-family: 'DMSans', sans-serif;
+}
+
+/* Badges arrondis et élégants */
+.statusBadge {
+  padding: 0.35rem 0.9rem;
+  border-radius: 30px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  font-family: 'DMSans', sans-serif;
+  text-transform: uppercase;
+}
+
+.statusBadge.active {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.statusBadge.inactive {
+  background: rgba(239, 68, 68, 0.12);
+  color: #991b1b;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+/* Détails organisés comme une fiche d’info */
+.annonceDetails {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  row-gap: 0.75rem;
+  column-gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.detailItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.detailLabel {
+  font-size: 0.8rem;
+  color: #888;
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+}
+
+.detailValue {
+  font-size: 0.95rem;
+  color: #222;
+  font-weight: 600;
+}
+
+/* Description plus fluide et agréable à lire */
+.annonceDescription {
+  font-size: 0.9rem;
+  color: #555;
+  line-height: 1.5;
+  margin: 1rem 0;
+  font-family: 'DMSans', sans-serif;
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  max-height: 4.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+/* Bouton d’action plus sobre et intégré */
+.annonceActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+.editButton {
+  background: #fbbf24;
+  background: linear-gradient(90deg, #fbbf24 0%, #fb923c 100%);
+  color: #fff;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: 'DMSans', sans-serif;
+}
+
+.editButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(251, 191, 36, 0.35);
+}
+
+.noAnnonces {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px dashed #dee2e6;
+}
+
+.noAnnonces h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 0.5rem 0;
+  font-family: 'DMSans', sans-serif;
+}
+
+.noAnnonces p {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0 0 1.5rem 0;
+  font-family: 'DMSans', sans-serif;
+}
+
+.createAnnonceButton {
+  display: inline-block;
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  text-decoration: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  font-family: 'DMSans', sans-serif;
+}
+
+.createAnnonceButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50vh;
+  font-size: 1.2rem;
+  color: #666;
+  font-family: 'DMSans', sans-serif;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .title {
+    font-size: 2rem;
+  }
+
+  .annoncesGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .annonceCard {
+    padding: 1.25rem;
+  }
+
+  .annonceHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .detailItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+}
+
+/* Ajoutez ces styles à votre fichier AnnoncesPage.module.css existant */
+
+.annonceActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+.editButton {
+  background: #fbbf24;
+  background: linear-gradient(90deg, #fbbf24 0%, #fb923c 100%);
+  color: #fff;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: 'DMSans', sans-serif;
+  flex: 1;
+}
+
+.editButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(251, 191, 36, 0.35);
+}
+
+.deleteButton {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: 'DMSans', sans-serif;
+  flex: 1;
+}
+
+.deleteButton:hover {
+  background: #b91c1c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.35);
+}

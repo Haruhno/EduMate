@@ -1,3 +1,4 @@
+// components/EditAnnonceForm/EditAnnonceForm.tsx
 import React, { useState } from 'react';
 import styles from './EditAnnonceForm.module.css';
 import annonceService from '../../services/annonceService';
@@ -7,14 +8,16 @@ interface EditAnnonceFormProps {
   annonce: AnnonceFromDB;
   onCancel: () => void;
   onUpdate: (updatedAnnonce: AnnonceFromDB) => void;
+  onToggleStatus?: (annonceId: string, isActive: boolean) => void;
 }
 
 const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({ 
   annonce, 
   onCancel, 
-  onUpdate 
+  onUpdate,
+  onToggleStatus 
 }) => {
-  // Liste des matières disponibles (identique à DevenirTuteur)
+  // Liste des matières disponibles
   const availableSubjects = [
     "Allemand", "Anglais", "Arabe", "Archéologie", "Architecture",
     "Arts", "Arts plastiques", "Biologie", "Chimie", "Chinois", "Commerce International",
@@ -34,7 +37,7 @@ const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({
     "Soutien scolaire", "Russe", "Néerlandais", "Coréen"
   ].sort();
 
-  // Liste des niveaux disponibles (identique à DevenirTuteur)
+  // Liste des niveaux disponibles
   const availableLevels = [
     "Tous niveaux",
     "Primaire",
@@ -57,6 +60,7 @@ const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showToggleStatusConfirmation, setShowToggleStatusConfirmation] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -92,6 +96,38 @@ const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({
 
   const handleCancelConfirmation = () => {
     setShowConfirmation(false);
+  };
+
+  const handleToggleStatus = () => {
+    setShowToggleStatusConfirmation(true);
+  };
+
+  const handleConfirmToggleStatus = async () => {
+    setIsLoading(true);
+    setError(null);
+    setShowToggleStatusConfirmation(false);
+
+    try {
+      const newStatus = !annonce.isActive;
+      // Vous devrez ajouter cette méthode dans votre annonceService
+      const response = await annonceService.toggleAnnonce(annonce.id, newStatus);
+      if (response.success) {
+        onUpdate(response.data);
+        if (onToggleStatus) {
+          onToggleStatus(annonce.id, newStatus);
+        }
+      } else {
+        setError(response.message || 'Erreur lors de la modification du statut');
+      }
+    } catch (error: any) {
+      setError(error.message || 'Une erreur est survenue');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancelToggleStatus = () => {
+    setShowToggleStatusConfirmation(false);
   };
 
   return (
@@ -208,6 +244,23 @@ const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({
             </div>
           </div>
 
+          <div className={styles.statusSection}>
+            <div className={styles.statusInfo}>
+              <span className={styles.statusLabel}>Statut actuel :</span>
+              <span className={`${styles.statusBadge} ${annonce.isActive ? styles.active : styles.inactive}`}>
+                {annonce.isActive ? '🟢 Active' : '🔴 Inactive'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleStatus}
+              className={styles.toggleStatusButton}
+              disabled={isLoading}
+            >
+              {annonce.isActive ? 'Désactiver l\'annonce' : 'Activer l\'annonce'}
+            </button>
+          </div>
+
           <div className={styles.formActions}>
             <button
               type="button"
@@ -228,7 +281,7 @@ const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({
         </form>
       </div>
 
-      {/* Modal de confirmation */}
+      {/* Modal de confirmation pour la mise à jour */}
       {showConfirmation && (
         <div className={styles.confirmationOverlay}>
           <div className={styles.confirmationModal}>
@@ -252,6 +305,43 @@ const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({
                 disabled={isLoading}
               >
                 {isLoading ? 'Mise à jour...' : 'Oui'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmation pour le changement de statut */}
+      {showToggleStatusConfirmation && (
+        <div className={styles.confirmationOverlay}>
+          <div className={styles.confirmationModal}>
+            <div className={styles.confirmationHeader}>
+              <h3>
+                {annonce.isActive ? 'Désactiver l\'annonce' : 'Activer l\'annonce'}
+              </h3>
+            </div>
+            <div className={styles.confirmationContent}>
+              <p>
+                {annonce.isActive 
+                  ? 'Êtes-vous sûr de vouloir désactiver cette annonce ? Elle ne sera plus visible par les étudiants.'
+                  : 'Êtes-vous sûr de vouloir activer cette annonce ? Elle sera à nouveau visible par les étudiants.'
+                }
+              </p>
+            </div>
+            <div className={styles.confirmationActions}>
+              <button
+                onClick={handleCancelToggleStatus}
+                className={styles.confirmationCancel}
+                disabled={isLoading}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleConfirmToggleStatus}
+                className={styles.confirmationConfirm}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Modification...' : 'Confirmer'}
               </button>
             </div>
           </div>

@@ -6,7 +6,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
 // Routes publiques
 router.post('/register', authController.register);
 router.post('/login', authController.login);
-
+router.get('/all', authController.getAllUsers);
 
 router.post('/migrate-to-tutor', authController.migrateToTutor);
 

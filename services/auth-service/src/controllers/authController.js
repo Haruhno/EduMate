@@ -84,19 +84,27 @@ class AuthController {
     }
   }
 
+  async getAllUsers(req, res) {
+    try {
+      const users = await authService.getAllUsers();
+      res.json({ success: true, data: users });
+    } catch (error) {
+      console.error('[getAllUsers] Erreur:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+
   // Nouvelle route pour vérifier l'authentification
   async checkAuth(req, res) {
     try {
-
-      const user = req.user;
-
-      
-      if (!user) {
-        return res.json({
-          success: false,
-          message: 'Token invalide'
-        });
+      const token = req.headers.authorization?.split(' ')[1];
+      if (!token) {
+        return res.json({ success: false, message: 'Token manquant' });
       }
+
+      // valide le token via authService
+      const user = await authService.validateToken(token);
 
       res.json({
         success: true,
@@ -106,10 +114,11 @@ class AuthController {
     } catch (error) {
       res.json({
         success: false,
-        message: error.message
+        message: 'Token invalide'
       });
     }
   }
+
 
   // Dans authController.js - méthode migrateToTutor
   async migrateToTutor(req, res) {

@@ -166,6 +166,27 @@ class AnnonceController {
       });
     }
   }
+
+  async toggleAnnonce(req, res) {
+    try {
+      const { id } = req.params;
+      const { isActive } = req.body;
+
+      const annonce = await annonceService.toggleAnnonce(id, isActive);
+
+      res.json({
+        success: true,
+        message: `Annonce ${isActive ? 'activée' : 'désactivée'} avec succès`,
+        data: annonce
+      });
+    } catch (error) {
+      console.error('Erreur modification statut annonce:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 }
 
 module.exports = new AnnonceController();
