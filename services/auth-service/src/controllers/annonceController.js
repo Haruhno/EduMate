@@ -1,11 +1,14 @@
 const annonceService = require('../services/annonceService');
 
 class AnnonceController {
-  // Créer une annonce
+  // Créer une annonce - CORRIGÉ
   async createAnnonce(req, res) {
     try {
       const user = req.user;
       const annonceData = req.body;
+
+      console.log('👤 Utilisateur:', user.id);
+      console.log('📝 Données annonce reçues:', annonceData);
 
       // Récupérer le profil tuteur de l'utilisateur
       const { ProfileTutor } = require('../models/associations');
@@ -18,6 +21,8 @@ class AnnonceController {
         });
       }
 
+      console.log('🎯 Profil tuteur trouvé:', tutorProfile.id);
+
       const annonce = await annonceService.createAnnonce(tutorProfile.id, annonceData);
 
       res.json({
@@ -26,7 +31,7 @@ class AnnonceController {
         data: annonce
       });
     } catch (error) {
-      console.error('Erreur création annonce:', error);
+      console.error('❌ Erreur création annonce:', error);
       res.status(400).json({
         success: false,
         message: error.message
@@ -53,6 +58,7 @@ class AnnonceController {
       });
     }
   }
+
   // Rechercher des annonces
   async searchAnnonces(req, res) {
     try {
@@ -151,7 +157,7 @@ class AnnonceController {
     try {
       const { id } = req.params;
 
-      const annonce = await annonceService.getAnnonceWithDetails(id);
+      const annonce = await annonceService.getAnnonceById(id);
 
       res.json({
         success: true,

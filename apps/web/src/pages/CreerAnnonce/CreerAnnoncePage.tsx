@@ -243,21 +243,26 @@ const SpecialtiesInput: React.FC<SpecialtiesInputProps> = ({
   );
 };
 
-// Composant PriceSlider corrigé
 const PriceSlider: React.FC<PriceSliderProps> = ({ question, value, onChange }) => {
   const minValue = question.min ?? 15;
   const maxValue = question.max ?? 100;
   const stepValue = 1;
-  const currentValue = value || minValue;
+  
+  // Utilisez useRef pour suivre si c'est le rendu initial
+  const initialValueRef = useRef(value || minValue);
+  const currentValue = value !== undefined ? value : initialValueRef.current;
   
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState(currentValue.toString());
   const [error, setError] = useState<string | null>(null);
 
+  // Synchronisation uniquement quand la valeur externe change
   useEffect(() => {
-    setInputValue(currentValue.toString());
-    setError(null);
-  }, [currentValue]);
+    if (value !== undefined && value !== currentValue) {
+      setInputValue(value.toString());
+      setError(null);
+    }
+  }, [value]);
 
   const handlePriceClick = () => {
     setIsEditing(true);
@@ -408,10 +413,10 @@ const CreerAnnoncePage: React.FC = () => {
   // Questions identiques à DevenirTuteur
   const annonceQuestions: AnnonceQuestion[] = [
     {
-      id: 'specialties',
+      id: 'subjects',
       question: "Dans quelle matière souhaitez-vous donner des cours ?",
       type: 'specialties',
-      field: 'subject'
+      field: 'subjects'
     },
     {
       id: 'levels',
@@ -422,8 +427,10 @@ const CreerAnnoncePage: React.FC = () => {
         "Primaire",
         "Collège", 
         "Lycée",
-        "Supérieur",
-        "Prépa"
+        "Prépa",
+        "Licence",
+        "Master",
+        "Doctorat"
       ],
       field: 'level'
     },
@@ -481,10 +488,14 @@ const CreerAnnoncePage: React.FC = () => {
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
+      const subjects = Array.isArray(answers.subjects) ? answers.subjects : [answers.subjects || 'Tutorat général'];
+      const primarySubject = subjects[0];
+      
       const annonceData = {
-        title: `Cours de ${Array.isArray(answers.specialties) ? answers.specialties[0] : answers.specialties || 'tutorat'}`,
-        description: `Cours personnalisé de ${Array.isArray(answers.specialties) ? answers.specialties.join(', ') : answers.specialties} pour niveau ${Array.isArray(answers.levels) ? answers.levels.join(', ') : answers.levels}`,
-        subject: Array.isArray(answers.specialties) ? answers.specialties[0] : answers.specialties || 'Tutorat général',
+        title: `Cours de ${primarySubject}`,
+        description: `Cours personnalisé de ${subjects.join(', ')} pour niveau ${Array.isArray(answers.levels) ? answers.levels.join(', ') : answers.levels}`,
+        subject: primarySubject, 
+        subjects: subjects,
         level: Array.isArray(answers.levels) ? answers.levels.join(', ') : answers.levels || 'Tous niveaux',
         hourlyRate: answers.rate || 30,
         teachingMode: 'Les deux',
@@ -523,17 +534,19 @@ const CreerAnnoncePage: React.FC = () => {
     const currentQuestion = annonceQuestions[currentStep];
     const answer = answers[currentQuestion.id];
     
+    if (!answer) return false;
+    
     switch (currentQuestion.type) {
       case 'specialties':
         return Array.isArray(answer) && answer.length > 0;
       case 'multi-select':
         return Array.isArray(answer) && answer.length > 0;
       case 'slider':
-        return answer !== undefined && answer !== null;
+        return typeof answer === 'number' && !isNaN(answer);
       case 'confirmation':
         return true;
       default:
-        return true;
+        return !!answer;
     }
   };
 
@@ -603,11 +616,11 @@ const CreerAnnoncePage: React.FC = () => {
               </h3>
               <div className={styles.summaryGrid}>
                 <div className={styles.summaryItem}>
-                  <span className={styles.summaryLabel}>Matière:</span>
+                  <span className={styles.summaryLabel}>Matières:</span>
                   <span className={styles.summaryValue}>
-                    {Array.isArray(answers.specialties) 
-                      ? answers.specialties.join(', ') 
-                      : answers.specialties || 'Non spécifié'}
+                    {Array.isArray(answers.subjects) 
+                      ? answers.subjects.join(', ') 
+                      : answers.subjects || 'Non spécifié'}
                   </span>
                 </div>
                 <div className={styles.summaryItem}>
@@ -716,7 +729,7 @@ const CreerAnnoncePage: React.FC = () => {
                   Retour
                 </button>
 
-                {currentQuestion.type !== 'confirmation' && (
+                {currentStep < annonceQuestions.length - 1 && (
                   <button
                     onClick={handleNext}
                     disabled={!canProceed()}

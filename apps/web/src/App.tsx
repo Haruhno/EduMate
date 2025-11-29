@@ -11,12 +11,14 @@ import RoleSelectionPage from './pages/RoleSelectionPage/RoleSelectionPage';
 import ProfileCompletion from './components/ProfileCompletion/ProfileCompletion';
 import TutorSearchPage from './pages/TutorSearchPage/TutorSearchPage';
 import ProfilePage from './pages/Profile/ProfilePage';
+import AvailabilityPage from "./pages/AvailabilityPage/AvailabilityPage";
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import DevenirTuteur from './pages/DevenirTuteur/DevenirTuteur';
 import TutorProfilePage from "./pages/TutorProfilePage/TutorProfilePage";
 import AnnoncesPage from "./pages/Annonces/AnnoncesPage";
 import CreerAnnoncePage from "./pages/CreerAnnonce/CreerAnnoncePage";
 import MessageTestPage from "./pages/Messages/MessagePage";
+import Blockchain from "./pages/Blockchain/Blockchain";
 
 // Composant pour protéger les routes d'authentification
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -80,6 +82,7 @@ const App: React.FC = () => {
               </PrivateRoute>
             } 
           />
+          <Route path="/mes-disponibilites" element={<AvailabilityPage />} />
           <Route 
             path="/dashboard" 
             element={
@@ -107,15 +110,22 @@ const App: React.FC = () => {
               </PrivateRoute>
             } 
           />
-        <Route 
-          path="/messages" 
-          element={
-            <PrivateRoute>
-              <MessageTestPage />
-            </PrivateRoute>
-          } 
-        />
-          
+          <Route 
+            path="/messages" 
+            element={
+              <PrivateRoute>
+                <MessageTestPage />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/blockchain" 
+            element={
+              <PrivateRoute>
+                <Blockchain />
+              </PrivateRoute>
+            } 
+          />
         </Routes>
       </div>
     </Router>

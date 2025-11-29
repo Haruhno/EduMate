@@ -463,8 +463,10 @@ const DevenirTuteur: React.FC = () => {
         "Primaire",
         "Collège", 
         "Lycée",
-        "Supérieur",
-        "Prépa"
+        "Prépa",
+        "Licence",
+        "Master",
+        "Doctorat"
       ],
       field: 'teachingLevels'
     },
@@ -617,11 +619,15 @@ const DevenirTuteur: React.FC = () => {
   const handleCreateFirstAnnonce = async () => {
     setIsLoading(true);
     try {
+      const subjects = Array.isArray(answers.specialties) ? answers.specialties : [answers.specialties || 'Tutorat général'];
+      const primarySubject = subjects[0];
+      
       const annonceData = {
-        title: `Cours de ${Array.isArray(answers.specialties) ? answers.specialties[0] : answers.specialties || 'tutorat'}`,
-        description: `Cours personnalisé de ${Array.isArray(answers.specialties) ? answers.specialties.join(', ') : answers.specialties} pour niveau ${Array.isArray(answers.levels) ? answers.levels.join(', ') : answers.levels}`,
-        subject: Array.isArray(answers.specialties) ? answers.specialties[0] : answers.specialties || 'Tutorat général',
-        level: Array.isArray(answers.levels) ? answers.levels[0] : answers.levels || 'Tous niveaux',
+        title: `Cours de ${primarySubject}`,
+        description: `Cours personnalisé de ${subjects.join(', ')} pour niveau ${Array.isArray(answers.levels) ? answers.levels.join(', ') : answers.levels}`,
+        subject: primarySubject,
+        subjects: subjects,
+        level: Array.isArray(answers.levels) ? answers.levels.join(', ') : answers.levels || 'Tous niveaux',
         hourlyRate: answers.rate || 30,
         teachingMode: 'Les deux',
         location: {
@@ -644,8 +650,8 @@ const DevenirTuteur: React.FC = () => {
           }
         });
       }
-    } catch (error) {
-      console.error('Erreur lors de la création de l\'annonce:', error);
+    } catch (error: any) {
+      console.error('Erreur création annonce:', error);
     } finally {
       setIsLoading(false);
     }

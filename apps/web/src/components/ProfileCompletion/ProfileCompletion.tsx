@@ -53,7 +53,6 @@ const ProfileCompletion: React.FC = () => {
     },
   });
 
-  // SUPPRIMER le deuxième useEffect qui duplique le chargement
   // Charger les données utilisateur et le profil complet
   useEffect(() => {
     const loadUserData = async () => {
@@ -122,7 +121,7 @@ const ProfileCompletion: React.FC = () => {
     } else {
       setIsInitializing(false);
     }
-  }, []); // Supprimer isInitializing des dépendances
+  }, []);
 
   // Gérer le mode modification avec données existantes
   useEffect(() => {
@@ -166,12 +165,17 @@ const ProfileCompletion: React.FC = () => {
   const CurrentStepComponent = steps[currentStep].component;
   const isFinalStep = currentStep === steps.length - 1;
 
-  // Validation 
+  // Validation - MODIFIÉE pour ignorer certaines étapes
   const validateCurrentStep = () => {
     const newErrors: { [key: string]: string } = {};
 
     if (isInitializing) {
       return newErrors;
+    }
+
+    // NE PAS valider l'étape Expérience ici - la validation se fait dans le composant
+    if (steps[currentStep].title === 'Expérience') {
+      return newErrors; // Retourner directement sans erreurs
     }
 
     if (steps[currentStep].title === 'Informations générales') {
@@ -236,6 +240,28 @@ const ProfileCompletion: React.FC = () => {
   }, [isInitializing, profileData, currentStep]);
 
   const eNext = () => {
+    // Pour l'étape Expérience, on utilise UNIQUEMENT la validation du composant
+    if (steps[currentStep].title === 'Expérience') {
+      const isExperienceStepValid = (window as any).validateExperienceStep?.();
+      
+      if (!isExperienceStepValid) {
+        const firstErrorField = Object.keys(errors).find(key => key.startsWith('experience-'));
+        if (firstErrorField) {
+          const errorElement = document.querySelector(`.${styles.experienceCard}`);
+          if (errorElement) {
+            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+        return; // Empêche la navigation seulement si validation échoue
+      } else {
+        // Si validation réussie, on peut passer à l'étape suivante
+        setCurrentStep((prev) => prev + 1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return; // On retourne directement après avoir changé d'étape
+      }
+    }
+
+    // Pour les autres étapes, on utilise la validation normale
     const newErrors = validateCurrentStep();
     setErrors(newErrors);
 
@@ -247,20 +273,6 @@ const ProfileCompletion: React.FC = () => {
         );
         if (firstErrorField) {
           const errorElement = document.getElementById(firstErrorField);
-          if (errorElement) {
-            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }
-        return;
-      }
-    }
-
-    if (steps[currentStep].title === 'Expérience') {
-      const isExperienceStepValid = (window as any).validateExperienceStep?.();
-      if (!isExperienceStepValid) {
-        const firstErrorField = Object.keys(newErrors).find(key => key.startsWith('experience-'));
-        if (firstErrorField) {
-          const errorElement = document.querySelector(`.${styles.experienceCard}`);
           if (errorElement) {
             errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }

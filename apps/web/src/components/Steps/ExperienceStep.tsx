@@ -107,7 +107,32 @@ const ExperienceStep: React.FC<ExperienceStepProps> = ({
     }
   }, [experiences, isInitialized, setProfileData]);
 
-  // VALIDATION DE TOUTES LES EXPÉRIENCES
+  // Vérifier si une expérience a commencé à être remplie
+  const hasExperienceStartedFilling = (experience: Experience): boolean => {
+    
+    const checks = {
+      jobTitle: experience.jobTitle.trim() !== '',
+      employmentType: experience.employmentType.trim() !== '',
+      company: experience.company.trim() !== '',
+      location: experience.location.trim() !== '',
+      startMonth: experience.startMonth.trim() !== '',
+      startYear: experience.startYear !== '' && experience.startYear !== null,
+      endMonth: experience.endMonth.trim() !== '',
+      endYear: experience.endYear !== '' && experience.endYear !== null,
+      description: experience.description.trim() !== ''
+    };
+    
+    const hasStarted = Object.values(checks).some(value => value === true);    
+    return hasStarted;
+  };
+
+  // Vérifier si AU MOINS une expérience a été commencée
+  const hasAnyExperienceStarted = (): boolean => {
+    const hasStarted = experiences.some(exp => hasExperienceStartedFilling(exp));
+    return hasStarted;
+  };
+
+    // VALIDATION DE TOUTES LES EXPÉRIENCES
   const validateAllExperiences = () => {
     const newErrors: { [key: string]: string } = { ...errors };
     
@@ -118,53 +143,64 @@ const ExperienceStep: React.FC<ExperienceStepProps> = ({
       }
     });
 
+    // Vérifier si au moins une expérience a été commencée
+    const hasAnyStarted = hasAnyExperienceStarted();
+
+    // Si AUCUNE expérience n'a été commencée, on autorise le passage
+    if (!hasAnyStarted) {
+      setErrors(newErrors);
+      return true;
+    }
+
     let hasAnyError = false;
 
     experiences.forEach((experience, index) => {
       const experienceKey = `experience-${index}`;
       const hasStartedFilling = hasExperienceStartedFilling(experience);
 
+      // Si l'expérience a été commencée, on valide TOUS les champs obligatoires
       if (hasStartedFilling) {
-        // Vérifier que tous les champs obligatoires sont remplis (sauf description)
+        
+        // Vérifier que tous les champs obligatoires sont remplis
         if (!experience.jobTitle?.trim()) {
-          newErrors[`${experienceKey}-jobTitle`] = "Veuillez renseigner cette information";
+          newErrors[`${experienceKey}-jobTitle`] = "⚠ Veuillez renseigner cette information";
           hasAnyError = true;
         }
 
         if (!experience.employmentType?.trim()) {
-          newErrors[`${experienceKey}-employmentType`] = "Veuillez renseigner cette information";
+          newErrors[`${experienceKey}-employmentType`] = "⚠ Veuillez renseigner cette information";
           hasAnyError = true;
         }
 
         if (!experience.company?.trim()) {
-          newErrors[`${experienceKey}-company`] = "Veuillez renseigner cette information";
+          newErrors[`${experienceKey}-company`] = "⚠ Veuillez renseigner cette information";
           hasAnyError = true;
         }
 
         if (!experience.location?.trim()) {
-          newErrors[`${experienceKey}-location`] = "Veuillez renseigner cette information";
+          newErrors[`${experienceKey}-location`] = "⚠ Veuillez renseigner cette information";
           hasAnyError = true;
         }
 
         if (!experience.startMonth?.trim()) {
-          newErrors[`${experienceKey}-startMonth`] = "Veuillez renseigner cette information";
+          newErrors[`${experienceKey}-startMonth`] = "⚠ Veuillez renseigner cette information";
           hasAnyError = true;
         }
 
         if (!experience.startYear) {
-          newErrors[`${experienceKey}-startYear`] = "Veuillez renseigner cette information";
+          newErrors[`${experienceKey}-startYear`] = "⚠ Veuillez renseigner cette information";
           hasAnyError = true;
         }
 
         // Validation pour la date de fin si ce n'est pas le poste actuel
         if (!experience.isCurrent) {
           if (!experience.endMonth?.trim()) {
-            newErrors[`${experienceKey}-endMonth`] = "Veuillez renseigner cette information";
+            newErrors[`${experienceKey}-endMonth`] = "⚠ Veuillez renseigner cette information";
             hasAnyError = true;
           }
 
           if (!experience.endYear) {
-            newErrors[`${experienceKey}-endYear`] = "Veuillez renseigner cette information";
+            newErrors[`${experienceKey}-endYear`] = "⚠ Veuillez renseigner cette information";
             hasAnyError = true;
           }
 
@@ -183,28 +219,11 @@ const ExperienceStep: React.FC<ExperienceStepProps> = ({
             }
           }
         }
-      }
+      } 
     });
-
     setErrors(newErrors);
     return !hasAnyError;
   };
-
-  // Vérifier si une expérience a commencé à être remplie
-  const hasExperienceStartedFilling = (experience: Experience): boolean => {
-    return (
-      experience.jobTitle.trim() !== '' ||
-      experience.employmentType.trim() !== '' ||
-      experience.company.trim() !== '' ||
-      experience.location.trim() !== '' ||
-      experience.startMonth.trim() !== '' ||
-      experience.startYear !== '' ||
-      experience.endMonth.trim() !== '' ||
-      experience.endYear !== '' ||
-      experience.description.trim() !== ''
-    );
-  };
-
 
   // Fermer les dropdowns quand on clique dehors
   useEffect(() => {
@@ -393,7 +412,7 @@ const ExperienceStep: React.FC<ExperienceStepProps> = ({
                   />
                   {hasJobTitleError && (
                     <div className={styles.errorText}>
-                      ⚠ {errors[`${experienceKey}-jobTitle`]}
+                      {errors[`${experienceKey}-jobTitle`]}
                     </div>
                   )}
                 </div>
@@ -427,7 +446,7 @@ const ExperienceStep: React.FC<ExperienceStepProps> = ({
                   </div>
                   {hasEmploymentTypeError && (
                     <div className={styles.errorText}>
-                      ⚠ {errors[`${experienceKey}-employmentType`]}
+                      {errors[`${experienceKey}-employmentType`]}
                     </div>
                   )}
                 </div>
@@ -446,7 +465,7 @@ const ExperienceStep: React.FC<ExperienceStepProps> = ({
                   />
                   {hasCompanyError && (
                     <div className={styles.errorText}>
-                      ⚠ {errors[`${experienceKey}-company`]}
+                      {errors[`${experienceKey}-company`]}
                     </div>
                   )}
                 </div>
@@ -462,7 +481,7 @@ const ExperienceStep: React.FC<ExperienceStepProps> = ({
                   />
                   {hasLocationError && (
                     <div className={styles.errorText}>
-                      ⚠ {errors[`${experienceKey}-location`]}
+                      {errors[`${experienceKey}-location`]}
                     </div>
                   )}
                 </div>
@@ -500,7 +519,7 @@ const ExperienceStep: React.FC<ExperienceStepProps> = ({
                     </div>
                     {hasStartMonthError && (
                       <div className={styles.errorText}>
-                        ⚠ {errors[`${experienceKey}-startMonth`]}
+                        {errors[`${experienceKey}-startMonth`]}
                       </div>
                     )}
                   </div>
@@ -533,7 +552,7 @@ const ExperienceStep: React.FC<ExperienceStepProps> = ({
                     </div>
                     {hasStartYearError && (
                       <div className={styles.errorText}>
-                        ⚠ {errors[`${experienceKey}-startYear`]}
+                        {errors[`${experienceKey}-startYear`]}
                       </div>
                     )}
                   </div>
@@ -586,7 +605,7 @@ const ExperienceStep: React.FC<ExperienceStepProps> = ({
                       </div>
                       {hasEndMonthError && (
                         <div className={styles.errorText}>
-                          ⚠ {errors[`${experienceKey}-endMonth`]}
+                          {errors[`${experienceKey}-endMonth`]}
                         </div>
                       )}
                     </div>
@@ -619,7 +638,7 @@ const ExperienceStep: React.FC<ExperienceStepProps> = ({
                       </div>
                       {hasEndYearError && (
                         <div className={styles.errorText}>
-                          ⚠ {errors[`${experienceKey}-endYear`]}
+                          {errors[`${experienceKey}-endYear`]}
                         </div>
                       )}
                     </div>

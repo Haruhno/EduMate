@@ -28,16 +28,32 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
   const dropdownRefs = useRef<{ [key: string]: { [key: number]: { startTime?: HTMLDivElement | null; endTime?: HTMLDivElement | null } } }>({});
   const [dropdownOpen, setDropdownOpen] = useState<{ [key: string]: { [key: number]: { startTime: boolean; endTime: boolean } } }>({});
   const [isInitialized, setIsInitialized] = useState(false);
+  const isInitialLoad = useRef(true);
+
+  const formatDateToLocalString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   // Vérifier si au moins une option de disponibilité est cochée
   const hasAvailabilityTypeSelected = profileData.availability?.online || profileData.availability?.inPerson;
 
   useEffect(() => {
-    if (!isInitialized) {
-      console.log('Initialisation AvailabilityStep - Structure séparée');
+    if (!isInitialized && isInitialLoad.current) {
+      console.log('Initialisation AvailabilityStep');
       
-      // ⭐⭐⭐ STRUCTURE SÉPARÉE - Récupérer schedule à part ⭐⭐⭐
-      const schedule = profileData.schedule || [];
+      // Nettoyer les dates passées du schedule
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const schedule = (profileData.schedule || []).filter((day: DayAvailability) => {
+        if (!day.date) return false;
+        const dayDate = new Date(day.date);
+        dayDate.setHours(0, 0, 0, 0);
+        return dayDate >= today;
+      });
       
       const newSelectedDates = new Set<string>();
       const newDayAvailabilities: { [key: string]: DayAvailability } = {};
@@ -59,17 +75,28 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
       setSelectedDates(newSelectedDates);
       setDayAvailabilities(newDayAvailabilities);
       setIsInitialized(true);
+      isInitialLoad.current = false;
       
-      console.log('Disponibilités initialisées (structure séparée):', newDayAvailabilities);
+      console.log('Disponibilités initialisées:', newDayAvailabilities);
     }
   }, [profileData.schedule, isInitialized]);
 
-  // Sauvegarde automatique
+  // Sauvegarde automatique avec nettoyage des dates passées
   useEffect(() => {
-    if (isInitialized) {
+    if (isInitialized && !isInitialLoad.current) {
       console.log('🔄 Sauvegarde des disponibilités');
       
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
       const scheduleData = Object.values(dayAvailabilities)
+        .filter(day => {
+          if (!day || !day.date) return false;
+          const [year, month, dayNum] = day.date.split('-').map(Number);
+          const dayDate = new Date(year, month - 1, dayNum);
+          dayDate.setHours(0, 0, 0, 0);
+          return dayDate >= today;
+        })
         .filter(day => day && day.date && day.timeSlots && day.timeSlots.length > 0)
         .map(day => ({
           date: day.date,
@@ -136,11 +163,12 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
 
   const days = getDaysInMonth();
   
+  // Générer les options de 6h à 23h
   const generateTimeOptions = () => {
     const options = [];
-    for (let hour = 8; hour <= 22; hour++) {
+    for (let hour = 6; hour <= 23; hour++) {
       options.push(`${hour.toString().padStart(2, '0')}:00`);
-      if (hour < 22) {
+      if (hour < 23) {
         options.push(`${hour.toString().padStart(2, '0')}:30`);
       }
     }
@@ -149,23 +177,12 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
 
   const timeOptions = generateTimeOptions();
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    setCurrentMonth(prev => {
-      const newMonth = new Date(prev);
-      if (direction === 'prev') {
-        newMonth.setMonth(prev.getMonth() - 1);
-      } else {
-        newMonth.setMonth(prev.getMonth() + 1);
-      }
-      return newMonth;
-    });
-  };
-
+  // Heures par défaut de 6h à 23h
   const toggleDateSelection = (date: Date) => {
     if (!date) return;
     
-    const dateString = date.toISOString().split('T')[0];
-    console.log('Toggle date:', dateString);
+    const dateString = formatDateToLocalString(date);
+    console.log('Toggle date:', dateString, 'Date originale:', date);
     
     // Empêcher la sélection des dates passées
     if (isDateInPast(date)) {
@@ -188,14 +205,91 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
           [dateString]: {
             date: dateString,
             timeSlots: [{
-              startTime: '09:00',
-              endTime: '17:00',
+              startTime: '09:00', 
+              endTime: '17:00',  
               allDay: false
             }]
           }
         }));
       }
       return newSet;
+    });
+  };
+
+  // Mettre à jour pour 6h-23h
+  const toggleAllDay = (dateString: string, slotIndex: number) => {
+    console.log('🌞 Toggle toute la journée:', dateString);
+    
+    setDayAvailabilities(prev => {
+      const dayAvailability = prev[dateString];
+      if (!dayAvailability) return prev;
+
+      const updatedTimeSlots = [...dayAvailability.timeSlots];
+      const currentAllDay = updatedTimeSlots[slotIndex].allDay;
+      
+      updatedTimeSlots[slotIndex] = {
+        ...updatedTimeSlots[slotIndex],
+        allDay: !currentAllDay,
+        startTime: !currentAllDay ? '00:00' : '06:00',
+        endTime: !currentAllDay ? '23:59' : '23:00'
+      };
+
+      return {
+        ...prev,
+        [dateString]: {
+          ...dayAvailability,
+          timeSlots: updatedTimeSlots
+        }
+      };
+    });
+  };
+
+  // Ajouter un créneau avec 6h-23h
+  const addTimeSlot = (dateString: string) => {
+    console.log('➕ Ajout créneau pour:', dateString);
+    
+    setDayAvailabilities(prev => {
+      const dayAvailability = prev[dateString];
+      if (!dayAvailability) return prev;
+
+      const lastEndTime = dayAvailability.timeSlots.reduce((latest, slot) => {
+        return slot.endTime > latest ? slot.endTime : latest;
+      }, '06:00');
+
+      const lastEndIndex = timeOptions.indexOf(lastEndTime);
+      if (lastEndIndex === -1 || lastEndIndex >= timeOptions.length - 2) {
+        return prev;
+      }
+
+      const newStartTime = timeOptions[lastEndIndex + 1];
+      const newEndTime = timeOptions[lastEndIndex + 2];
+
+      return {
+        ...prev,
+        [dateString]: {
+          ...dayAvailability,
+          timeSlots: [
+            ...dayAvailability.timeSlots,
+            {
+              startTime: newStartTime,
+              endTime: newEndTime,
+              allDay: false
+            }
+          ]
+        }
+      };
+    });
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setCurrentMonth(prev => {
+      const newMonth = new Date(prev);
+      if (direction === 'prev') {
+        newMonth.setMonth(prev.getMonth() - 1);
+      } else {
+        newMonth.setMonth(prev.getMonth() + 1);
+      }
+      return newMonth;
     });
   };
 
@@ -332,42 +426,6 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
     });
   };
 
-  const addTimeSlot = (dateString: string) => {
-    console.log('➕ Ajout créneau pour:', dateString);
-    
-    setDayAvailabilities(prev => {
-      const dayAvailability = prev[dateString];
-      if (!dayAvailability) return prev;
-
-      const lastEndTime = dayAvailability.timeSlots.reduce((latest, slot) => {
-        return slot.endTime > latest ? slot.endTime : latest;
-      }, '08:00');
-
-      const lastEndIndex = timeOptions.indexOf(lastEndTime);
-      if (lastEndIndex === -1 || lastEndIndex >= timeOptions.length - 2) {
-        return prev;
-      }
-
-      const newStartTime = timeOptions[lastEndIndex + 1];
-      const newEndTime = timeOptions[lastEndIndex + 2];
-
-      return {
-        ...prev,
-        [dateString]: {
-          ...dayAvailability,
-          timeSlots: [
-            ...dayAvailability.timeSlots,
-            {
-              startTime: newStartTime,
-              endTime: newEndTime,
-              allDay: false
-            }
-          ]
-        }
-      };
-    });
-  };
-
   const removeTimeSlot = (dateString: string, slotIndex: number) => {
     console.log('➖ Suppression créneau:', dateString, slotIndex);
     
@@ -398,35 +456,9 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
     });
   };
 
-  const toggleAllDay = (dateString: string, slotIndex: number) => {
-    console.log('🌞 Toggle toute la journée:', dateString);
-    
-    setDayAvailabilities(prev => {
-      const dayAvailability = prev[dateString];
-      if (!dayAvailability) return prev;
-
-      const updatedTimeSlots = [...dayAvailability.timeSlots];
-      const currentAllDay = updatedTimeSlots[slotIndex].allDay;
-      
-      updatedTimeSlots[slotIndex] = {
-        ...updatedTimeSlots[slotIndex],
-        allDay: !currentAllDay,
-        startTime: !currentAllDay ? '00:00' : '09:00',
-        endTime: !currentAllDay ? '23:59' : '17:00'
-      };
-
-      return {
-        ...prev,
-        [dateString]: {
-          ...dayAvailability,
-          timeSlots: updatedTimeSlots
-        }
-      };
-    });
-  };
-
   const isDateSelected = (date: Date) => {
-    return selectedDates.has(date.toISOString().split('T')[0]);
+    const dateString = formatDateToLocalString(date);
+    return selectedDates.has(dateString);
   };
 
   const isDateInPast = (date: Date) => {
@@ -449,19 +481,17 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
     });
   };
 
-
   return (
     <div className={styles.container}>
       <h2>Vos disponibilités</h2>
       <p className={styles.subtitle}>
-        Définissez vos créneaux disponibles pour les cours
+        Définissez vos créneaux disponibles pour les cours (6h - 23h)
       </p>
 
       <div className={styles.formGrid}>
         <div className={`${styles.formGroup} ${styles.fullWidth}`}>
           <label className={styles.label}>Type de cours</label>
           <div className={styles.availabilityTypes}>
-            {/* Style de case à cocher comme dans l'exemple */}
             <div className={styles.checkboxRow}>
               <label className={styles.checkboxLabel}>
                 <input
@@ -483,15 +513,9 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
               </label>
             </div>
           </div>
-          
-          {/* Message d'information */}
-          {!hasAvailabilityTypeSelected && (
-            <div className={styles.infoMessage}>
-            </div>
-          )}
         </div>
 
-        {/* Calendrier mensuel - AFFICHÉ SEULEMENT SI UN TYPE EST SÉLECTIONNÉ */}
+        {/* Calendrier mensuel */}
         {hasAvailabilityTypeSelected && (
           <div className={`${styles.formGroup} ${styles.fullWidth}`}>
             <label className={styles.label}>Sélectionnez vos jours disponibles</label>
@@ -555,7 +579,7 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
           </div>
         )}
 
-        {/* Configuration des horaires - AFFICHÉ SEULEMENT SI UN TYPE EST SÉLECTIONNÉ */}
+        {/* Configuration des horaires */}
         {hasAvailabilityTypeSelected && selectedDates.size > 0 && (
           <div className={`${styles.formGroup} ${styles.fullWidth}`}>
             <label className={styles.label}>

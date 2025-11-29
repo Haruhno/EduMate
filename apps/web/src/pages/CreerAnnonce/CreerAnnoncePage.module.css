@@ -1,10 +1,9 @@
 .container {
   min-height: 100vh;
-  background-color: #fffaf6; /* Fond beige */
+  background-color: #fffaf6; 
   padding: 0;
 }
 
-/* Barre de progression FIXED sous la navbar */
 .progressBar {
   width: 100%;
   height: 6px;
@@ -12,7 +11,7 @@
   border-radius: 3px;
   overflow: hidden;
   position: fixed;
-  top: 70px; /* Ajustez selon la hauteur de votre navbar */
+  top: 70px; 
   left: 0;
   z-index: 1000;
 }
@@ -24,17 +23,17 @@
   transition: width 0.5s ease;
 }
 
-/* En-tête avec fond beige */
+/* En-tête */
 .statusHeader {
-  background: #fffaf6; /* Même couleur que le fond de la page */
-  box-shadow: none; /* Supprimer l'ombre pour mieux s'intégrer */
+  background: #fffaf6; 
+  box-shadow: none; 
+  margin-top: 1rem;
 }
 
-/* Ajuster le contenu principal pour compenser la barre fixe */
 .content {
   max-width: 800px;
   margin: 0 auto;
-  padding: 5rem 2rem 3rem; /* Plus de padding en haut pour la barre fixe */
+  padding: 1rem 1rem 2rem; 
 }
 
 /* Section question */
@@ -723,12 +722,12 @@
   100% { transform: rotate(360deg); }
 }
 
-/* En-tête avec information du statut - FOND BEIGE */
+/* En-tête de statut */
 .statusHeader {
-  background: #fffaf6; /* Même couleur que le fond de la page */
+  background: #fffaf6; 
   border-radius: 16px;
   padding: 2rem;  
-  box-shadow: none; /* Supprimer l'ombre pour mieux s'intégrer */
+  box-shadow: none;
 }
 
 .statusInfo {
@@ -751,8 +750,8 @@
 
 .statusText {
   margin: 0;
-  color: #666;
-  font-size: 1rem;
+  color: #333;
+  font-size: 1.5rem;
   font-family: 'DMSans', sans-serif;
   text-align: center;
 }
@@ -769,11 +768,11 @@
 /* Responsive */
 @media (max-width: 768px) {
   .content {
-    padding: 4rem 1rem 2rem; /* Ajuster le padding pour mobile */
+    padding: 1rem 1rem 2rem; 
   }
   
   .progressBar {
-    top: 60px; /* Ajuster selon la hauteur de votre navbar mobile */
+    top: 60px; 
   }
   
   .questionSection {

@@ -2,7 +2,7 @@ const { Annonce, ProfileTutor, User } = require('../models/associations');
 const { Op } = require('sequelize');
 
 class AnnonceService {
-  // Créer une annonce
+  // Créer une annonce - CORRIGÉ
   async createAnnonce(tutorId, annonceData) {
     try {
       // Vérifier que le tuteur existe
@@ -11,19 +11,34 @@ class AnnonceService {
         throw new Error('Tuteur non trouvé');
       }
 
-      const annonce = await Annonce.create({
+      // S'assurer que subject est une string et subjects un tableau
+      const annoncePayload = {
         tutorId,
-        ...annonceData
-      });
+        title: annonceData.title,
+        description: annonceData.description,
+        subject: annonceData.subject, // String principale
+        subjects: Array.isArray(annonceData.subjects) ? annonceData.subjects : [annonceData.subject], // Tableau
+        level: annonceData.level,
+        hourlyRate: annonceData.hourlyRate,
+        teachingMode: annonceData.teachingMode,
+        location: annonceData.location,
+        availability: annonceData.availability
+      };
 
-      return await this.getAnnonceWithDetails(annonce.id);
+      console.log('📥 Données reçues pour création annonce:', annoncePayload);
+
+      const annonce = await Annonce.create(annoncePayload);
+      
+      // RETOURNER L'ANNONCE AVEC LES DÉTAILS
+      return await this.getAnnonceById(annonce.id);
     } catch (error) {
+      console.error('Erreur détaillée création annonce:', error);
       throw new Error(`Erreur lors de la création de l'annonce: ${error.message}`);
     }
   }
 
-  // Récupérer une annonce avec détails
-  async getAnnonceWithDetails(annonceId) {
+  // Récupérer une annonce avec détails - CORRIGÉ (renommé)
+  async getAnnonceById(annonceId) {
     try {
       const annonce = await Annonce.findByPk(annonceId, {
         include: [{
@@ -71,10 +86,12 @@ class AnnonceService {
         isActive: true
       };
 
+      // RECHERCHE DANS subject ET subjects
       if (subject) {
-        whereClause.subject = {
-          [Op.iLike]: `%${subject}%`
-        };
+        whereClause[Op.or] = [
+          { subject: { [Op.iLike]: `%${subject}%` } },
+          { subjects: { [Op.contains]: [subject] } }
+        ];
       }
 
       if (level) {
@@ -197,7 +214,7 @@ class AnnonceService {
       }
 
       await annonce.update(updateData);
-      return await this.getAnnonceWithDetails(annonceId);
+      return await this.getAnnonceById(annonceId);
     } catch (error) {
       throw new Error(`Erreur lors de la mise à jour de l'annonce: ${error.message}`);
     }

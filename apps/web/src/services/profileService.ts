@@ -1,3 +1,4 @@
+// services/profileService.ts
 import api from './api';
 
 export interface ProfileData {
@@ -86,13 +87,23 @@ export interface FullProfileResponse {
 }
 
 class ProfileService {
-  // Sauvegarder le profil
-  async saveProfile(profileData: ProfileData, currentStep: number): Promise<ProfileResponse> {
-    // Nettoyage des champs sensibles
+  // Sauvegarder le profil avec currentStep optionnel
+  async saveProfile(profileData: ProfileData, currentStep?: number): Promise<ProfileResponse> {
+    // Nettoyer les dates passées du schedule
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const cleanedSchedule = (profileData.schedule || []).filter((day: any) => {
+      if (!day.date) return false;
+      const dayDate = new Date(day.date);
+      dayDate.setHours(0, 0, 0, 0);
+      return dayDate >= today;
+    });
+
     const sanitizedProfileData = {
       ...profileData,
       specialties: profileData.specialties || [],
-      schedule: profileData.schedule || [],
+      schedule: cleanedSchedule,
       location: {
         address: profileData.location?.address || '',
         radius: profileData.location?.radius || 8,
@@ -103,17 +114,21 @@ class ProfileService {
         }
       },
       birthDate: profileData.birthDate || null,
+      availability: {
+        online: profileData.availability?.online || false,
+        inPerson: profileData.availability?.inPerson || false
+      }
     };
 
     const response = await api.post('/profile/save', {
       profileData: sanitizedProfileData,
-      currentStep
+      currentStep: currentStep || 0
     });
 
     return response.data;
   }
 
-  // Récupérer le profil complet
+  // AJOUTER : Récupérer le profil complet
   async getProfile(): Promise<FullProfileResponse> {
     try {
       const response = await api.get('/profile');
@@ -140,13 +155,13 @@ class ProfileService {
     }
   }
 
-  // Finaliser le profil
+  // AJOUTER : Finaliser le profil
   async completeProfile(): Promise<any> {
     const response = await api.post('/profile/complete');
     return response.data;
   }
 
-  // Récupérer le statut du profil 
+  // AJOUTER : Récupérer le statut du profil 
   async getProfileStatus(): Promise<ProfileStatusResponse> {
     try {
       const response = await api.get('/profile/status');
@@ -166,8 +181,7 @@ class ProfileService {
     }
   }
 
-
-  // Uploader un fichier
+  // AJOUTER : Uploader un fichier
   async uploadFile(file: File): Promise<{ url: string }> {
     const formData = new FormData();
     formData.append('file', file);

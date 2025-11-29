@@ -24,14 +24,12 @@ const DashboardPage: React.FC = () => {
 
         if (currentUser) {  
           const statusResponse = await profileService.getProfileStatus();
-          console.log('📊 Statut profil reçu:', statusResponse);
           setProfileStatus(statusResponse.data);
           
           // Charger les annonces si c'est un tuteur
           if (currentUser.role === 'tutor') {
             try {
               const annoncesResponse = await annonceService.getMyAnnonces();
-              console.log('📚 Annonces reçues:', annoncesResponse);
               setAnnonces(annoncesResponse.data || []);
             } catch (error) {
               console.error('Erreur lors du chargement des annonces:', error);
@@ -41,7 +39,6 @@ const DashboardPage: React.FC = () => {
           
           // Debug: Vérifier aussi le profil complet
           const fullProfile = await profileService.getProfile();
-          console.log('👤 Profil complet reçu:', fullProfile);
         }
       } catch (error) {
         console.error('Erreur lors du chargement du dashboard:', error);
@@ -90,7 +87,6 @@ const DashboardPage: React.FC = () => {
   const isTutor = user?.role === 'tutor';
   const isStudent = user?.role === 'student';
   const hasCompleteProfile = profileStatus?.isCompleted;
-  console.log('isCompleted:', hasCompleteProfile);
 
   return (
     <div className={styles.container}>
@@ -198,20 +194,26 @@ const DashboardPage: React.FC = () => {
             <p>Consulter et modifier vos informations</p>
           </Link>
 
+          {/* NOUVELLE CARTE PORTEFEUILLE */}
+          <Link to="/blockchain" className={styles.actionCard}>
+            <div className={styles.actionIcon}>💰</div>
+            <h3>Mon portefeuille</h3>
+            <p>Gérer vos crédits et transactions</p>
+          </Link>
+
           {isTutor && (
             <>
-              {/* NOUVELLE CARTE POUR LES ANNONCES */}
               <Link to="/annonces" className={styles.actionCard}>
                 <div className={styles.actionIcon}>📋</div>
                 <h3>Mes annonces</h3>
                 <p>Gérer vos annonces de cours</p>
               </Link>
               
-              <div className={styles.actionCard}>
+              <Link to="/mes-disponibilites" className={styles.actionCard}>
                 <div className={styles.actionIcon}>📅</div>
                 <h3>Mes disponibilités</h3>
                 <p>Gérer votre emploi du temps</p>
-              </div>
+              </Link>
               <Link to="/messages" className={styles.actionCard}>
                 <div className={styles.actionIcon}>💬</div>
                 <h3>Messages</h3>

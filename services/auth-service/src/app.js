@@ -8,7 +8,8 @@ require('./models/associations');
 const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const tutorRoutes = require('./routes/tutorRoutes');
-const annonceRoutes = require('./routes/annonceRoutes'); // NOUVEAU
+const annonceRoutes = require('./routes/annonceRoutes'); 
+const userRoutes = require('./routes/userRoutes'); 
 
 const app = express();
 
@@ -24,7 +25,8 @@ app.use('/uploads', express.static('uploads'));
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/tutors', tutorRoutes);
-app.use('/api/annonces', annonceRoutes); // NOUVEAU
+app.use('/api/annonces', annonceRoutes); 
+app.use('/api', userRoutes); 
 
 // Route de santé
 app.get('/health', (req, res) => {
@@ -35,7 +37,7 @@ app.get('/health', (req, res) => {
       '/api/auth',
       '/api/profile',
       '/api/tutors',
-      '/api/annonces' // NOUVEAU
+      '/api/annonces' 
     ]
   });
 });
@@ -51,27 +53,23 @@ app.use((error, req, res, next) => {
 
 const PORT = process.env.PORT || 3001;
 
-sequelize.sync({ alter: true })
+sequelize.sync({ alter: false })
   .then(() => {
-    console.log('Base de données synchronisée');
+    console.log('Base de données connectée');
     console.log('Tables disponibles:');
     console.log('   - users');
     console.log('   - profile_tutors'); 
     console.log('   - profile_students');
     console.log('   - diplomas');
-    console.log('   - annonces'); // NOUVEAU
+    console.log('   - experiences');
+    console.log('   - annonces');
     
     app.listen(PORT, () => {
       console.log(`Auth Service démarré sur le port ${PORT}`);
-      console.log('Routes disponibles:');
-      console.log('   - /api/auth');
-      console.log('   - /api/profile');
-      console.log('   - /api/tutors');
-      console.log('   - /api/annonces'); // NOUVEAU
     });
   })
   .catch(error => {
-    console.error('Erreur de synchronisation de la base de données:', error);
+    console.error('Erreur de connexion à la base de données:', error);
   });
 
 module.exports = app;

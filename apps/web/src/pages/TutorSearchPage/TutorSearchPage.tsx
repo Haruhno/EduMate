@@ -79,7 +79,13 @@ const TutorSearchPage: React.FC = () => {
   ];
 
   const levels: string[] = [
-    'Collège', 'Seconde', 'Première', 'Terminale', 'Licence', 'Master', 'Doctorat'
+    'Primaire',
+    'Collège', 
+    'Lycée',
+    'Prépa',
+    'Licence',
+    'Master', 
+    'Doctorat'
   ];
 
   const teachingModes: string[] = ['En ligne', 'En présentiel', 'Les deux'];
@@ -87,21 +93,27 @@ const TutorSearchPage: React.FC = () => {
 
   // Fonction pour mapper les annonces vers le format Tutor
   const mapAnnonceToTutor = (annonce: AnnonceFromDB): any => {
+    // Utiliser le tableau subjects pour les spécialités
+    const specialties = annonce.subjects && annonce.subjects.length > 0 
+      ? annonce.subjects 
+      : ['Tutorat général'];
+
+    const primarySubject = specialties[0];
+
     return {
-      // Utiliser l'ID du profil tuteur (ProfileTutor.id) en priorité.
-      // Ne pas utiliser user.id ni l'id de l'annonce comme identifiant principal du tutor.
-      id: annonce.tutor?.id || annonce.tutorId, // <-- profile_tutors.id preferred
-      tutorId: annonce.tutorId, // conserve l'ID de l'annonce si besoin
+      id: annonce.tutor?.id || annonce.tutorId,
+      tutorId: annonce.tutorId,
       name: `${annonce.tutor?.user?.firstName || ''} ${annonce.tutor?.user?.lastName || ''}`.trim() || 'Tuteur Expert',
-      subject: annonce.subject || 'Tutorat général',
+      subject: primarySubject, // Sujet principal pour l'affichage
+      subjects: specialties, // Tableau complet des matières
       rating: annonce.tutor?.rating || 4,
       reviews: annonce.tutor?.reviewsCount || 0,
       price: `€${annonce.hourlyRate || 30}`,
       emoji: "👨‍🏫",
       status: "Disponible",
       badge: getBadgeFromRating(annonce.tutor?.rating || 4),
-      specialties: annonce.tutor?.specialties || [annonce.subject],
-      gradient: getGradientFromSubject(annonce.subject),
+      specialties: specialties, // Utiliser le tableau complet des matières
+      gradient: getGradientFromSubject(primarySubject),
       bio: annonce.tutor?.bio,
       experience: annonce.tutor?.experience,
       educationLevel: annonce.level,
