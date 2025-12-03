@@ -111,6 +111,15 @@ const messageContentSchema = new mongoose.Schema({
     enum: ['sent', 'delivered', 'read'],
     default: 'sent'
   },
+
+    // Modification
+  edited: {
+    type: Boolean,
+    default: false
+  },
+  editedAt: {
+    type: Date
+  },
   
   // Timestamps
   createdAt: {
@@ -121,6 +130,8 @@ const messageContentSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
+
+  
 });
 
 // Index pour les performances

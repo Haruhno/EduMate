@@ -28,9 +28,15 @@ const MessagesPage: React.FC = () => {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showMessageMenu, setShowMessageMenu] = useState<string | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const messageMenuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -64,6 +70,9 @@ const MessagesPage: React.FC = () => {
       }
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false);
+      }
+      if (messageMenuRef.current && !messageMenuRef.current.contains(event.target as Node)) {
+        setShowMessageMenu(null);
       }
     };
 
@@ -135,9 +144,7 @@ const MessagesPage: React.FC = () => {
       const response = await messageService.getMessages(conversation._id, 1, 100);
       if (response.success) {
         setMessages(response.data);
-        // Marquer comme lu quand on sélectionne la conversation
         await messageService.markAsRead(conversation._id);
-        // Recharger les conversations pour mettre à jour les notifications
         await loadConversations();
       }
     } catch (error) {
@@ -168,8 +175,151 @@ const MessagesPage: React.FC = () => {
     }
   };
 
+  const startEditMessage = (message: Message) => {
+    setEditingMessageId(message._id);
+    setEditContent(message.content);
+    setShowMessageMenu(null);
+  };
+
+  const saveEditMessage = async () => {
+      if (!editingMessageId || !editContent.trim()) return;
+
+      try {
+          setIsLoading(true);
+          const response = await messageService.editMessage(editingMessageId, editContent);
+          if (response.success) {
+              // Mettre à jour localement le message
+              setMessages(prevMessages =>
+                  prevMessages.map(msg =>
+                      msg._id === editingMessageId
+                          ? { ...msg, content: editContent, edited: true, editedAt: new Date().toISOString() }
+                          : msg
+                  )
+              );
+
+              // Mettre à jour le lastMessage de la conversation dans la liste
+              setConversations(prevConvs =>
+                  prevConvs.map(conv => {
+                      if (conv._id === selectedConversation?._id) {
+                          // Vérifier si c'est le dernier message
+                          const lastMsg = messages[messages.length - 1];
+                          if (lastMsg && lastMsg._id === editingMessageId) {
+                              return {
+                                  ...conv,
+                                  lastMessage: {
+                                      ...conv.lastMessage,
+                                      content: editContent + ' (modifié)'
+                                  }
+                              };
+                          }
+                      }
+                      return conv;
+                  })
+              );
+
+              setEditingMessageId(null);
+              setEditContent('');
+          }
+      } catch (error: any) {
+          console.error('Erreur lors de la modification du message:', error);
+      } finally {
+          setIsLoading(false);
+      }
+  };
+
+
+  const cancelEdit = () => {
+    setEditingMessageId(null);
+    setEditContent('');
+  };
+
+  const deleteMessage = async (messageId: string) => {
+      try {
+          setIsLoading(true);
+          const response = await messageService.deleteMessage(messageId);
+          if (response.success) {
+              // Mettre à jour le message localement
+              setMessages(prevMessages =>
+                  prevMessages.map(msg =>
+                      msg._id === messageId
+                          ? { ...msg, content: 'Message supprimé', messageType: 'system' as const }
+                          : msg
+                  )
+              );
+
+              // Mettre à jour le lastMessage si c'était le dernier
+              setConversations(prevConvs =>
+                  prevConvs.map(conv => {
+                      if (conv._id === selectedConversation?._id) {
+                          const lastMsg = messages[messages.length - 1];
+                          if (lastMsg && lastMsg._id === messageId) {
+                              return {
+                                  ...conv,
+                                  lastMessage: {
+                                      ...conv.lastMessage,
+                                      content: 'Message supprimé'
+                                  }
+                              };
+                          }
+                      }
+                      return conv;
+                  })
+              );
+
+              setShowMessageMenu(null);
+          }
+      } catch (error: any) {
+          console.error('Erreur lors de la suppression du message:', error);
+      } finally {
+          setIsLoading(false);
+      }
+  };
+
+
+  const uploadImage = async (file: File) => {
+    if (!selectedConversation) return;
+
+    try {
+      setIsUploading(true);
+      const mediaUrl = await messageService.uploadFile(file);
+      const response = await messageService.sendMessage(
+        selectedConversation._id,
+        file.name,
+        'image',
+        mediaUrl
+      );
+      
+      if (response.success) {
+        await selectConversation(selectedConversation);
+        await loadConversations();
+      }
+    } catch (error: any) {
+      console.error('Erreur lors de l\'envoi de l\'image:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && selectedConversation) {
+      if (file.type.startsWith('image/')) {
+        uploadImage(file);
+      } else {
+        alert('Veuillez sélectionner une image');
+      }
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const onEmojiClick = (emojiData: EmojiClickData) => {
-    setMessageContent(prev => prev + emojiData.emoji);
+    if (editingMessageId) {
+      setEditContent(prev => prev + emojiData.emoji);
+    } else {
+      setMessageContent(prev => prev + emojiData.emoji);
+    }
   };
 
   const getOtherParticipant = (conversation: Conversation) => {
@@ -177,19 +327,16 @@ const MessagesPage: React.FC = () => {
     return conversation.participants.find(p => p.userId !== currentUser.id);
   };
 
-  // Fonction pour obtenir le dernier message de la conversation
   const getLastMessage = (): Message | null => {
     if (messages.length === 0) return null;
-    return messages[messages.length - 1]; // Le dernier message du tableau
+    return messages[messages.length - 1];
   };
 
-  // Fonction pour vérifier si un message est le dernier message de la conversation
   const isLastMessage = (message: Message): boolean => {
     const lastMessage = getLastMessage();
     return lastMessage ? lastMessage._id === message._id : false;
   };
 
-  // Fonction pour vérifier si le dernier message a été lu (et qu'il a été envoyé par l'utilisateur actuel)
   const isLastMessageRead = (): boolean => {
     const lastMessage = getLastMessage();
     if (!lastMessage || !currentUser || lastMessage.senderId !== currentUser.id) return false;
@@ -200,7 +347,6 @@ const MessagesPage: React.FC = () => {
     return lastMessage.readBy.some(read => read.userId === otherParticipant.userId);
   };
 
-  // Fonction pour obtenir le timestamp de lecture du dernier message (seulement si c'est l'utilisateur actuel qui l'a envoyé)
   const getLastMessageReadTimestamp = (): string | null => {
     const lastMessage = getLastMessage();
     if (!lastMessage || !currentUser || lastMessage.senderId !== currentUser.id) return null;
@@ -212,25 +358,18 @@ const MessagesPage: React.FC = () => {
     return readByOther ? readByOther.readAt : null;
   };
 
-  // Fonction pour formater l'heure de lecture
   const formatReadTime = (timestamp: string): string => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Fonction pour aller sur le profil
   const goToProfile = async (userId: string, userRole: string) => {
     try {
-      if (userRole === 'student') {
-        return;
-      }
-
+      if (userRole === 'student') return;
       if (userRole === 'tutor') {
         const response = await messageService.getTutorProfileByUserId(userId);
         if (response.success && response.data) {
           navigate(`/tuteur/${response.data.id}`);
-        } else {
-          console.log('Profil tuteur non disponible');
         }
       }
     } catch (error) {
@@ -258,7 +397,11 @@ const MessagesPage: React.FC = () => {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      if (editingMessageId) {
+        saveEditMessage();
+      } else {
+        sendMessage();
+      }
     }
   };
 
@@ -297,13 +440,6 @@ const MessagesPage: React.FC = () => {
               <span className={styles.userStatus}>En ligne</span>
             </div>
           </div>
-          <div className={styles.headerActions}>
-            <button className={styles.iconButton} title="Nouvelle conversation">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-              </svg>
-            </button>
-          </div>
         </div>
 
         {/* Barre de recherche */}
@@ -314,7 +450,7 @@ const MessagesPage: React.FC = () => {
             </svg>
             <input
               type="text"
-              placeholder="Rechercher une conversation..."
+              placeholder="Rechercher..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={styles.searchInput}
@@ -346,7 +482,6 @@ const MessagesPage: React.FC = () => {
                 <div className={styles.emptyState}>
                   <div className={styles.emptyIcon}>💬</div>
                   <h4>Aucune conversation</h4>
-                  <p>Commencez une nouvelle conversation avec un contact</p>
                 </div>
               ) : (
                 filteredConversations.map(conversation => {
@@ -401,7 +536,6 @@ const MessagesPage: React.FC = () => {
                 <div className={styles.emptyState}>
                   <div className={styles.emptyIcon}>👥</div>
                   <h4>Aucun contact</h4>
-                  <p>Les utilisateurs apparaîtront ici</p>
                 </div>
               ) : (
                 filteredContacts.map(user => (
@@ -420,13 +554,9 @@ const MessagesPage: React.FC = () => {
                         {user.name}
                       </h4>
                       <span className={styles.contactRole}>{user.role}</span>
-                      <span className={styles.contactStatus}>
-                        {user.isOnline ? 'En ligne' : user.lastSeen}
-                      </span>
                     </div>
                     <button 
                       className={styles.messageButton} 
-                      title="Envoyer un message"
                       onClick={() => startConversation(user.id)}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -484,61 +614,6 @@ const MessagesPage: React.FC = () => {
                   <span className={styles.partnerStatus}>En ligne</span>
                 </div>
               </div>
-              <div className={styles.conversationActions}>
-                <button className={styles.actionButton} title="Appel vocal">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57-.35-.11-.74-.03-1.02.24l-2.2 2.2c-2.83-1.44-5.15-3.75-6.59-6.59l2.2-2.21c.28-.26.36-.65.25-1C8.7 6.45 8.5 5.25 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1z"/>
-                  </svg>
-                </button>
-                <button className={styles.actionButton} title="Appel vidéo">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-                  </svg>
-                </button>
-                <div className={styles.profileMenuContainer} ref={profileMenuRef}>
-                  <button 
-                    className={styles.actionButton} 
-                    title="Plus d'options"
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-                    </svg>
-                  </button>
-                  
-                  {showProfileMenu && (
-                    <div className={styles.profileMenu}>
-                      <button 
-                        className={styles.profileMenuItem}
-                        onClick={() => {
-                          const otherParticipant = getOtherParticipant(selectedConversation);
-                          if (otherParticipant) {
-                            goToProfile(otherParticipant.userId, otherParticipant.userType);
-                            setShowProfileMenu(false);
-                          }
-                        }}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                        </svg>
-                        Voir le profil
-                      </button>
-                      <button className={styles.profileMenuItem}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M14 8c0-2.21-1.79-4-4-4S6 5.79 6 8s1.79 4 4 4 4-1.79 4-4zm3 2v2h6v-2h-6zM2 18v2h16v-2c0-2.66-5.33-4-8-4s-8 1.34-8 4z"/>
-                        </svg>
-                        Bloquer l'utilisateur
-                      </button>
-                      <button className={styles.profileMenuItem}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                        </svg>
-                        Supprimer la conversation
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
 
             {/* Zone des messages */}
@@ -547,51 +622,136 @@ const MessagesPage: React.FC = () => {
                 <div className={styles.emptyMessages}>
                   <div className={styles.emptyMessagesIcon}>💬</div>
                   <h3>Aucun message</h3>
-                  <p>Envoyez le premier message pour commencer la conversation</p>
+                  <p>Envoyez le premier message</p>
                 </div>
               ) : (
                 messages.map(message => {
                   const isLastMessageOfConversation = isLastMessage(message);
                   const isRead = isLastMessageOfConversation && isLastMessageRead();
                   const readTimestamp = isLastMessageOfConversation ? getLastMessageReadTimestamp() : null;
+                  const isDeleted = message.messageType === 'system' && message.content === 'Message supprimé';
+                  const isMyMessage = message.senderId === currentUser?.id;
                   
                   return (
                     <div
                       key={message._id}
                       className={`${styles.message} ${
-                        message.senderId === currentUser?.id ? styles.sent : styles.received
+                        isMyMessage ? styles.sent : styles.received
                       }`}
                     >
-                      <div className={styles.messageContent}>
-                        <div className={styles.messageText}>{message.content}</div>
-                      </div>
-
-                      <div className={styles.messageFooter}>
-                        <div className={styles.messageTime}>
-                          {formatMessageTime(message.createdAt)}
+                      {editingMessageId === message._id ? (
+                        <div className={styles.editContainer}>
+                          <textarea
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            onKeyPress={handleKeyPress}
+                            className={styles.editInput}
+                            autoFocus
+                          />
+                          <div className={styles.editActions}>
+                            <button onClick={cancelEdit} className={styles.cancelButton}>
+                              Annuler
+                            </button>
+                            <button 
+                              onClick={saveEditMessage} 
+                              className={styles.saveButton}
+                              disabled={!editContent.trim()}
+                            >
+                              Enregistrer
+                            </button>
+                          </div>
                         </div>
-                        {message.senderId === currentUser?.id && isLastMessageOfConversation && (
-                          <div className={styles.messageStatus}>
-                            {isRead ? (
-                              <div className={styles.seenIndicator}>
-                                <span className={styles.seenText}>Vu</span>
-                                {readTimestamp && (
-                                  <span 
-                                    className={styles.seenTime}
-                                    title={`Lu à ${formatReadTime(readTimestamp)}`}
-                                  >
-                                    • {formatReadTime(readTimestamp)}
+                      ) : (
+                        <>
+                          <div className={styles.messageContent}>
+                            {message.messageType === 'image' && message.mediaUrl ? (
+                              <div className={styles.imageMessageWrapper}>
+                                <img 
+                                  src={message.mediaUrl} 
+                                  alt="Image envoyée" 
+                                  className={styles.imageMessage}
+                                  onClick={() => window.open(message.mediaUrl, '_blank')}
+                                />
+                              </div>
+                            ) : (
+                              <div className={styles.messageText}>
+                                {message.content}
+                                {message.edited && (
+                                  <span className={styles.editedBadge} title={`Modifié le ${new Date(message.editedAt!).toLocaleString('fr-FR')}`}>
+                                    (modifié)
                                   </span>
                                 )}
                               </div>
-                            ) : (
-                              <div className={styles.sentIndicator}>
-                                <span className={styles.sentText}>Envoyé</span>
+                            )}
+
+                            {/* Menu des trois points pour les messages de l'utilisateur */}
+                            {isMyMessage && !isDeleted && (
+                              <div className={styles.messageMenuContainer} ref={messageMenuRef}>
+                                <button 
+                                  className={styles.messageMenuButton}
+                                  onClick={() => setShowMessageMenu(
+                                    showMessageMenu === message._id ? null : message._id
+                                  )}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                                  </svg>
+                                </button>
+                                
+                                {showMessageMenu === message._id && (
+                                  <div className={styles.messageMenu}>
+                                    <button 
+                                      className={styles.messageMenuItem}
+                                      onClick={() => startEditMessage(message)}
+                                    >
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                      </svg>
+                                      Modifier
+                                    </button>
+                                    <button 
+                                      className={styles.messageMenuItem}
+                                      onClick={() => deleteMessage(message._id)}
+                                    >
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                      </svg>
+                                      Supprimer
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
-                        )}
-                      </div>
+
+                          <div className={styles.messageFooter}>
+                            <div className={styles.messageTime}>
+                              {formatMessageTime(message.createdAt)}
+                            </div>
+                            {isMyMessage && isLastMessageOfConversation && (
+                              <div className={styles.messageStatus}>
+                                {isRead ? (
+                                  <div className={styles.seenIndicator}>
+                                    <span className={styles.seenText}>Vu</span>
+                                    {readTimestamp && (
+                                      <span 
+                                        className={styles.seenTime}
+                                        title={`Lu à ${formatReadTime(readTimestamp)}`}
+                                      >
+                                        • {formatReadTime(readTimestamp)}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className={styles.sentIndicator}>
+                                    <span className={styles.sentText}>Envoyé</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   );
                 })
@@ -602,17 +762,31 @@ const MessagesPage: React.FC = () => {
             {/* Zone de saisie */}
             <div className={styles.inputContainer}>
               <div className={styles.inputActions}>
-                <button className={styles.attachmentButton} title="Joindre un fichier">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
-                  </svg>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                />
+                
+                <button 
+                  className={styles.attachmentButton} 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                >
+                  {isUploading ? (
+                    <div className={styles.uploadingSpinner}></div>
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4.86 8.86l-3 3.87L9 13.14 6 17h12l-3.86-5.14z"/>
+                    </svg>
+                  )}
                 </button>
                 
-                {/* Picker d'émojis */}
                 <div className={styles.emojiPickerContainer} ref={emojiPickerRef}>
                   <button 
-                    className={styles.emojiButton} 
-                    title="Insérer un emoji"
+                    className={styles.emojiButton}
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -669,7 +843,7 @@ const MessagesPage: React.FC = () => {
               </svg>
             </div>
             <h2>Bienvenue dans la messagerie</h2>
-            <p>Sélectionnez une conversation ou démarrez-en une nouvelle avec un contact</p>
+            <p>Sélectionnez une conversation ou démarrez-en une nouvelle</p>
             <button 
               className={styles.startChatButton}
               onClick={() => setActiveTab('contacts')}

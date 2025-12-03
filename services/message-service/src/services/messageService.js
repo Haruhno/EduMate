@@ -2,7 +2,14 @@
 const { Conversation, Message } = require('../models/Message');
 const userService = require('./userService'); // Service pour récupérer les infos utilisateur depuis PostgreSQL
 
+
+
 class MessageService {
+  
+  async getMessageById(messageId) {
+    return await Message.findById(messageId);
+  }
+
   
   // Créer ou récupérer une conversation
   async getOrCreateConversation(participants) {
@@ -319,6 +326,43 @@ class MessageService {
     } catch (error) {
       throw new Error(`Erreur lors de la récupération des statistiques: ${error.message}`);
     }
+  }
+
+  // Dans services/messageService.js - AJOUTER ces méthodes
+  async getConversationById(conversationId) {
+      try {
+          const conversation = await Conversation.findById(conversationId);
+          if (!conversation) {
+              throw new Error('Conversation non trouvée');
+          }
+          return conversation;
+      } catch (error) {
+          throw new Error(`Erreur lors de la récupération de la conversation: ${error.message}`);
+      }
+  }
+
+  async updateConversationLastMessage(conversationId, message) {
+      try {
+          const conversation = await this.getConversationById(conversationId);
+          
+          // Mettre à jour le lastMessage
+          conversation.lastMessage = {
+              _id: message._id,
+              content: message.content,
+              senderId: message.senderId,
+              messageType: message.messageType,
+              timestamp: message.createdAt || new Date(),
+              readBy: message.readBy || []
+          };
+          
+          conversation.updatedAt = new Date();
+          await conversation.save();
+          
+          return conversation;
+      } catch (error) {
+          console.error('Erreur lors de la mise à jour du lastMessage:', error);
+          throw error;
+      }
   }
 
   // Marquer les messages comme lus

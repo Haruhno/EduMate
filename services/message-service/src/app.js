@@ -7,8 +7,7 @@ require('dotenv').config();
 const connectMongoDB = require('./config/mongodb');
 const messageRoutes = require('./routes/messageRoutes');
 const authMiddleware = require('./middlewares/authMiddleware');
-
-
+const fileRoutes = require('./routes/fileRoutes');
 const app = express();
 
 // Middlewares
@@ -16,11 +15,16 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+
+// Route publique pour accéder aux fichiers
+app.use('/api/messages/file', fileRoutes);
+
 // Middleware d'authentification pour toutes les routes
 app.use(authMiddleware);
 
 // Routes
 app.use('/api/messages', messageRoutes);
+
 
 // Route de santé
 app.get('/health', (req, res) => {
