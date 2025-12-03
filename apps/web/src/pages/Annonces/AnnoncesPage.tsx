@@ -1,4 +1,3 @@
-// AnnoncesPage.tsx (version modifiée)
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './AnnoncesPage.module.css';
@@ -99,13 +98,6 @@ const AnnoncesPage: React.FC = () => {
         </p>
       </div>
 
-      {/* Bouton créer annonce */}
-      <div className={styles.createSection}>
-        <Link to="/creer-annonce" className={styles.createButton}>
-          ＋ Créer une nouvelle annonce
-        </Link>
-      </div>
-
       {/* Grille des annonces */}
       <div className={styles.annoncesSection}>
         <h2 className={styles.sectionTitle}>
@@ -125,8 +117,10 @@ const AnnoncesPage: React.FC = () => {
                 
                 <div className={styles.annonceDetails}>
                   <div className={styles.detailItem}>
-                    <span className={styles.detailLabel}>Matière:</span>
-                    <span className={styles.detailValue}>{annonce.subject}</span>
+                    <span className={styles.detailLabel}>Matières:</span>
+                    <span className={styles.detailValue}>
+                      {annonce.subjects?.join(', ') || 'Non spécifié'}
+                    </span>
                   </div>
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>Niveau:</span>
@@ -170,7 +164,7 @@ const AnnoncesPage: React.FC = () => {
             <h3>Vous n'avez pas encore créé d'annonce</h3>
             <p>Créez votre première annonce pour commencer à recevoir des demandes de cours</p>
             <Link to="/creer-annonce" className={styles.createAnnonceButton}>
-              Créer une annonce
+              + Créer une annonce
             </Link>
           </div>
         )}

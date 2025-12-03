@@ -23,9 +23,14 @@ const Annonce = sequelize.define('Annonce', {
     type: DataTypes.TEXT,
     allowNull: true
   },
-  subject: {
+  subject: { 
     type: DataTypes.STRING,
     allowNull: false
+  },
+  subjects: { 
+    type: DataTypes.ARRAY(DataTypes.STRING),
+    allowNull: false,
+    defaultValue: []
   },
   level: {
     type: DataTypes.STRING,

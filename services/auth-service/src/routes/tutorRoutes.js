@@ -4,7 +4,6 @@ const router = express.Router();
 const { ProfileTutor, User } = require('../models/associations');
 const authMiddleware = require('../middlewares/authMiddleware');
 
-// routes/tutorRoutes.js - Partie seed corrigée
 router.post('/seed', authMiddleware, async (req, res) => {
   try {
     const { count = 20 } = req.body;
@@ -209,12 +208,12 @@ router.post('/seed-force', authMiddleware, async (req, res) => {
   }
 });
 
-// routes/tutorRoutes.js - VERSION CORRIGÉE
+// routes/tutorRoutes.js
 router.get('/search', authMiddleware, async (req, res) => {
   try {
     const { 
       page = 1, 
-      limit = 3,  // Corrigé pour correspondre au frontend
+      limit = 3,  
       subject, 
       level, 
       minRating, 

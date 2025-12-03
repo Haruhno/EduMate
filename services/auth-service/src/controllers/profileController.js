@@ -4,100 +4,36 @@ const multer = require('multer');
 const path = require('path');
 
 class ProfileController {
-  // Sauvegarder le profil
-   async saveProfile(req, res) {
+  async saveProfile(req, res) {
     try {
-
       const user = req.user;
-
       const { profileData, currentStep } = req.body;
 
-      // Inclure l'étape actuelle dans les données du profil
-      const profileDataWithStep = {
+      console.log('📥 Données reçues dans saveProfile:');
+      console.log('Current Step:', currentStep);
+      console.log('Schedule:', profileData?.schedule);
+      console.log('Availability:', profileData?.availability);
+
+      // Nettoyer les dates passées du schedule avant sauvegarde
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const cleanedSchedule = (profileData.schedule || []).filter((day) => {
+        if (!day.date) return false;
+        const dayDate = new Date(day.date);
+        dayDate.setHours(0, 0, 0, 0);
+        return dayDate >= today;
+      });
+
+      const cleanedProfileData = {
         ...profileData,
-        currentStep: currentStep || 0
+        schedule: cleanedSchedule
       };
 
       const profile = await profileService.createOrUpdateProfile(
         user.id, 
         user.role, 
-        profileDataWithStep
-      );
-
-      res.json({
-        success: true,
-        message: 'Profil sauvegardé avec succès',
-        data: {
-          profile,
-          currentStep,
-          completionPercentage: profile.completionPercentage
-        }
-      });
-    } catch (error) {
-      console.error('Erreur sauvegarde profil:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
-    }
-  }
-
-  // Récupérer le profil (inclut les diplômes)
- // controllers/profileController.js - méthode saveProfile
-  async saveProfile(req, res) {
-    try {
-      console.log('🔍 === DEBUG COMPLET saveProfile ===');
-      
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) {
-        console.log('❌ Token manquant');
-        return res.status(401).json({
-          success: false,
-          message: 'Token manquant'
-        });
-      }
-
-      const user = await authService.validateToken(token);
-      console.log('✅ User validé:', user.id, user.role);
-      
-      const { profileData, currentStep } = req.body;
-      
-      // ⭐⭐⭐ DEBUG DÉTAILLÉ DES DONNÉES REÇUES ⭐⭐⭐
-      console.log('📥 Données brutes reçues:');
-      console.log('Current Step:', currentStep);
-      console.log('Toutes les clés de profileData:', Object.keys(profileData));
-      
-      // Vérifier la structure de schedule
-      console.log('📅 Schedule reçu:', profileData.schedule);
-      console.log('📅 Type de schedule:', typeof profileData.schedule);
-      console.log('📅 Est un array?', Array.isArray(profileData.schedule));
-      
-      if (profileData.schedule && Array.isArray(profileData.schedule)) {
-        console.log('📅 Longueur du schedule:', profileData.schedule.length);
-        if (profileData.schedule.length > 0) {
-          console.log('📅 Premier élément:', JSON.stringify(profileData.schedule[0], null, 2));
-        }
-      }
-      
-      // Vérifier availability
-      console.log('🎯 Availability reçu:', profileData.availability);
-      
-      // Vérifier les autres champs importants
-      if (profileData.diplomas) {
-        console.log('📚 Diplômes reçus:', profileData.diplomas.length);
-      }
-      
-      if (profileData.experiences) {
-        console.log('💼 Expériences reçues:', profileData.experiences.length);
-      }
-
-      console.log('🔍 === FIN DEBUG ===');
-
-      // Appeler le service
-      const profile = await profileService.createOrUpdateProfile(
-        user.id, 
-        user.role, 
-        profileData
+        cleanedProfileData
       );
 
       console.log('✅ Profil sauvegardé avec succès');
@@ -112,10 +48,8 @@ class ProfileController {
         }
       });
     } catch (error) {
-      console.error('❌ ERREUR CRITIQUE dans saveProfile:');
+      console.error('❌ ERREUR dans saveProfile:');
       console.error('Message:', error.message);
-      console.error('Stack:', error.stack);
-      console.error('Nom:', error.name);
       
       res.status(400).json({
         success: false,
@@ -123,6 +57,7 @@ class ProfileController {
       });
     }
   }
+
   // Récupérer le profil 
   async getProfile(req, res) {
     try {

@@ -5,7 +5,8 @@ export interface AnnonceFromDB {
   tutorId: string;
   title: string;
   description: string;
-  subject: string;
+  subject: string; // RÉTABLIR subject comme string
+  subjects: string[]; // Garder subjects pour la recherche
   level: string;
   hourlyRate: number;
   teachingMode: string;
@@ -33,7 +34,8 @@ export interface AnnonceFromDB {
 export interface CreateAnnonceData {
   title: string;
   description: string;
-  subject: string;
+  subject: string; // RÉTABLIR subject comme string principal
+  subjects: string[]; // Garder pour compatibilité
   level: string;
   hourlyRate: number;
   teachingMode: string;
@@ -53,7 +55,7 @@ export interface AnnoncesResponse {
 }
 
 class AnnonceService {
-  // Rechercher des annonces
+  // Rechercher des annonces - MODIFIÉ pour chercher dans le tableau subjects
   async searchAnnonces(filters: {
     page?: number;
     limit?: number;
@@ -87,10 +89,21 @@ class AnnonceService {
     return response.data;
   }
 
-  // Créer une annonce
+  // Créer une annonce - CORRIGÉ pour utiliser subject comme string principal
   async createAnnonce(annonceData: CreateAnnonceData) {
-    const response = await api.post('/annonces', annonceData);
-    return response.data;
+    try {
+      console.log('🔄 Données envoyées au backend:', annonceData);
+      const response = await api.post('/annonces', annonceData);
+      console.log('✅ Réponse création annonce:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Erreur détaillée création annonce:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      throw error;
+    }
   }
 
   // Récupérer mes annonces
