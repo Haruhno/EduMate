@@ -8,12 +8,8 @@ router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.get('/all', authController.getAllUsers);
 
-router.post('/migrate-to-tutor', authController.migrateToTutor);
-
-// Route pour récupérer le profil utilisateur
-router.get('/profile', authController.getProfile);
-
-// Route pour vérifier l'authentification
-router.get('/check', authController.checkAuth);
+router.post('/migrate-to-tutor', authMiddleware, authController.migrateToTutor);
+router.get('/profile', authMiddleware, authController.getProfile);
+router.get('/check', authMiddleware, authController.checkAuth);
 
 module.exports = router;

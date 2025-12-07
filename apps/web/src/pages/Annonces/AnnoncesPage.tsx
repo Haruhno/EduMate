@@ -92,10 +92,19 @@ const AnnoncesPage: React.FC = () => {
     <div className={styles.container}>
       {/* En-tête */}
       <div className={styles.header}>
-        <h1 className={styles.title}>Mes annonces de cours</h1>
-        <p className={styles.subtitle}>
-          Gérez vos annonces et suivez leur performance
-        </p>
+        <div>
+          <h1 className={styles.title}>Mes annonces de cours</h1>
+          <p className={styles.subtitle}>
+            Gérez vos annonces et suivez leur performance
+          </p>
+        </div>
+
+        {/* Nouveau : bouton "Créer une annonce" dans l'en-tête si on a au moins 1 annonce */}
+        {annonces.length > 0 && (
+          <Link to="/creer-annonce" className={styles.createAnnonceButton}>
+            + Créer une annonce
+          </Link>
+        )}
       </div>
 
       {/* Grille des annonces */}

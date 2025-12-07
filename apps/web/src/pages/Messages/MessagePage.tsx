@@ -52,8 +52,12 @@ const MessagesPage: React.FC = () => {
         await loadConversations();
         await loadOnlineUsers();
         
-      } catch (error) {
+      } catch (error: any) {
         console.error('Erreur lors du chargement initial:', error);
+        if (error?.response?.status === 401) {
+          try { authService.logout(); } catch (e) {}
+          navigate('/connexion');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -105,11 +109,31 @@ const MessagesPage: React.FC = () => {
     try {
       const response = await messageService.getAllUsers();
       if (response.success) {
-        const usersWithStatus = response.data.map((user: User, index: number) => ({
+        // Filtrer uniquement les utilisateurs qui possèdent un profil (plusieurs formes possibles)
+        const usersWithProfiles = (response.data || []).filter((user: any) => {
+          if (!user) return false;
+          // Exclure l'utilisateur courant si présent
+          if (currentUser && user.id === currentUser.id) return false;
+
+          // Vérifications robustes pour différentes formes de données côté backend
+          const hasProfileFlag = !!user.hasProfile;
+          const hasProfileObj = !!user.profile || !!user.profileTutor || !!user.profileStudent;
+          const hasProfileId = !!user.profileId || !!user.profile_tutor_id || !!user.profile_student_id;
+
+          return hasProfileFlag || hasProfileObj || hasProfileId;
+        });
+
+        const usersWithStatus = usersWithProfiles.map((user: any, index: number) => ({
           id: user.id,
           name: `${user.firstName} ${user.lastName}`,
           role: user.role,
-          profilePicture: user.profilePicture,
+          profilePicture:
+            user.profilePicture ||
+            user.profile?.profilePicture ||
+            user.profileTutor?.profilePicture ||
+            user.profileStudent?.profilePicture ||
+            undefined,
+          // Simple simulation du status en dev — tu peux remplacer par vrai statut socket
           isOnline: index % 3 !== 0,
           lastSeen: index % 3 === 0 ? 'Il y a 2h' : undefined
         }));

@@ -53,7 +53,7 @@ app.use((error, req, res, next) => {
 
 const PORT = process.env.PORT || 3001;
 
-sequelize.sync({ alter: false })
+sequelize.sync({ alter: true })
   .then(() => {
     console.log('Base de données connectée');
     console.log('Tables disponibles:');

@@ -3,109 +3,56 @@ const LedgerBlock = require('./LedgerBlock');
 const Transaction = require('./Transaction');
 const WithdrawalRequest = require('./WithdrawalRequest');
 
-// Solution simple : définir les modèles externes directement ici
 const sequelize = require('../config/database');
 const { DataTypes } = require('sequelize');
 
-// Définition minimale des modèles existants
-const User = sequelize.define('User', {
-  id: {
-    type: DataTypes.UUID,
-    primaryKey: true
-  }
-}, {
+// --- Modèles “externes” uniquement pour les relations ---
+const User = sequelize.define('User', {}, {
   tableName: 'users',
   timestamps: true,
   freezeTableName: true
 });
 
-const ProfileTutor = sequelize.define('ProfileTutor', {
-  id: {
-    type: DataTypes.UUID,
-    primaryKey: true
-  },
-  userId: {
-    type: DataTypes.UUID
-  }
-}, {
+const ProfileTutor = sequelize.define('ProfileTutor', {}, {
   tableName: 'profile_tutors',
   timestamps: true,
   freezeTableName: true
 });
 
-const ProfileStudent = sequelize.define('ProfileStudent', {
-  id: {
-    type: DataTypes.UUID,
-    primaryKey: true
-  },
-  userId: {
-    type: DataTypes.UUID
-  }
-}, {
-  tableName: 'profile_students', 
+const ProfileStudent = sequelize.define('ProfileStudent', {}, {
+  tableName: 'profile_students',
   timestamps: true,
   freezeTableName: true
 });
 
-// Wallet associations avec User existant
-Wallet.belongsTo(User, {
-  foreignKey: 'userId',
-  as: 'user'
-});
+// --- Associations ---
 
-User.hasOne(Wallet, {
-  foreignKey: 'userId',
-  as: 'wallet'
-});
+Wallet.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+User.hasOne(Wallet, { foreignKey: 'userId', as: 'wallet' });
 
-// Transaction associations
-Transaction.belongsTo(Wallet, {
-  foreignKey: 'fromWalletId',
-  as: 'fromWallet'
-});
+Transaction.belongsTo(Wallet, { foreignKey: 'fromWalletId', as: 'fromWallet' });
+Transaction.belongsTo(Wallet, { foreignKey: 'toWalletId', as: 'toWallet' });
+Transaction.belongsTo(LedgerBlock, { foreignKey: 'referenceLedgerId', as: 'ledgerBlock' });
 
-Transaction.belongsTo(Wallet, {
-  foreignKey: 'toWalletId',
-  as: 'toWallet'
-});
+Wallet.hasMany(Transaction, { foreignKey: 'fromWalletId', as: 'sentTransactions' });
+Wallet.hasMany(Transaction, { foreignKey: 'toWalletId', as: 'receivedTransactions' });
+Wallet.hasMany(WithdrawalRequest, { foreignKey: 'walletId', as: 'withdrawalRequests' });
 
-Transaction.belongsTo(LedgerBlock, {
-  foreignKey: 'referenceLedgerId',
-  as: 'ledgerBlock'
-});
+LedgerBlock.hasMany(Transaction, { foreignKey: 'referenceLedgerId', as: 'transactions' });
 
-// Wallet associations
-Wallet.hasMany(Transaction, {
-  foreignKey: 'fromWalletId',
-  as: 'sentTransactions'
-});
+WithdrawalRequest.belongsTo(Wallet, { foreignKey: 'walletId', as: 'wallet' });
+WithdrawalRequest.belongsTo(LedgerBlock, { foreignKey: 'ledgerBlockId', as: 'ledgerBlock' });
 
-Wallet.hasMany(Transaction, {
-  foreignKey: 'toWalletId',
-  as: 'receivedTransactions'
-});
+// --- Synchronisation sécurisée ---
+async function syncModels() {
+  // On synchronise seulement les nouvelles tables
+  await Wallet.sync({ alter: true });
+  await Transaction.sync({ alter: true });
+  await LedgerBlock.sync({ alter: true });
+  await WithdrawalRequest.sync({ alter: true });
 
-Wallet.hasMany(WithdrawalRequest, {
-  foreignKey: 'walletId',
-  as: 'withdrawalRequests'
-});
-
-// LedgerBlock associations
-LedgerBlock.hasMany(Transaction, {
-  foreignKey: 'referenceLedgerId',
-  as: 'transactions'
-});
-
-// WithdrawalRequest associations
-WithdrawalRequest.belongsTo(Wallet, {
-  foreignKey: 'walletId',
-  as: 'wallet'
-});
-
-WithdrawalRequest.belongsTo(LedgerBlock, {
-  foreignKey: 'ledgerBlockId',
-  as: 'ledgerBlock'
-});
+  console.log('Tables blockchain synchronisées sans toucher à users ou profils.');
+}
 
 module.exports = {
   Wallet,
@@ -114,5 +61,6 @@ module.exports = {
   WithdrawalRequest,
   User,
   ProfileTutor,
-  ProfileStudent
+  ProfileStudent,
+  syncModels
 };
