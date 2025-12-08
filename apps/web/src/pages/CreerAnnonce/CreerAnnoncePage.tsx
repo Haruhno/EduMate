@@ -81,13 +81,11 @@ const SpecialtiesInput: React.FC<SpecialtiesInputProps> = ({
   }, [onSelect]);
 
   const handleAddSpecialty = (specialty: string) => {
-    if (!selectedSpecialties.includes(specialty)) {
-      const newSpecialties = [...selectedSpecialties, specialty];
-      updateSelectedSpecialties(newSpecialties);
-    }
+    updateSelectedSpecialties([specialty]); // UNE SEULE MATIÈRE
     setInputValue('');
     setShowSuggestions(false);
   };
+
 
   const handleRemoveSpecialty = (specialty: string) => {
     const newSpecialties = selectedSpecialties.filter(s => s !== specialty);
@@ -125,12 +123,9 @@ const SpecialtiesInput: React.FC<SpecialtiesInputProps> = ({
   };
 
   const handleSpecialtyClick = (specialty: string) => {
-    if (selectedSpecialties.includes(specialty)) {
-      handleRemoveSpecialty(specialty);
-    } else {
-      handleAddSpecialty(specialty);
-    }
+    updateSelectedSpecialties([specialty]); // UNE SEULE MATIÈRE
   };
+
 
   const toggleShowAll = () => {
     setShowAllSpecialties(!showAllSpecialties);
@@ -408,7 +403,10 @@ const CreerAnnoncePage: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [answers, setAnswers] = useState<Record<string, any>>({
+    rate: 15 // <-- valeur par défaut du slider
+  });
+
 
   // Questions identiques à DevenirTuteur
   const annonceQuestions: AnnonceQuestion[] = [
@@ -497,7 +495,7 @@ const CreerAnnoncePage: React.FC = () => {
         subject: primarySubject, 
         subjects: subjects,
         level: Array.isArray(answers.levels) ? answers.levels.join(', ') : answers.levels || 'Tous niveaux',
-        hourlyRate: answers.rate || 30,
+        hourlyRate: answers.rate ?? 15,
         teachingMode: 'Les deux',
         location: {
           address: '',
@@ -602,7 +600,7 @@ const CreerAnnoncePage: React.FC = () => {
         return (
           <PriceSlider
             question={question}
-            value={answers[question.id] || 30}
+            value={answers[question.id] ?? 15}
             onChange={(value: number) => handleAnswer(value)}
           />
         );        
@@ -633,7 +631,7 @@ const CreerAnnoncePage: React.FC = () => {
                 </div>
                 <div className={styles.summaryItem}>
                   <span className={styles.summaryLabel}>Tarif horaire:</span>
-                  <span className={styles.summaryValue}>€{answers.rate || '30'}/heure</span>
+                  <span className={styles.summaryValue}>€{answers.rate ?? '15'}/heure</span>
                 </div>
               </div>
             </div>

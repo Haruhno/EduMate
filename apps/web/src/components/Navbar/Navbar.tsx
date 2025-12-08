@@ -38,13 +38,9 @@ const Navbar: React.FC = () => {
     };
 
     window.addEventListener('storage', handleStorageChange);
-    
-    // Vérifier périodiquement 
-    const interval = setInterval(checkAuth, 1000);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
     };
   }, []);
 
@@ -55,7 +51,14 @@ const Navbar: React.FC = () => {
         try {
           const status = await profileService.getProfileStatus();
           setProfileStatus(status.data);
-        } catch (error) {
+        } catch (error: any) {
+          // Si token invalide -> forcer la déconnexion et redirection
+          const statusCode = error?.response?.status;
+          if (statusCode === 401) {
+            try { authService.logout(); } catch (e) {}
+            if (typeof window !== 'undefined') window.location.href = '/connexion';
+            return;
+          }
           console.error('Erreur chargement statut profil:', error);
         }
       }

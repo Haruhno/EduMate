@@ -43,6 +43,10 @@ export interface Message {
   status: 'sent' | 'delivered' | 'read';
   createdAt: string;
   updatedAt: string;
+  
+  // Ajouter ces propriétés pour l'édition
+  edited?: boolean;
+  editedAt?: string;
 }
 
 export interface MessageStats {
@@ -70,7 +74,7 @@ class MessageService {
     return response.data;
   }
 
-  // Dans la classe MessageService, assurez-vous que markAsRead est correctement implémenté :
+  // Marquer les messages comme lus
   async markAsRead(conversationId: string) {
     const response = await api.patch(
       `${this.baseURL}/api/messages/conversations/${conversationId}/read`
@@ -79,13 +83,21 @@ class MessageService {
   }
 
   // Envoyer un message
-  async sendMessage(conversationId: string, content: string, messageType = 'text', mediaUrl = null) {
-    const response = await api.post(`${this.baseURL}/api/messages/messages/send`, {
-      conversationId,
-      content,
-      messageType,
-      mediaUrl
-    });
+  async sendMessage(
+    conversationId: string,
+    content: string,
+    messageType: 'text' | 'image' | 'file' | 'system' = 'text',
+    mediaUrl?: string | null
+  ) {
+    const response = await api.post(
+      `${this.baseURL}/api/messages/messages/send`,
+      {
+        conversationId,
+        content,
+        messageType,
+        mediaUrl
+      }
+    );
     return response.data;
   }
 
@@ -101,6 +113,23 @@ class MessageService {
   async getMessages(conversationId: string, page = 1, limit = 100) {
     const response = await api.get(
       `${this.baseURL}/api/messages/conversations/${conversationId}/messages?page=${page}&limit=${limit}`
+    );
+    return response.data;
+  }
+
+  // Supprimer un message
+  async deleteMessage(messageId: string) {
+    const response = await api.delete(
+      `${this.baseURL}/api/messages/messages/${messageId}`
+    );
+    return response.data;
+  }
+
+  // Modifier un message
+  async editMessage(messageId: string, content: string) {
+    const response = await api.patch(
+      `${this.baseURL}/api/messages/messages/${messageId}`,
+      { content }
     );
     return response.data;
   }
@@ -121,7 +150,7 @@ class MessageService {
     return response.data;
   }
 
-  // Dans messageService.ts - AJOUTER cette méthode
+  // Récupérer le profil tuteur par userId
   async getTutorProfileByUserId(userId: string) {
     try {
       const response = await api.get(`/profile/tutor/byUser/${userId}`);
@@ -135,19 +164,17 @@ class MessageService {
     }
   }
 
-  // Dans messageService.ts - AJOUTER
+  // Uploader un fichier
   async uploadFile(file: File): Promise<string> {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     const response = await api.post(`${this.baseURL}/api/messages/upload`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
-  
-  return response.data.url;
-}
+
+    return response.data.url;
+  }
 
   // Rechercher des messages
   async searchMessages(query: string) {

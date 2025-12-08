@@ -194,7 +194,7 @@ class AnnonceController {
         success: false,
         message: error.message
       });
-    }
+    }d
   }
 }
 

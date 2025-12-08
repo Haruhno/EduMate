@@ -1,6 +1,10 @@
 const messageService = require('../services/messageService');
 const userService = require('../services/userService');
 const postgresService = require('../services/postgresService');
+const mongoose = require('mongoose');
+const { Readable } = require('stream');
+const { Message } = require('../models/Message');
+
 
 class MessageController {
   
@@ -294,26 +298,234 @@ class MessageController {
     }
   }
 
-  // Marquer les messages comme lus
-  async markAsRead(req, res) {
+
+  async editMessage(req, res) {
+      try {
+          const { messageId } = req.params;
+          const { content } = req.body;
+          const currentUser = req.user;
+
+          const message = await messageService.getMessageById(messageId);
+
+          if (!message) {
+              return res.status(404).json({
+                  success: false,
+                  message: 'Message non trouvé'
+              });
+          }
+
+          if (message.senderId !== currentUser.id) {
+              return res.status(403).json({
+                  success: false,
+                  message: 'Vous ne pouvez modifier que vos propres messages'
+              });
+          }
+
+          // Mettre à jour le message
+          message.content = content;
+          message.edited = true;
+          message.editedAt = new Date();
+          await message.save();
+
+          // ✅ Mettre à jour le lastMessage de la conversation si c'est le dernier message
+          const conversation = await messageService.getConversationById(message.conversationId);
+          
+          // Vérifier si ce message est le dernier de la conversation
+          const lastMessage = await Message.findOne({
+              conversationId: message.conversationId
+          }).sort({ createdAt: -1 }).limit(1);
+          
+          if (lastMessage && lastMessage._id.toString() === message._id.toString()) {
+              await messageService.updateConversationLastMessage(
+                  message.conversationId,
+                  message
+              );
+          }
+
+          res.json({
+              success: true,
+              message: 'Message modifié avec succès',
+              data: message
+          });
+      } catch (error) {
+          console.error('Erreur modification message:', error);
+          res.status(500).json({
+              success: false,
+              message: 'Erreur serveur'
+          });
+      }
+  }
+
+  async deleteMessage(req, res) {
+      try {
+          const { messageId } = req.params;
+          const currentUser = req.user;
+
+          console.log(`🗑️ Tentative de suppression du message ${messageId} par ${currentUser.id}`);
+
+          const message = await messageService.getMessageById(messageId);
+
+          if (!message) {
+              console.log('❌ Message non trouvé');
+              return res.status(404).json({
+                  success: false,
+                  message: 'Message non trouvé'
+              });
+          }
+
+          console.log(`📝 Message trouvé: sender=${message.senderId}, currentUser=${currentUser.id}`);
+
+          if (message.senderId !== currentUser.id) {
+              console.log('❌ Tentative de suppression non autorisée');
+              return res.status(403).json({
+                  success: false,
+                  message: 'Vous ne pouvez supprimer que vos propres messages'
+              });
+          }
+
+          // Sauvegarder les données importantes avant modification
+          const conversationId = message.conversationId;
+          const originalContent = message.content;
+          
+          console.log(`📋 Données originales: convId=${conversationId}, content=${originalContent}`);
+
+          // Marquer le message comme supprimé
+          message.content = 'Message supprimé';
+          message.messageType = 'system';
+          message.mediaUrl = undefined;
+          await message.save();
+
+          console.log('✅ Message marqué comme supprimé');
+
+          // Mettre à jour le lastMessage de la conversation
+          try {
+              const conversation = await messageService.getConversationById(conversationId);
+              
+              if (conversation) {
+                  console.log(`🔄 Vérification si le message est le dernier...`);
+                  
+                  // Trouver le dernier message réel (non supprimé)
+                  const lastMessage = await Message.findOne({
+                      conversationId: conversationId,
+                      messageType: { $ne: 'system' } // Ne pas prendre les messages supprimés
+                  }).sort({ createdAt: -1 }).limit(1);
+                  
+                  console.log(`📨 Dernier message non supprimé trouvé:`, lastMessage ? lastMessage._id : 'Aucun');
+                  
+                  if (lastMessage) {
+                      // Mettre à jour la conversation avec le vrai dernier message
+                      conversation.lastMessage = {
+                          content: lastMessage.content,
+                          senderId: lastMessage.senderId,
+                          messageType: lastMessage.messageType,
+                          timestamp: lastMessage.createdAt || new Date(),
+                          readBy: lastMessage.readBy || []
+                      };
+                  } else {
+                      // Si tous les messages sont supprimés
+                      conversation.lastMessage = {
+                          content: 'Aucun message',
+                          senderId: currentUser.id,
+                          messageType: 'system',
+                          timestamp: new Date(),
+                          readBy: []
+                      };
+                  }
+                  
+                  conversation.updatedAt = new Date();
+                  await conversation.save();
+                  console.log('✅ Conversation mise à jour');
+              }
+          } catch (convError) {
+              console.error('⚠️ Erreur lors de la mise à jour de la conversation:', convError.message);
+              // Ne pas échouer la suppression à cause de cette erreur
+          }
+
+          res.json({
+              success: true,
+              message: 'Message supprimé avec succès'
+          });
+      } catch (error) {
+          console.error('❌ ERREUR suppression message:', error);
+          console.error('Stack trace:', error.stack);
+          res.status(500).json({
+              success: false,
+              message: 'Erreur serveur lors de la suppression'
+          });
+      }
+  }
+
+
+  // Et dans messageService.js, ajoutez cette méthode
+  async getMessageById(messageId) {
     try {
-      const { conversationId } = req.params;
-      const currentUser = req.user;
-
-      await messageService.markMessagesAsRead(conversationId, currentUser.id);
-
-      res.json({
-        success: true,
-        message: 'Messages marqués comme lus'
-      });
+      const message = await Message.findById(messageId);
+      if (!message) {
+        throw new Error('Message non trouvé');
+      }
+      return message;
     } catch (error) {
-      console.error('Erreur marquage messages:', error);
-      res.status(400).json({
+      throw new Error(`Erreur lors de la récupération du message: ${error.message}`);
+    }
+  }
+
+
+  async uploadFile(req, res) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: 'Aucun fichier envoyé',
+        });
+      }
+
+      const bucket = new mongoose.mongo.GridFSBucket(
+        mongoose.connection.db,
+        { bucketName: 'uploads' }
+      );
+
+      const filename = `${Date.now()}-${req.file.originalname}`;
+
+      const readableStream = new Readable();
+      readableStream.push(req.file.buffer);
+      readableStream.push(null);
+
+      const uploadStream = bucket.openUploadStream(filename, {
+        contentType: req.file.mimetype,
+      });
+
+      readableStream.pipe(uploadStream);
+
+      uploadStream.on('finish', () => {
+        const fileUrl = `${req.protocol}://${req.get('host')}/api/messages/file/${filename}`;
+
+        res.json({
+          success: true,
+          url: fileUrl,
+          filename,
+          fileId: uploadStream.id,
+        });
+      });
+
+      uploadStream.on('error', (error) => {
+        console.error(error);
+        res.status(500).json({
+          success: false,
+          message: 'Erreur upload fichier',
+        });
+      });
+
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
         success: false,
-        message: error.message
+        message: 'Erreur upload fichier',
       });
     }
   }
+
+
+
 }
 
 module.exports = new MessageController();

@@ -23,22 +23,49 @@ const DashboardPage: React.FC = () => {
         setUser(currentUser);
 
         if (currentUser) {  
-          const statusResponse = await profileService.getProfileStatus();
-          setProfileStatus(statusResponse.data);
+          // profile status
+          try {
+            const statusResponse = await profileService.getProfileStatus();
+            console.log('📊 Statut profil reçu:', statusResponse);
+            setProfileStatus(statusResponse.data);
+          } catch (err: any) {
+            console.error('Erreur récupération statut profil:', err);
+            if (err?.response?.status === 401) {
+              try { authService.logout(); } catch (e) {}
+              navigate('/connexion');
+              return;
+            }
+          }
           
           // Charger les annonces si c'est un tuteur
           if (currentUser.role === 'tutor') {
             try {
               const annoncesResponse = await annonceService.getMyAnnonces();
+              console.log('📚 Annonces reçues:', annoncesResponse);
               setAnnonces(annoncesResponse.data || []);
-            } catch (error) {
+            } catch (error: any) {
               console.error('Erreur lors du chargement des annonces:', error);
+              if (error?.response?.status === 401) {
+                try { authService.logout(); } catch (e) {}
+                navigate('/connexion');
+                return;
+              }
               setAnnonces([]);
             }
           }
           
           // Debug: Vérifier aussi le profil complet
-          const fullProfile = await profileService.getProfile();
+          try {
+            const fullProfile = await profileService.getProfile();
+            console.log('👤 Profil complet reçu:', fullProfile);
+          } catch (err: any) {
+            if (err?.response?.status === 401) {
+              try { authService.logout(); } catch (e) {}
+              navigate('/connexion');
+              return;
+            }
+            console.error('Erreur récupération profil complet:', err);
+          }
         }
       } catch (error) {
         console.error('Erreur lors du chargement du dashboard:', error);
@@ -48,7 +75,7 @@ const DashboardPage: React.FC = () => {
     };
 
     loadData();
-  }, []);
+  }, [navigate]);
 
   const handleCompleteProfile = () => {
     navigate('/completer-profil', {
