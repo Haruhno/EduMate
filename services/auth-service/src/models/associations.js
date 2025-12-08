@@ -52,7 +52,7 @@ Experience.belongsTo(User, {
   as: 'user'
 });
 
-// NOUVELLE ASSOCIATION : ProfileTutor - Annonces
+// ProfileTutor - Annonces
 ProfileTutor.hasMany(Annonce, {
   foreignKey: 'tutorId',
   as: 'annonces',

@@ -109,19 +109,24 @@ const ExperienceStep: React.FC<ExperienceStepProps> = ({
 
   // Vérifier si une expérience a commencé à être remplie
   const hasExperienceStartedFilling = (experience: Experience): boolean => {
-    
-    const checks = {
-      jobTitle: experience.jobTitle.trim() !== '',
-      employmentType: experience.employmentType.trim() !== '',
-      company: experience.company.trim() !== '',
-      location: experience.location.trim() !== '',
-      startMonth: experience.startMonth.trim() !== '',
-      startYear: experience.startYear !== '' && experience.startYear !== null,
-      endMonth: experience.endMonth.trim() !== '',
-      endYear: experience.endYear !== '' && experience.endYear !== null,
-      description: experience.description.trim() !== ''
+    // Fonction helper pour vérifier si une valeur n'est pas vide
+    const isNotEmpty = (value: any): boolean => {
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'string') return value.trim() !== '';
+      if (typeof value === 'number') return true; // Les nombres sont considérés comme remplis
+      return false;
     };
-    
+    const checks = {
+      jobTitle: isNotEmpty(experience.jobTitle),
+      employmentType: isNotEmpty(experience.employmentType),
+      company: isNotEmpty(experience.company),
+      location: isNotEmpty(experience.location),
+      startMonth: isNotEmpty(experience.startMonth),
+      startYear: isNotEmpty(experience.startYear),
+      endMonth: isNotEmpty(experience.endMonth),
+      endYear: isNotEmpty(experience.endYear),
+      description: isNotEmpty(experience.description)
+    };
     const hasStarted = Object.values(checks).some(value => value === true);    
     return hasStarted;
   };
@@ -132,7 +137,7 @@ const ExperienceStep: React.FC<ExperienceStepProps> = ({
     return hasStarted;
   };
 
-    // VALIDATION DE TOUTES LES EXPÉRIENCES
+  // VALIDATION DE TOUTES LES EXPÉRIENCES
   const validateAllExperiences = () => {
     const newErrors: { [key: string]: string } = { ...errors };
     
@@ -161,45 +166,53 @@ const ExperienceStep: React.FC<ExperienceStepProps> = ({
       // Si l'expérience a été commencée, on valide TOUS les champs obligatoires
       if (hasStartedFilling) {
         
+        // Fonction helper pour vérifier si un champ est vide
+        const isEmpty = (value: any): boolean => {
+          if (value === null || value === undefined) return true;
+          if (typeof value === 'string') return value.trim() === '';
+          if (typeof value === 'number') return false; // Les nombres ne sont pas vides
+          return true;
+        };
+
         // Vérifier que tous les champs obligatoires sont remplis
-        if (!experience.jobTitle?.trim()) {
+        if (isEmpty(experience.jobTitle)) {
           newErrors[`${experienceKey}-jobTitle`] = "⚠ Veuillez renseigner cette information";
           hasAnyError = true;
         }
 
-        if (!experience.employmentType?.trim()) {
+        if (isEmpty(experience.employmentType)) {
           newErrors[`${experienceKey}-employmentType`] = "⚠ Veuillez renseigner cette information";
           hasAnyError = true;
         }
 
-        if (!experience.company?.trim()) {
+        if (isEmpty(experience.company)) {
           newErrors[`${experienceKey}-company`] = "⚠ Veuillez renseigner cette information";
           hasAnyError = true;
         }
 
-        if (!experience.location?.trim()) {
+        if (isEmpty(experience.location)) {
           newErrors[`${experienceKey}-location`] = "⚠ Veuillez renseigner cette information";
           hasAnyError = true;
         }
 
-        if (!experience.startMonth?.trim()) {
+        if (isEmpty(experience.startMonth)) {
           newErrors[`${experienceKey}-startMonth`] = "⚠ Veuillez renseigner cette information";
           hasAnyError = true;
         }
 
-        if (!experience.startYear) {
+        if (isEmpty(experience.startYear)) {
           newErrors[`${experienceKey}-startYear`] = "⚠ Veuillez renseigner cette information";
           hasAnyError = true;
         }
 
         // Validation pour la date de fin si ce n'est pas le poste actuel
         if (!experience.isCurrent) {
-          if (!experience.endMonth?.trim()) {
+          if (isEmpty(experience.endMonth)) {
             newErrors[`${experienceKey}-endMonth`] = "⚠ Veuillez renseigner cette information";
             hasAnyError = true;
           }
 
-          if (!experience.endYear) {
+          if (isEmpty(experience.endYear)) {
             newErrors[`${experienceKey}-endYear`] = "⚠ Veuillez renseigner cette information";
             hasAnyError = true;
           }

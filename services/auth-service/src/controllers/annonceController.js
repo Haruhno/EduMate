@@ -1,7 +1,7 @@
 const annonceService = require('../services/annonceService');
 
 class AnnonceController {
-  // Créer une annonce - CORRIGÉ
+  // Créer une annonce
   async createAnnonce(req, res) {
     try {
       const user = req.user;
@@ -43,7 +43,6 @@ class AnnonceController {
   async getAnnoncesByTutorId(req, res) {
     try {
       const { id } = req.params; // id = ProfileTutor.id
-
       const annonces = await annonceService.getAnnoncesByTutor(id);
 
       return res.status(200).json({
@@ -59,11 +58,16 @@ class AnnonceController {
     }
   }
 
-  // Rechercher des annonces
+  // Rechercher des annonces (publique ou privée)
   async searchAnnonces(req, res) {
     try {
       const filters = req.query;
-      const result = await annonceService.searchAnnonces(filters);
+      const isPublic = !req.headers.authorization;
+
+      const result = await annonceService.searchAnnonces({
+        ...filters,
+        isPublic
+      });
 
       res.json({
         success: true,
@@ -79,12 +83,12 @@ class AnnonceController {
     }
   }
 
-  // Récupérer les annonces d'un tuteur
+  // Récupérer les annonces de l'utilisateur connecté
   async getMyAnnonces(req, res) {
     try {
       const user = req.user;
-
       const { ProfileTutor } = require('../models/associations');
+
       const tutorProfile = await ProfileTutor.findOne({ where: { userId: user.id } });
 
       if (!tutorProfile) {
@@ -136,7 +140,6 @@ class AnnonceController {
   async deleteAnnonce(req, res) {
     try {
       const { id } = req.params;
-
       await annonceService.deleteAnnonce(id);
 
       res.json({
@@ -156,7 +159,6 @@ class AnnonceController {
   async getAnnonce(req, res) {
     try {
       const { id } = req.params;
-
       const annonce = await annonceService.getAnnonceById(id);
 
       res.json({
@@ -173,6 +175,7 @@ class AnnonceController {
     }
   }
 
+  // Activer/Désactiver une annonce
   async toggleAnnonce(req, res) {
     try {
       const { id } = req.params;

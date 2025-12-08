@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom"; // Ajout de useLocation
 import logo from "../../assets/images/logo.png";
 import userIcon from "../../assets/images/utilisateur.png";
 import styles from "./Navbar.module.css";
@@ -12,7 +12,10 @@ const Navbar: React.FC = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [profileStatus, setProfileStatus] = useState<any>(null);
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation(); 
+
 
   // Vérifie si l'utilisateur est connecté et écoute les changements
   useEffect(() => {
@@ -61,6 +64,29 @@ const Navbar: React.FC = () => {
     loadProfileStatus();
   }, [currentUser]);
 
+  useEffect(() => {
+    const loadProfilePicture = async () => {
+      if (currentUser) {
+        try {
+          // Récupérer les infos du profil
+          const profileData = await profileService.getProfile();
+          if (profileData?.data?.profile?.profilePicture) {
+            setProfilePicture(profileData.data.profile.profilePicture);
+          } else {
+            setProfilePicture(null);
+          }
+        } catch (error) {
+          console.error("Erreur chargement photo profil:", error);
+          setProfilePicture(null);
+        }
+      } else {
+        setProfilePicture(null);
+      }
+    };
+
+    loadProfilePicture();
+  }, [currentUser]);
+
   //Navigation différente selon le statut du profil
   const getNavLinks = () => {
     if (currentUser?.role === 'tutor') {
@@ -74,13 +100,13 @@ const Navbar: React.FC = () => {
       return [
         { name: 'Tableau de bord', path: '/dashboard' },
         { name: 'Trouver un tuteur', path: '/recherche-tuteur' },   
-        { name: 'Mes séances', path: '/seances' },
+        { name: 'Mes séances', path: '/cours' },
         { name: 'Messages', path: '/messages' },
       ];
     } else {
       return [
-        { name: 'Comment ça marche', path: '/fonctionnement' },
-        { name: 'Actualités', path: '/actualites' },
+        { name: 'Comment ça marche', path: '/#comment-ca-marche', isAnchor: true }, // Changé pour un anchor
+        { name: 'Découvrir les tuteurs', path: '/recherche-tuteur' },
         { name: 'Nous contacter', path: '/contact' },
       ];
     }
@@ -134,6 +160,31 @@ const Navbar: React.FC = () => {
 
   const closeMenu = () => setIsMenuOpen(false);
 
+  // Fonction pour gérer le scroll vers la section
+  const handleHowItWorksClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    closeMenu();
+    
+    if (location.pathname === '/') {
+      // Si on est déjà sur la page d'accueil, scroller vers la section
+      const howItWorksSection = document.getElementById('comment-ca-marche');
+      if (howItWorksSection) {
+        howItWorksSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      // Si on est sur une autre page, naviguer vers l'accueil avec l'anchor
+      navigate('/#comment-ca-marche');
+      
+      // Après navigation, scroller vers la section
+      setTimeout(() => {
+        const howItWorksSection = document.getElementById('comment-ca-marche');
+        if (howItWorksSection) {
+          howItWorksSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    }
+  };
+
   // Fermer le menu utilisateur quand on clique ailleurs
   useEffect(() => {
     const handleClickOutside = () => {
@@ -165,7 +216,19 @@ const Navbar: React.FC = () => {
       <ul className={`${styles.navLinks} ${isMenuOpen ? styles.active : ""}`}>
         {navLinks.map((link) => (
           <li key={link.name}>
-            <Link to={link.path} onClick={closeMenu} className={styles.navLink}> {link.name} </Link>
+            {link.isAnchor ? (
+              <a 
+                href={link.path} 
+                onClick={handleHowItWorksClick} 
+                className={styles.navLink}
+              >
+                {link.name}
+              </a>
+            ) : (
+              <Link to={link.path} onClick={closeMenu} className={styles.navLink}>
+                {link.name}
+              </Link>
+            )}
           </li>
         ))}
 
@@ -222,10 +285,9 @@ const Navbar: React.FC = () => {
               onClick={toggleUserMenu}
             >
               <img 
-                src={userIcon} 
+                src={profilePicture || userIcon} 
                 alt="Menu utilisateur" 
-                className={styles.userIcon}
-              />
+                className={`${styles.userIcon} ${profilePicture ? styles.userPhoto : ''}`}              />
             </button>
             
             {/* Menu déroulant utilisateur */}
@@ -233,7 +295,7 @@ const Navbar: React.FC = () => {
               <div className={styles.userDropdown}>
                 <div className={styles.dropdownHeader}>
                   <img 
-                    src={userIcon} 
+                    src={profilePicture || userIcon} 
                     alt="Utilisateur" 
                     className={styles.dropdownIcon}
                   />

@@ -2,8 +2,21 @@ const profileService = require('../services/profileService');
 const authService = require('../services/authService');
 const multer = require('multer');
 const path = require('path');
+const axios = require('axios');
+const FormData = require('form-data');
+
+const cvParserAgent = require('../../../cv-parser-service/src/agents/cv-parser.agent');
+const linkedinParserAgent = require('../../../cv-parser-service/src/agents/linkedin-parser.agent');
+const dataEnhancerAgent = require('../../../cv-parser-service/src/agents/data-enhancer.agent');
 
 class ProfileController {
+  constructor() {
+    console.log('✅ ProfileController initialisé');
+  }
+
+  /**
+   * Sauvegarder le profil utilisateur
+   */
   async saveProfile(req, res) {
     try {
       const user = req.user;
@@ -17,7 +30,7 @@ class ProfileController {
       // Nettoyer les dates passées du schedule avant sauvegarde
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const cleanedSchedule = (profileData.schedule || []).filter((day) => {
         if (!day.date) return false;
         const dayDate = new Date(day.date);
@@ -31,13 +44,13 @@ class ProfileController {
       };
 
       const profile = await profileService.createOrUpdateProfile(
-        user.id, 
-        user.role, 
+        user.id,
+        user.role,
         cleanedProfileData
       );
 
       console.log('✅ Profil sauvegardé avec succès');
-      
+
       res.json({
         success: true,
         message: 'Profil sauvegardé avec succès',
@@ -50,7 +63,7 @@ class ProfileController {
     } catch (error) {
       console.error('❌ ERREUR dans saveProfile:');
       console.error('Message:', error.message);
-      
+
       res.status(400).json({
         success: false,
         message: error.message
@@ -58,12 +71,12 @@ class ProfileController {
     }
   }
 
-  // Récupérer le profil 
+  /**
+   * Récupérer le profil utilisateur
+   */
   async getProfile(req, res) {
     try {
-
       const user = req.user;
-
       const profile = await profileService.getProfile(user.id, user.role);
 
       res.json({
@@ -83,7 +96,7 @@ class ProfileController {
       });
     } catch (error) {
       console.error('Erreur récupération profil:', error);
-      
+
       if (error.message.includes('Profil non trouvé')) {
         return res.json({
           success: true,
@@ -101,12 +114,13 @@ class ProfileController {
       });
     }
   }
-  // Finaliser le profil
+
+  /**
+   * Finaliser le profil utilisateur
+   */
   async completeProfile(req, res) {
     try {
-
       const user = req.user;
-
       const profile = await profileService.completeProfile(user.id, user.role);
 
       res.json({
@@ -122,13 +136,14 @@ class ProfileController {
     }
   }
 
-  // Vérifier le statut du profil
+  /**
+   * Récupérer le statut du profil
+   */
   async getProfileStatus(req, res) {
     try {
       const user = req.user;
-
       const hasProfile = await profileService.profileExists(user.id, user.role);
-      
+
       let profile = null;
       if (hasProfile) {
         profile = await profileService.getProfile(user.id, user.role);
@@ -149,7 +164,7 @@ class ProfileController {
       });
     } catch (error) {
       console.error('Erreur statut profil:', error);
-      
+
       res.status(400).json({
         success: false,
         message: error.message
@@ -157,17 +172,20 @@ class ProfileController {
     }
   }
 
-  // Dans profileController.js - AJOUTER
+  // ======================
+  // GESTION DES TUTEURS/ÉTUDIANTS
+  // ======================
+
+  /**
+   * Récupérer un tuteur par ID
+   */
   async getTutorById(req, res) {
     try {
       const { tutorId } = req.params;
-
       const { ProfileTutor, User } = require('../models/associations');
-      
+
       const tutor = await ProfileTutor.findOne({
-        where: { 
-          id: tutorId
-        },
+        where: { id: tutorId },
         include: [{
           model: User,
           as: 'user',
@@ -196,7 +214,127 @@ class ProfileController {
     }
   }
 
-  // Configuration de multer pour l'upload de fichiers
+  /**
+   * Récupérer un tuteur par userId
+   */
+  async getTutorByUserId(req, res) {
+    try {
+      const { userId } = req.params;
+      const { ProfileTutor, User } = require('../models/associations');
+
+      const tutor = await ProfileTutor.findOne({
+        where: { userId },
+        include: [{
+          model: User,
+          as: 'user',
+          attributes: ['id', 'firstName', 'lastName', 'email', 'role']
+        }]
+      });
+
+      if (!tutor) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tuteur non trouvé'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Tuteur récupéré',
+        data: tutor
+      });
+    } catch (error) {
+      console.error('Erreur getTutorByUserId:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Récupérer un étudiant par ID
+   */
+  async getStudentById(req, res) {
+    try {
+      const { studentId } = req.params;
+      const { ProfileStudent, User } = require('../models/associations');
+
+      const student = await ProfileStudent.findOne({
+        where: { id: studentId },
+        include: [{
+          model: User,
+          as: 'user',
+          attributes: ['id', 'firstName', 'lastName', 'email']
+        }]
+      });
+
+      if (!student) {
+        return res.status(404).json({
+          success: false,
+          message: 'Étudiant non trouvé'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Étudiant récupéré',
+        data: student
+      });
+    } catch (error) {
+      console.error('Erreur récupération étudiant:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Récupérer un étudiant par userId
+   */
+  async getStudentByUserId(req, res) {
+    try {
+      const { userId } = req.params;
+      const { ProfileStudent, User } = require('../models/associations');
+
+      const student = await ProfileStudent.findOne({
+        where: { userId },
+        include: [{
+          model: User,
+          as: 'user',
+          attributes: ['id', 'firstName', 'lastName', 'email', 'role']
+        }]
+      });
+
+      if (!student) {
+        return res.status(404).json({
+          success: false,
+          message: 'Étudiant non trouvé'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Étudiant récupéré',
+        data: student
+      });
+    } catch (error) {
+      console.error('Erreur getStudentByUserId:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  // ======================
+  // GESTION DES FICHIERS
+  // ======================
+
+  /**
+   * Configuration de multer pour l'upload de fichiers (diplômes, CV, etc.)
+   */
   upload = multer({
     storage: multer.diskStorage({
       destination: (req, file, cb) => {
@@ -223,7 +361,30 @@ class ProfileController {
     }
   });
 
-  // Route pour l'upload de fichiers
+  /**
+   * Configuration de multer pour l'analyse de CV (en mémoire)
+   */
+  cvUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 5 * 1024 * 1024 // 5MB max
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = /pdf|doc|docx/;
+      const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+      const mimetype = allowedTypes.test(file.mimetype);
+
+      if (mimetype && extname) {
+        return cb(null, true);
+      } else {
+        cb(new Error('Seuls les fichiers PDF et Word sont autorisés'));
+      }
+    }
+  }).single('cv');
+
+  /**
+   * Upload de fichier (diplômes, CV, etc.)
+   */
   async uploadFile(req, res) {
     try {
       if (!req.file) {
@@ -252,115 +413,137 @@ class ProfileController {
       });
     }
   }
-
-  async getStudentById(req, res) {
+    /**
+   * Analyser un CV avec l'agent IA
+   */
+  async parseCV(req, res) {
     try {
-      const { studentId } = req.params;
-      const { ProfileStudent, User } = require('../models/associations');
-
-      const student = await ProfileStudent.findOne({
-        where: { id: studentId },
-        include: [{ model: User, as: 'user', attributes: ['id','firstName','lastName','email'] }]
-      });
-
-      if (!student) {
-        return res.status(404).json({ success: false, message: 'Étudiant non trouvé' });
-      }
-
-      res.json({ success: true, message: 'Étudiant récupéré', data: student });
-    } catch (error) {
-      console.error('Erreur récupération étudiant:', error);
-      res.status(400).json({ success: false, message: error.message });
-    }
-  }
-
-  // Récupérer le profil tutor par User.id
-  async getTutorByUserId(req, res) {
-    try {
-      const { userId } = req.params;
-      const { ProfileTutor, User } = require('../models/associations');
-
-      const tutor = await ProfileTutor.findOne({
-        where: { userId },
-        include: [{ model: User, as: 'user', attributes: ['id','firstName','lastName','email','role'] }]
-      });
-
-      if (!tutor) {
-        return res.status(404).json({ success: false, message: 'Tuteur non trouvé' });
-      }
-
-      res.json({ success: true, message: 'Tuteur récupéré', data: tutor });
-    } catch (error) {
-      console.error('Erreur getTutorByUserId:', error);
-      res.status(400).json({ success: false, message: error.message });
-    }
-  }
-
-  async getTutorProfileById(req, res) {
-    try {
-      const { id } = req.params;
-      console.log('🔍 Récupération du tuteur avec ID:', id);
-
-      const { ProfileTutor, User } = require('../models/associations');
-      
-      const tutor = await ProfileTutor.findOne({
-        where: { 
-          id: id
-        },
-        include: [{
-          model: User,
-          as: 'user',
-          attributes: ['id', 'firstName', 'lastName', 'email']
-        }]
-      });
-
-      if (!tutor) {
-        console.log('❌ Tuteur non trouvé avec ID:', id);
-        return res.status(404).json({
+      if (!req.file) {
+        return res.status(400).json({
           success: false,
-          message: 'Tuteur non trouvé'
+          message: 'Aucun fichier CV fourni'
         });
       }
 
-      console.log('✅ Tuteur trouvé:', tutor.id, 'Vérifié:', tutor.isVerified, 'Complété:', tutor.isCompleted);
+      const user = req.user;
       
+      // Analyser le CV
+      const cvResult = await cvParserAgent.parseCV(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype
+      );
+
+      // Récupérer le profil existant
+      const existingProfile = await profileService.getProfile(user.id, user.role);
+
+      // Fusionner avec le profil existant
+      const mergedData = await dataEnhancerAgent.mergeProfiles(
+        cvResult.data,
+        null,
+        existingProfile
+      );
+
       res.json({
         success: true,
-        message: 'Tuteur récupéré avec succès',
-        data: tutor
+        message: 'CV analysé et fusionné avec succès',
+        data: mergedData.data,
+        validation: mergedData.data.validation,
+        suggestions: mergedData.suggestions
       });
     } catch (error) {
-      console.error('❌ Erreur récupération tuteur:', error);
+      console.error('Erreur analyse CV:', error);
       res.status(500).json({
         success: false,
-        message: 'Erreur serveur lors de la récupération du tuteur',
-        error: error.message
+        message: error.message
       });
     }
   }
 
-  // Récupérer le profil student par User.id
-  async getStudentByUserId(req, res) {
+  /**
+   * Scraper un profil LinkedIn
+   */
+  async scrapeLinkedIn(req, res) {
     try {
-      const { userId } = req.params;
-      const { ProfileStudent, User } = require('../models/associations');
+      const { linkedinUrl } = req.body;
+      const user = req.user;
 
-      const student = await ProfileStudent.findOne({
-        where: { userId },
-        include: [{ model: User, as: 'user', attributes: ['id','firstName','lastName','email','role'] }]
-      });
-
-      if (!student) {
-        return res.status(404).json({ success: false, message: 'Étudiant non trouvé' });
+      if (!linkedinUrl) {
+        return res.status(400).json({
+          success: false,
+          message: 'URL LinkedIn requise'
+        });
       }
 
-      res.json({ success: true, message: 'Étudiant récupéré', data: student });
+      // Scraper LinkedIn
+      const linkedinResult = await linkedinParserAgent.scrapeLinkedInProfile(linkedinUrl);
+
+      // Récupérer le profil existant
+      const existingProfile = await profileService.getProfile(user.id, user.role);
+
+      // Fusionner avec le profil existant
+      const mergedData = await dataEnhancerAgent.mergeProfiles(
+        null,
+        linkedinResult.data,
+        existingProfile
+      );
+
+      res.json({
+        success: true,
+        message: 'Profil LinkedIn importé avec succès',
+        data: mergedData.data,
+        validation: mergedData.data.validation,
+        suggestions: mergedData.suggestions
+      });
     } catch (error) {
-      console.error('Erreur getStudentByUserId:', error);
-      res.status(400).json({ success: false, message: error.message });
+      console.error('Erreur LinkedIn scraping:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
     }
   }
 
+  /**
+   * Fusionner toutes les sources
+   */
+  async mergeAllSources(req, res) {
+    try {
+      const user = req.user;
+      const { cvData, linkedinData } = req.body;
+
+      // Récupérer le profil existant
+      const existingProfile = await profileService.getProfile(user.id, user.role);
+
+      // Fusionner toutes les sources
+      const mergedData = await dataEnhancerAgent.mergeProfiles(
+        cvData,
+        linkedinData,
+        existingProfile
+      );
+
+      // Mettre à jour le profil
+      const updatedProfile = await profileService.createOrUpdateProfile(
+        user.id,
+        user.role,
+        mergedData.data
+      );
+
+      res.json({
+        success: true,
+        message: 'Toutes les sources fusionnées avec succès',
+        data: updatedProfile,
+        metadata: mergedData.metadata,
+        suggestions: mergedData.suggestions
+      });
+    } catch (error) {
+      console.error('Erreur fusion sources:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 }
 
 module.exports = new ProfileController();

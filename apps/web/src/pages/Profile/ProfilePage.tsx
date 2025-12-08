@@ -94,6 +94,10 @@ const ProfilePage: React.FC = () => {
     checks.push({name: 'address', completed: !!(profile?.address && String(profile.address).trim())});
     checks.push({name: 'bio', completed: !!(profile?.bio && String(profile.bio).trim())});
 
+    // Compétences
+    const skillsCompleted = !!(profile?.skills && profile.skills.length > 0);
+    checks.push({name: 'skills', completed: skillsCompleted});
+
     // Photo
     const photoCompleted = !!(profile?.profilePicture && profile.profilePicture !== '/assets/images/avatar.jpg');
     checks.push({name: 'profilePicture', completed: photoCompleted});
@@ -567,6 +571,24 @@ const ProfilePage: React.FC = () => {
 
         {/* Section secondaire - Droite */}
         <div className={styles.sidebar}>
+          {/* Section Compétences */}
+          {profileData?.skills && profileData.skills.length > 0 && (
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>
+                <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                {user?.role === 'student' ? 'Compétences recherchées' : 'Compétences'}
+              </h3>
+              <div className={styles.skillsContainer}>
+                {profileData.skills.map((skill, index) => (
+                  <span key={index} className={styles.skillTag}>
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Disponibilités */}
           {user?.role === 'tutor' && profileData?.availability && (
             <div className={styles.section}>
@@ -587,25 +609,6 @@ const ProfilePage: React.FC = () => {
                     {profileData.availability.inPerson ? '✓' : '✗'} En présentiel
                   </span>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Spécialités */}
-          {user?.role === 'tutor' && profileData?.specialties && profileData.specialties.length > 0 && (
-            <div className={styles.section}>
-              <h3 className={styles.sectionTitle}>
-                <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                Spécialités
-              </h3>
-              <div className={styles.specialties}>
-                {profileData.specialties.map((specialty, index) => (
-                  <span key={index} className={styles.specialtyTag}>
-                    {specialty}
-                  </span>
-                ))}
               </div>
             </div>
           )}

@@ -15,9 +15,7 @@ const ProfileTutor = sequelize.define('ProfileTutor', {
       key: 'id'
     }
   },
-  
-  // SUPPRIMER hourlyRate d'ici - il sera dans Annonce
-  
+    
   rating: {
     type: DataTypes.DECIMAL(3, 2),
     defaultValue: 0.00,
@@ -64,13 +62,6 @@ const ProfileTutor = sequelize.define('ProfileTutor', {
     type: DataTypes.TEXT,
     allowNull: true
   },
-  specialties: {
-    type: DataTypes.JSONB,
-    allowNull: false,
-    defaultValue: [],
-  },
-  
-  // Disponibilité générale (pour le profil)
   // Disponibilité 
   availability: {
     type: DataTypes.JSON,

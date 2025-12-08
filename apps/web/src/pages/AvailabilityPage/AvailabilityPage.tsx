@@ -32,24 +32,24 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
   const [dateToDelete, setDateToDelete] = useState<Date | null>(null);
   const [newAvailability, setNewAvailability] = useState({ 
     startTime: '06:00', 
-    endTime: '23:00', 
+    endTime: '07:00', 
     allDay: false 
   });
+  const [clickedHour, setClickedHour] = useState<number | null>(null);
+  const [isModifying, setIsModifying] = useState(false);
+  const [modifyingSlotIndex, setModifyingSlotIndex] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentProfileData, setCurrentProfileData] = useState<any>({});
 
-  // Références pour les dropdowns
   const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [dropdownOpen, setDropdownOpen] = useState<{ startTime: boolean; endTime: boolean }>({ 
     startTime: false, 
     endTime: false 
   });
 
-  // Références pour éviter les boucles infinies
   const isInitialLoad = useRef(true);
   const hasLoadedFromDB = useRef(false);
 
-  // Fonction pour formater une date en YYYY-MM-DD sans décalage de fuseau
   const formatDateToLocalString = (date: Date): string => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -57,7 +57,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     return `${year}-${month}-${day}`;
   };
 
-  // Générer les options de temps (6h-23h avec pas de 30 minutes)
   const generateTimeOptions = () => {
     const options = [];
     for (let hour = 6; hour <= 23; hour++) {
@@ -71,7 +70,19 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
 
   const timeOptions = generateTimeOptions();
 
-  // CHARGEMENT DES DONNÉES DEPUIS LA BASE DE DONNÉES - UNE SEULE FOIS
+  const hourToTimeString = (hour: number): string => {
+    return `${hour.toString().padStart(2, '0')}:00`;
+  };
+
+  const getNextAvailableTime = (hour: number): string => {
+    const currentTime = hourToTimeString(hour);
+    const index = timeOptions.indexOf(currentTime);
+    if (index < timeOptions.length - 1) {
+      return timeOptions[index + 1];
+    }
+    return timeOptions[timeOptions.length - 1];
+  };
+
   useEffect(() => {
     const loadProfileData = async () => {
       if (hasLoadedFromDB.current) {
@@ -81,18 +92,11 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
 
       try {
         setIsLoading(true);
-        console.log('Chargement des données depuis la base de données...');
         const response = await profileService.getProfile();
         
         if (response.success && response.data.profile) {
           const profile = response.data.profile;
-          console.log('Données récupérées depuis la BD:', { 
-            availability: profile.availability, 
-            schedule: profile.schedule,
-            scheduleLength: profile.schedule?.length || 0 
-          });
 
-          // Nettoyer les dates passées du schedule
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           
@@ -103,7 +107,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
             return dayDate >= today;
           });
 
-          // Mettre à jour les données locales
           const newSelectedDates = new Set<string>();
           const newDayAvailabilities: { [key: string]: DayAvailability } = {};
 
@@ -114,7 +117,7 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
                 date: day.date,
                 timeSlots: day.timeSlots.map(slot => ({
                   startTime: slot.startTime || '06:00',
-                  endTime: slot.endTime || '23:00',
+                  endTime: slot.endTime || '07:00',
                   allDay: !!slot.allDay
                 }))
               };
@@ -125,21 +128,18 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
           setDayAvailabilities(newDayAvailabilities);
           setCurrentProfileData({
             ...profile,
-            schedule: schedule // Utiliser le schedule nettoyé
+            schedule: schedule
           });
           hasLoadedFromDB.current = true;
           isInitialLoad.current = false;
 
-          // Sauvegarder le schedule nettoyé si des dates passées ont été enlevées
           if (schedule.length !== (profile.schedule || []).length) {
-            console.log('🔧 Nettoyage des dates passées automatique');
             await profileService.saveProfile({
               ...profile,
               schedule: schedule
             });
           }
         } else {
-          console.log('Aucun profil trouvé dans la base de données');
           setCurrentProfileData({});
           hasLoadedFromDB.current = true;
           isInitialLoad.current = false;
@@ -156,11 +156,9 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     loadProfileData();
   }, []);
 
-  // Synchronisation UNIQUEMENT si les props changent depuis l'extérieur
   useEffect(() => {
     if (!isInitialLoad.current && profileData && Object.keys(profileData).length > 0 && 
         JSON.stringify(profileData) !== JSON.stringify(currentProfileData)) {
-      console.log('🔄 Synchronisation avec les props parentes');
       
       const schedule = profileData?.schedule || [];
       const newSelectedDates = new Set<string>();
@@ -173,7 +171,7 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
             date: day.date,
             timeSlots: day.timeSlots.map(slot => ({
               startTime: slot.startTime || '06:00',
-              endTime: slot.endTime || '23:00',
+              endTime: slot.endTime || '07:00',
               allDay: !!slot.allDay
             }))
           };
@@ -190,23 +188,19 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     }
   }, [profileData]);
 
-  // Fonction pour mettre à jour le parent de manière contrôlée
   const updateParentProfileData = (updatedData: any) => {
     if (setProfileData) {
       setProfileData((prev: any) => ({ ...prev, ...updatedData }));
     }
   };
 
-  // Obtenir les jours de la semaine (toujours du lundi au dimanche)
   const getWeekDays = () => {
     const today = new Date();
     today.setHours(0,0,0,0);
     
-    // Trouver le lundi de la semaine actuelle
     const startDate = new Date(currentWeek);
     startDate.setHours(0,0,0,0);
     
-    // Ajuster pour commencer le lundi
     const dayOfWeek = startDate.getDay();
     const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     startDate.setDate(startDate.getDate() + diffToMonday);
@@ -223,7 +217,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
 
   const weekDays = getWeekDays();
 
-  // Navigation seulement vers le futur
   const navigateWeek = (direction: 'prev' | 'next') => {
     setCurrentWeek(prev => {
       const newDate = new Date(prev);
@@ -236,22 +229,17 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     });
   };
 
-  // Gérer le changement des types de cours
   const handleAvailabilityTypeChange = (type: 'online' | 'inPerson') => {
     const currentAvailability = currentProfileData?.availability || { online: false, inPerson: false };
     const newValue = !currentAvailability[type];
     const newAvailabilityData = { ...currentAvailability, [type]: newValue };
 
-    console.log(`🔄 ${type} changé à:`, newValue);
-
-    // Sauvegarder dans la base de données
     const updateProfile = async () => {
       try {
         await profileService.saveProfile({
           ...currentProfileData,
           availability: newAvailabilityData
         });
-        // Recharger les données
         const response = await profileService.getProfile();
         if (response.success && response.data.profile) {
           setCurrentProfileData(response.data.profile);
@@ -265,13 +253,11 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     updateProfile();
   };
 
-  // Obtenir les disponibilités pour une date
-  const getAvailabilityForDate = (date: Date) => {
+  const getAvailabilityForDate = (date: Date): DayAvailability | undefined => {
     const dateString = formatDateToLocalString(date);
     return dayAvailabilities[dateString];
   };
 
-  // Couleur selon availability
   const getAvailabilityColor = () => {
     const availability = currentProfileData?.availability || {};
     if (availability.online && availability.inPerson) {
@@ -292,33 +278,70 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     return `${start.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} - ${end.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
   };
 
-  // Convertir l'heure en minutes depuis minuit
   const timeToMinutes = (time: string): number => {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
   };
 
-  // Obtenir les blocs de disponibilité pour une date
   const getAvailabilityBlocks = (date: Date) => {
     const availability = getAvailabilityForDate(date);
     if (!availability || !availability.timeSlots) return [];
 
-    const blocks: { start: number; end: number; slot: TimeSlot }[] = [];
+    const blocks: { start: number; end: number; slot: TimeSlot, slotIndex: number }[] = [];
     
-    availability.timeSlots.forEach(slot => {
+    availability.timeSlots.forEach((slot, slotIndex) => {
       if (slot.allDay) {
-        blocks.push({ start: 360, end: 1380, slot }); // 6h à 23h
+        blocks.push({ start: 360, end: 1380, slot, slotIndex });
       } else {
         const startMinutes = timeToMinutes(slot.startTime);
         const endMinutes = timeToMinutes(slot.endTime);
-        blocks.push({ start: startMinutes, end: endMinutes, slot });
+        blocks.push({ start: startMinutes, end: endMinutes, slot, slotIndex });
       }
     });
 
     return blocks;
   };
 
-  // Obtenir les options de temps filtrées
+  // Fonction pour trouver quel créneau contient une heure spécifique
+  const findSlotIndexForHour = (date: Date, hour: number): number | null => {
+    const availability = getAvailabilityForDate(date);
+    if (!availability || !availability.timeSlots) return null;
+    
+    const hourMinutes = hour * 60;
+    
+    for (let i = 0; i < availability.timeSlots.length; i++) {
+      const slot = availability.timeSlots[i];
+      if (slot.allDay) {
+        if (hourMinutes >= 360 && hourMinutes < 1380) {
+          return i;
+        }
+      } else {
+        const startMinutes = timeToMinutes(slot.startTime);
+        const endMinutes = timeToMinutes(slot.endTime);
+        if (hourMinutes >= startMinutes && hourMinutes < endMinutes) {
+          return i;
+        }
+      }
+    }
+    
+    return null;
+  };
+
+  // Fonction pour trouver quel créneau est à une heure de début spécifique
+  const findSlotIndexForStartTime = (date: Date, startTime: string): number | null => {
+    const availability = getAvailabilityForDate(date);
+    if (!availability || !availability.timeSlots) return null;
+    
+    for (let i = 0; i < availability.timeSlots.length; i++) {
+      const slot = availability.timeSlots[i];
+      if (!slot.allDay && slot.startTime === startTime) {
+        return i;
+      }
+    }
+    
+    return null;
+  };
+
   const getFilteredTimeOptions = (field: 'startTime' | 'endTime') => {
     if (field === 'startTime') {
       if (newAvailability.endTime) {
@@ -332,7 +355,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     return timeOptions;
   };
 
-  // Fermer les dropdowns en cliquant à l'extérieur
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       Object.entries(dropdownRefs.current).forEach(([field, ref]) => {
@@ -357,12 +379,9 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
   };
 
   const handleSelectOption = (field: 'startTime' | 'endTime', value: string) => {
-    console.log(`⏰ Sélection ${field}:`, value);
-    
     if (field === 'startTime') {
       setNewAvailability(prev => {
         let newEndTime = prev.endTime;
-        // Ajuster l'heure de fin si nécessaire
         if (value >= prev.endTime) {
           const startIndex = timeOptions.indexOf(value);
           if (startIndex < timeOptions.length - 1) {
@@ -374,7 +393,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     } else {
       setNewAvailability(prev => {
         let newStartTime = prev.startTime;
-        // Ajuster l'heure de début si nécessaire
         if (value <= prev.startTime) {
           const endIndex = timeOptions.indexOf(value);
           if (endIndex > 0) {
@@ -395,39 +413,61 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     dropdownRefs.current[field] = el;
   };
 
-  const openAddModal = (date?: Date) => {
-    if (date && isDateInPast(date)) {
+  // Fonction pour ouvrir le modal en mode MODIFICATION (clic sur un créneau existant)
+  const openModifyModal = (date: Date, slotIndex: number) => {
+    if (isDateInPast(date)) {
       alert("Cette date est déjà passée. Veuillez choisir une autre disponibilité.");
       return;
     }
     
-    const availability = date ? getAvailabilityForDate(date) : null;
-    if (availability && availability.timeSlots.length > 0) {
-      // Pré-remplir avec la première disponibilité existante
-      const firstSlot = availability.timeSlots[0];
-      setNewAvailability({
-        startTime: firstSlot.startTime,
-        endTime: firstSlot.endTime,
-        allDay: firstSlot.allDay
-      });
-    } else {
-      setNewAvailability({ 
-        startTime: '06:00', 
-        endTime: '23:00', 
-        allDay: false 
-      });
-    }
+    const availability = getAvailabilityForDate(date);
+    if (!availability || !availability.timeSlots[slotIndex]) return;
     
-    setSelectedDateForModal(date || null);
+    setIsModifying(true);
+    setModifyingSlotIndex(slotIndex);
+    const existingSlot = availability.timeSlots[slotIndex];
+    setNewAvailability({
+      startTime: existingSlot.startTime,
+      endTime: existingSlot.endTime,
+      allDay: existingSlot.allDay
+    });
+    setClickedHour(null);
+    setSelectedDateForModal(date);
     setShowAddModal(true);
   };
 
-  const openDeleteModal = (date: Date) => {
+  // Fonction pour ouvrir le modal en mode AJOUT (clic sur une cellule vide)
+  const openAddModal = (date: Date, hour: number) => {
+    if (isDateInPast(date)) {
+      alert("Cette date est déjà passée. Veuillez choisir une autre disponibilité.");
+      return;
+    }
+    
+    setIsModifying(false);
+    setModifyingSlotIndex(null);
+    const startTime = hourToTimeString(hour);
+    const endTime = getNextAvailableTime(hour);
+    
+    setNewAvailability({
+      startTime: startTime,
+      endTime: endTime,
+      allDay: false
+    });
+    setClickedHour(hour);
+    setSelectedDateForModal(date);
+    setShowAddModal(true);
+  };
+
+  const openDeleteModal = (date: Date, slotIndex?: number) => {
     setDateToDelete(date);
+    if (slotIndex !== undefined) {
+      setModifyingSlotIndex(slotIndex);
+    }
     setShowDeleteModal(true);
   };
 
-  const addAvailability = () => {
+  // Fonction pour ajouter ou mettre à jour un créneau
+  const addOrUpdateAvailability = () => {
     if (!selectedDateForModal) return;
 
     const dateString = formatDateToLocalString(selectedDateForModal);
@@ -437,20 +477,34 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
       allDay: newAvailability.allDay
     };
 
-    console.log('➕ Ajout disponibilité:', { dateString, newSlot });
-
-    // Mettre à jour state local
     setDayAvailabilities(prev => {
       const existing = prev[dateString];
-      if (existing) {
+      
+      // Si on modifie un créneau existant
+      if (isModifying && modifyingSlotIndex !== null && existing) {
+        const updatedTimeSlots = [...existing.timeSlots];
+        updatedTimeSlots[modifyingSlotIndex] = newSlot;
+        
         return {
           ...prev,
           [dateString]: {
             ...existing,
-            timeSlots: [newSlot] // Remplace toutes les disponibilités existantes
+            timeSlots: updatedTimeSlots
           }
         };
-      } else {
+      } 
+      // Si on ajoute un nouveau créneau
+      else if (existing) {
+        return {
+          ...prev,
+          [dateString]: {
+            ...existing,
+            timeSlots: [...existing.timeSlots, newSlot]
+          }
+        };
+      } 
+      // Si c'est le premier créneau pour cette date
+      else {
         return {
           ...prev,
           [dateString]: {
@@ -461,21 +515,32 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
       }
     });
 
-    // Sauvegarder dans la base de données
     const saveToDatabase = async () => {
       try {
-        const updatedSchedule = Array.isArray(currentProfileData?.schedule) 
+        let updatedSchedule = Array.isArray(currentProfileData?.schedule) 
           ? [...currentProfileData.schedule] 
           : [];
         
         const existingIndex = updatedSchedule.findIndex((d: any) => d.date === dateString);
         
         if (existingIndex >= 0) {
+          const existingDay = updatedSchedule[existingIndex];
+          let updatedTimeSlots = [...existingDay.timeSlots];
+          
+          if (isModifying && modifyingSlotIndex !== null) {
+            // Modifier un créneau existant
+            updatedTimeSlots[modifyingSlotIndex] = newSlot;
+          } else {
+            // Ajouter un nouveau créneau
+            updatedTimeSlots.push(newSlot);
+          }
+          
           updatedSchedule[existingIndex] = {
-            ...updatedSchedule[existingIndex],
-            timeSlots: [newSlot]
+            ...existingDay,
+            timeSlots: updatedTimeSlots
           };
         } else {
+          // Nouvelle date
           updatedSchedule.push({
             date: dateString,
             timeSlots: [newSlot]
@@ -487,9 +552,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
           schedule: updatedSchedule
         });
         
-        console.log('Disponibilité sauvegardée dans la BD');
-
-        // Recharger les données
         const response = await profileService.getProfile();
         if (response.success && response.data.profile) {
           setCurrentProfileData(response.data.profile);
@@ -504,32 +566,89 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     setSelectedDates(prev => new Set([...Array.from(prev), dateString]));
     setShowAddModal(false);
     setSelectedDateForModal(null);
+    setClickedHour(null);
+    setIsModifying(false);
+    setModifyingSlotIndex(null);
   };
 
+  // Fonction pour supprimer un créneau spécifique
   const removeAvailability = () => {
     if (!dateToDelete) return;
     
     const dateString = formatDateToLocalString(dateToDelete);
-    console.log('Suppression disponibilité:', dateString);
 
     setDayAvailabilities(prev => {
+      const existing = prev[dateString];
+      if (!existing) return prev;
+      
+      // Si on supprime un créneau spécifique
+      if (modifyingSlotIndex !== null) {
+        const updatedTimeSlots = existing.timeSlots.filter((_: TimeSlot, index: number) => index !== modifyingSlotIndex);
+        
+        // Si plus de créneaux, supprimer la date
+        if (updatedTimeSlots.length === 0) {
+          const newAvail = { ...prev };
+          delete newAvail[dateString];
+          setSelectedDates(prevDates => {
+            const newSet = new Set(prevDates);
+            newSet.delete(dateString);
+            return newSet;
+          });
+          return newAvail;
+        }
+        
+        return {
+          ...prev,
+          [dateString]: {
+            ...existing,
+            timeSlots: updatedTimeSlots
+          }
+        };
+      }
+      
+      // Sinon, supprimer toute la date
       const newAvail = { ...prev };
       delete newAvail[dateString];
+      setSelectedDates(prevDates => {
+        const newSet = new Set(prevDates);
+        newSet.delete(dateString);
+        return newSet;
+      });
       return newAvail;
     });
 
-    // Sauvegarder dans la base de données
     const saveToDatabase = async () => {
       try {
-        const updatedSchedule = (currentProfileData?.schedule || []).filter((d: any) => d.date !== dateString);
+        let updatedSchedule = Array.isArray(currentProfileData?.schedule) 
+          ? [...currentProfileData.schedule] 
+          : [];
+        
+        const existingIndex = updatedSchedule.findIndex((d: any) => d.date === dateString);
+        
+        if (existingIndex >= 0 && modifyingSlotIndex !== null) {
+          const existingDay = updatedSchedule[existingIndex];
+          const updatedTimeSlots = existingDay.timeSlots.filter((_: TimeSlot, index: number) => index !== modifyingSlotIndex);
+          
+          if (updatedTimeSlots.length === 0) {
+            // Supprimer la date si plus de créneaux
+            updatedSchedule = updatedSchedule.filter((d: any) => d.date !== dateString);
+          } else {
+            // Garder la date avec les créneaux restants
+            updatedSchedule[existingIndex] = {
+              ...existingDay,
+              timeSlots: updatedTimeSlots
+            };
+          }
+        } else {
+          // Supprimer toute la date
+          updatedSchedule = updatedSchedule.filter((d: any) => d.date !== dateString);
+        }
+
         await profileService.saveProfile({
           ...currentProfileData,
           schedule: updatedSchedule
         });
         
-        console.log('✅ Suppression sauvegardée dans la BD');
-
-        // Recharger les données
         const response = await profileService.getProfile();
         if (response.success && response.data.profile) {
           setCurrentProfileData(response.data.profile);
@@ -541,14 +660,9 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     };
 
     saveToDatabase();
-    setSelectedDates(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(dateString);
-      return newSet;
-    });
-    
     setShowDeleteModal(false);
     setDateToDelete(null);
+    setModifyingSlotIndex(null);
   };
 
   const isDateInPast = (date: Date) => {
@@ -557,10 +671,7 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     return date < today;
   };
 
-  // Heures 06:00 -> 23:00
   const hours = Array.from({ length: 18 }, (_, i) => 6 + i);
-
-  // Récupérer les valeurs actuelles pour l'affichage
   const currentAvailability = currentProfileData?.availability || { online: false, inPerson: false };
 
   if (isLoading) {
@@ -617,7 +728,17 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
               ›
             </button>
           </div>
-          <button className={styles.addButton} onClick={() => openAddModal()}>
+          <button className={styles.addButton} onClick={() => {
+            setIsModifying(false);
+            setModifyingSlotIndex(null);
+            setNewAvailability({ 
+              startTime: '06:00', 
+              endTime: '07:00', 
+              allDay: false 
+            });
+            setSelectedDateForModal(new Date());
+            setShowAddModal(true);
+          }}>
             + Ajouter une disponibilité
           </button>
         </div>
@@ -666,8 +787,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
                 <div key={dayIndex} className={styles.dayColumn}>
                   {hours.map((hour) => {
                     const hourMinutes = hour * 60;
-                    
-                    // Vérifier si cette heure fait partie d'un bloc de disponibilité
                     const isInBlock = availabilityBlocks.some(block => 
                       hourMinutes >= block.start && hourMinutes < block.end
                     );
@@ -675,15 +794,21 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
                     return (
                       <div
                         key={hour}
-                        className={`${styles.hourCell} ${isPast ? styles.past : ''}`}
-                        onClick={() => !isPast && openAddModal(date)}
-                        title={!isPast ? 'Ajouter / modifier disponibilité' : 'Date passée'}
+                        className={`${styles.hourCell} ${isPast ? styles.past : ''} ${isInBlock ? styles.hasAvailability : ''}`}
+                        onClick={() => !isPast && !isInBlock && openAddModal(date, hour)}
+                        title={!isPast ? 
+                          (isInBlock ? 
+                            `Cliquez sur le bloc pour modifier` : 
+                            `Ajouter une disponibilité à ${hour}h`
+                          ) : 
+                          'Date passée'
+                        }
                       >
-                        {/* Afficher le bloc de disponibilité seulement sur la première heure du bloc */}
-                        {isInBlock && availabilityBlocks.map((block, blockIndex) => {
+                        {availabilityBlocks.map((block, blockIndex) => {
                           if (hourMinutes === block.start) {
                             const duration = block.end - block.start;
-                            const height = (duration / 60) * 60; // Hauteur en pixels
+                            const height = (duration / 60) * 60;
+                            const isShortSlot = duration <= 60;
                             
                             return (
                               <div
@@ -696,17 +821,20 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
                                 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  openAddModal(date);
+                                  openModifyModal(date, block.slotIndex); 
                                 }}
                               >
                                 <div className={styles.availabilityContent}>
-                                  <div className={styles.availabilityLabel}>Disponibilité
-                                    <div className={styles.availabilityTime}>
-                                      {block.slot.allDay 
-                                        ? 'Toute la journée' 
-                                        : `${block.slot.startTime} - ${block.slot.endTime}`
-                                      }
-                                    </div>
+                                 <div className={styles.availabilityLabel}>
+                                    Disponibilité
+                                    {!isShortSlot && (
+                                      <div className={styles.availabilityTime}>
+                                        {block.slot.allDay 
+                                          ? 'Toute la journée' 
+                                          : `${block.slot.startTime} - ${block.slot.endTime}`
+                                        }
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -724,201 +852,184 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
         </div>
       </div>
 
-      {/* Modal d'ajout/modification avec style AvailabilityStep */}
+      {/* Modal d'ajout/modification */}
       {showAddModal && (
       <div className={styles.modalOverlay}>
         <div className={styles.modal}>
           <div className={styles.modalHeader}>
             <h3>
-              {selectedDateForModal 
-                ? `Modifier la disponibilité pour le ${selectedDateForModal.toLocaleDateString('fr-FR', { 
-                    weekday: 'long', 
-                    day: 'numeric', 
-                    month: 'long', 
-                    year: 'numeric' 
-                  })}` 
-                : 'Ajouter une disponibilité'
-              }
+              {isModifying ? 'Modifier la disponibilité' : 'Ajouter une disponibilité'}
+              {modifyingSlotIndex !== null}            
             </h3>
             <button
               className={styles.closeButton}
               onClick={() => {
                 setShowAddModal(false);
                 setSelectedDateForModal(null);
+                setClickedHour(null);
+                setIsModifying(false);
+                setModifyingSlotIndex(null);
               }}
             >
               ×
             </button>
           </div>
           <div className={styles.modalContent}>
-            {!selectedDateForModal && (
-              <div className={styles.dateSelection}>
-                <label className={styles.dateLabel}>Choisir une date</label>
-                <input
-                  type="date"
-                  className={styles.dateInput}
-                  min={formatDateToLocalString(new Date())}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      const [year, month, day] = e.target.value.split('-').map(Number);
-                      setSelectedDateForModal(new Date(year, month - 1, day));
-                    }
-                  }}
-                />
-              </div>
-            )}
+            <div className={styles.selectedDate}>
+              {selectedDateForModal?.toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+              })}
+            </div>
 
-            {selectedDateForModal && (
-              <>
-                <div className={styles.selectedDate}>
-                  {selectedDateForModal.toLocaleDateString('fr-FR', {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric'
-                  })}
-                </div>
-
-                {/* Style AvailabilityStep pour la configuration des horaires */}
-                <div className={styles.timeSlotConfig}>        
-                  {!newAvailability.allDay && (
-                    <div className={styles.timeInputs}>
-                      <div className={styles.timeInputGroup}>
-                        <label>De</label>
-                        <div className={styles.customDropdown} ref={setDropdownRef('startTime')}>
-                          <button
-                            type="button"
-                            className={styles.dropdownButton}
-                            onClick={() => toggleDropdown('startTime')}
-                          >
-                            <span className={styles.dropdownText}>
-                              {newAvailability.startTime}
-                            </span>
-                            <span className={styles.dropdownArrow}>▼</span>
-                          </button>
-                          {dropdownOpen.startTime && (
-                            <div className={`${styles.dropdownMenu} ${styles.dropdownMenuUp}`}>
-                              {getFilteredTimeOptions('startTime').map(time => (
-                                <div
-                                  key={time}
-                                  className={`${styles.dropdownItem} ${newAvailability.startTime === time ? styles.selected : ''}`}
-                                  onClick={() => handleSelectOption('startTime', time)}
-                                >
-                                  {time}
-                                </div>
-                              ))}
+            <div className={styles.timeSlotConfig}>
+              {!newAvailability.allDay && (
+                <div className={styles.timeInputs}>
+                  <div className={styles.timeInputGroup}>
+                    <label>De</label>
+                    <div className={styles.customDropdown} ref={setDropdownRef('startTime')}>
+                      <button
+                        type="button"
+                        className={styles.dropdownButton}
+                        onClick={() => toggleDropdown('startTime')}
+                      >
+                        <span className={styles.dropdownText}>
+                          {newAvailability.startTime}
+                        </span>
+                        <span className={styles.dropdownArrow}>▼</span>
+                      </button>
+                      {dropdownOpen.startTime && (
+                        <div className={`${styles.dropdownMenu} ${styles.dropdownMenuUp}`}>
+                          {getFilteredTimeOptions('startTime').map(time => (
+                            <div
+                              key={time}
+                              className={`${styles.dropdownItem} ${newAvailability.startTime === time ? styles.selected : ''}`}
+                              onClick={() => handleSelectOption('startTime', time)}
+                            >
+                              {time}
                             </div>
-                          )}
+                          ))}
                         </div>
-                      </div>
-                      
-                      <div className={styles.timeSeparator}>
-                        <span>—</span>
-                      </div>
-                      
-                      <div className={styles.timeInputGroup}>
-                        <label>À</label>
-                        <div className={styles.customDropdown} ref={setDropdownRef('endTime')}>
-                          <button
-                            type="button"
-                            className={styles.dropdownButton}
-                            onClick={() => toggleDropdown('endTime')}
-                          >
-                            <span className={styles.dropdownText}>
-                              {newAvailability.endTime}
-                            </span>
-                            <span className={styles.dropdownArrow}>▼</span>
-                          </button>
-                          {dropdownOpen.endTime && (
-                            <div className={`${styles.dropdownMenu} ${styles.dropdownMenuUp}`}>
-                              {getFilteredTimeOptions('endTime').map(time => (
-                                <div
-                                  key={time}
-                                  className={`${styles.dropdownItem} ${newAvailability.endTime === time ? styles.selected : ''}`}
-                                  onClick={() => handleSelectOption('endTime', time)}
-                                >
-                                  {time}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      )}
                     </div>
-                  )}
-                  <div className={styles.timeSlotHeader}>
-                    <label className={styles.allDayLabel}>
-                      <input
-                        type="checkbox"
-                        checked={newAvailability.allDay}
-                        onChange={(e) => setNewAvailability(prev => ({
-                          ...prev,
-                          allDay: e.target.checked,
-                          startTime: e.target.checked ? '00:00' : '06:00',
-                          endTime: e.target.checked ? '23:59' : '23:00'
-                        }))}
-                        className={styles.allDayCheckbox}
-                      />
-                      Toute la journée
-                    </label>
                   </div>
                   
-                  {newAvailability.allDay && (
-                    <div className={styles.allDayBadge}>
-                      Disponible toute la journée
+                  <div className={styles.timeSeparator}>
+                    <span>—</span>
+                  </div>
+                  
+                  <div className={styles.timeInputGroup}>
+                    <label>À</label>
+                    <div className={styles.customDropdown} ref={setDropdownRef('endTime')}>
+                      <button
+                        type="button"
+                        className={styles.dropdownButton}
+                        onClick={() => toggleDropdown('endTime')}
+                      >
+                        <span className={styles.dropdownText}>
+                          {newAvailability.endTime}
+                        </span>
+                        <span className={styles.dropdownArrow}>▼</span>
+                      </button>
+                      {dropdownOpen.endTime && (
+                        <div className={`${styles.dropdownMenu} ${styles.dropdownMenuUp}`}>
+                          {getFilteredTimeOptions('endTime').map(time => (
+                            <div
+                              key={time}
+                              className={`${styles.dropdownItem} ${newAvailability.endTime === time ? styles.selected : ''}`}
+                              onClick={() => handleSelectOption('endTime', time)}
+                            >
+                              {time}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-
-                <div className={styles.modalActions}>
-                  <button
-                    className={styles.deleteButton}
-                    onClick={() => {
-                      if (getAvailabilityForDate(selectedDateForModal)) {
-                        openDeleteModal(selectedDateForModal);
-                      }
-                      setShowAddModal(false);
-                    }}
-                    disabled={!getAvailabilityForDate(selectedDateForModal)}
-                  >
-                    Supprimer
-                  </button>
-                  <div className={styles.modalActionGroup}>
-                    <button
-                      className={styles.cancelButton}
-                      onClick={() => {
-                        setShowAddModal(false);
-                        setSelectedDateForModal(null);
-                      }}
-                    >
-                      Annuler
-                    </button>
-                    <button
-                      className={styles.confirmButton}
-                      onClick={addAvailability}
-                      disabled={!selectedDateForModal}
-                    >
-                      Confirmer
-                    </button>
                   </div>
                 </div>
-              </>
-            )}
+              )}
+              <div className={styles.timeSlotHeader}>
+                <label className={styles.allDayLabel}>
+                  <input
+                    type="checkbox"
+                    checked={newAvailability.allDay}
+                    onChange={(e) => setNewAvailability(prev => ({
+                      ...prev,
+                      allDay: e.target.checked,
+                      startTime: e.target.checked ? '00:00' : prev.startTime,
+                      endTime: e.target.checked ? '23:59' : prev.endTime
+                    }))}
+                    className={styles.allDayCheckbox}
+                  />
+                  Toute la journée
+                </label>
+              </div>
+              
+              {newAvailability.allDay && (
+                <div className={styles.allDayBadge}>
+                  Disponible toute la journée
+                </div>
+              )}
+            </div>
+
+            <div className={styles.modalActions}>
+              {isModifying && (
+                <button
+                  className={styles.deleteButton}
+                  onClick={() => {
+                    if (selectedDateForModal) {
+                      openDeleteModal(selectedDateForModal, modifyingSlotIndex ?? undefined);
+                    }
+                    setShowAddModal(false);
+                    setClickedHour(null);
+                    setIsModifying(false);
+                    setModifyingSlotIndex(null);
+                  }}
+                >
+                  Supprimer ce créneau
+                </button>
+              )}
+              <div className={styles.modalActionGroup}>
+                <button
+                  className={styles.cancelButton}
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setSelectedDateForModal(null);
+                    setClickedHour(null);
+                    setIsModifying(false);
+                    setModifyingSlotIndex(null);
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  className={styles.confirmButton}
+                  onClick={addOrUpdateAvailability}
+                  disabled={!selectedDateForModal}
+                >
+                  {isModifying ? 'Mettre à jour' : 'Ajouter'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     )}
 
-      {/* Modal de suppression amélioré */}
+      {/* Modal de suppression */}
       {showDeleteModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.deleteModal}>
             <div className={styles.deleteModalHeader}>
-              <h3>Supprimer la disponibilité</h3>
+              <h3>Supprimer le créneau</h3>
             </div>
             <div className={styles.deleteModalContent}>
               <p className={styles.deleteModalText}>
-                Êtes-vous sûr de vouloir supprimer cette disponibilité ?<br />
+                Êtes-vous sûr de vouloir supprimer {modifyingSlotIndex !== null ? 
+                  `le créneau ${modifyingSlotIndex + 1}` : 
+                  'cette disponibilité'} ?<br />
                 <span className={styles.deleteModalSubtext}>
                   Cette action est irréversible.
                 </span>
@@ -927,7 +1038,10 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
             <div className={styles.deleteModalActions}>
               <button
                 className={styles.deleteModalCancel}
-                onClick={() => setShowDeleteModal(false)}
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setModifyingSlotIndex(null);
+                }}
               >
                 Annuler
               </button>

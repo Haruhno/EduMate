@@ -1,5 +1,3 @@
-
-
 .header {
   background: white;
   padding: 1.5rem 2rem;
@@ -24,6 +22,9 @@
   align-items: center;
   flex: 1;
   position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0.5rem 0;
 }
 
 .step:not(:last-child)::after {
@@ -33,12 +34,101 @@
   left: 60%;
   right: -40%;
   height: 2px;
-  background: #e9ecef;
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
   z-index: 1;
+  opacity: 0.3;
+}
+
+.step.past:not(:last-child)::after {
+  opacity: 0.7;
 }
 
 .step.active:not(:last-child)::after {
+  opacity: 1;
+}
+
+.step.future:not(:last-child)::after {
+  opacity: 0.1;
+}
+
+.step.future {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.step.future .stepNumber {
+  background: #e9ecef;
+  color: #6c757d;
+}
+
+.step.future .stepTitle {
+  color: #6c757d;
+}
+
+.step.past {
+  cursor: pointer;
+}
+
+.step.past:hover .stepNumber {
+  background: linear-gradient(90deg, #FB923C 0%, #FBBF24 100%);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+.step.past:hover .stepTitle {
+  color: #FB923C;
+}
+
+.step.past .stepNumber {
+  background: linear-gradient(90deg, #FB923C 0%, #FBBF24 100%);
+  color: white;
+}
+
+.step.past .stepTitle {
+  color: #FB923C;
+  font-weight: 500;
+}
+
+.step.active {
+  cursor: default;
+}
+
+.step.active .stepNumber {
   background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  position: relative;
+}
+
+.step.active .stepNumber::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border: 2px solid rgba(155, 111, 0, 0.3);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+}
+
+.step.active .stepTitle {
+  color: #FB923C;
+  font-weight: 600;
 }
 
 .stepNumber {
@@ -56,21 +146,33 @@
   transition: all 0.3s ease;
 }
 
-.step.active .stepNumber {
-  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
-  color: white;
-}
-
 .stepTitle {
   font-size: 0.875rem;
   font-weight: 500;
   color: #6c757d;
   text-align: center;
+  transition: all 0.3s ease;
 }
 
-.step.active .stepTitle {
-  color: #FB923C;
-  font-weight: 600;
+/* Tooltip pour les étapes passées */
+.step.past {
+  position: relative;
+}
+
+/* Animation de transition entre les étapes */
+.formSection {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Bannière d'erreur */
@@ -206,6 +308,199 @@
   transform: translateY(-1px);
 }
 
+/* Animation pour les erreurs */
+.error-highlight {
+  animation: errorPulse 1.5s ease;
+}
+
+@keyframes errorPulse {
+  0%, 100% { 
+    background-color: transparent; 
+  }
+  50% { 
+    background-color: rgba(220, 53, 69, 0.1); 
+  }
+}
+
+/* ==================== */
+/* DROPDOWN MOBILE - Style minimal */
+/* Inspiré du dropdown EducationStep */
+/* ==================== */
+
+.mobileStepSelector {
+  display: none;
+  margin: 1rem;
+}
+
+.mobileStepDropdown {
+  width: 100%;
+  padding: 0.875rem 1.25rem;
+  border: 2px solid #e9ecef;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  font-family: 'DMSans', sans-serif;
+  background: white;
+  cursor: pointer;
+  appearance: none;
+  color: #333;
+  height: 3.25rem;
+  font-weight: 500;
+  
+  /* Icône flèche */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23FB923C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1.25em;
+  padding-right: 3rem;
+}
+
+.mobileStepDropdown:hover {
+  border-color: #FBBF24;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.15);
+}
+
+.mobileStepDropdown:focus {
+  outline: none;
+  border-color: #FBBF24;
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.1);
+}
+
+/* Style pour les options */
+.mobileStepDropdown option {
+  padding: 0.875rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 500;
+  min-height: 3.25rem;
+}
+
+/* Option sélectionnée */
+.mobileStepDropdown option:checked {
+  background: linear-gradient(135deg, #FBBF24 0%, #FB923C 100%);
+  color: white;
+  font-weight: 600;
+}
+
+/* Option désactivée */
+.mobileStepDropdown option:disabled {
+  color: #9ca3af;
+  background-color: #f9fafb;
+  font-style: italic;
+}
+
+/* Option normale */
+.mobileStepDropdown option:not(:disabled):not(:checked) {
+  background-color: white;
+  color: #374151;
+}
+
+/* Version avec mode édition */
+.mobileStepSelector.editMode .mobileStepDropdown {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2310B981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  border-color: #e9ecef;
+}
+
+.mobileStepSelector.editMode .mobileStepDropdown:hover {
+  border-color: #10B981;
+}
+
+.mobileStepSelector.editMode .mobileStepDropdown:focus {
+  border-color: #10B981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+}
+
+.mobileStepSelector.editMode .mobileStepDropdown option:checked {
+  background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+}
+
+/* Style pour le mode édition - toutes les étapes sont cliquables */
+.step.edit-mode {
+  cursor: pointer !important;
+  opacity: 1 !important;
+}
+
+.step.edit-mode .stepNumber {
+  background: linear-gradient(90deg, #FB923C 0%, #FBBF24 100%);
+  color: white;
+}
+
+.step.edit-mode .stepTitle {
+  color: #FB923C;
+  font-weight: 500;
+}
+
+.step.edit-mode:hover .stepNumber {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+/* Tooltip spécial pour le mode édition */
+.step.edit-mode:hover::before {
+  content: 'Cliquer pour naviguer à cette étape';
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+/* Style pour l'étape active en mode édition */
+.step.edit-mode.active {
+  cursor: default;
+}
+
+.step.edit-mode.active .stepNumber {
+  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
+  position: relative;
+}
+
+.step.edit-mode.active .stepNumber::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border: 2px solid rgba(251, 191, 36, 0.5);
+  border-radius: 50%;
+  animation: pulseEdit 2s infinite;
+}
+
+@keyframes pulseEdit {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+}
+
+/* Indicateur visuel pour le mode édition */
+.editModeIndicator {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #10B981;
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .splitContainer {
@@ -240,6 +535,20 @@
 }
 
 @media (max-width: 768px) {
+  .steps {
+    display: none;
+  }
+  
+  .mobileStepSelector {
+    display: block;
+  }
+  
+  .mobileStepDropdown {
+    height: 3rem;
+    padding: 0.75rem 1rem;
+    padding-right: 2.5rem;
+  }
+  
   .formSection {
     padding: 1rem;
   }

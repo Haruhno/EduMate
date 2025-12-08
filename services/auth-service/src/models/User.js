@@ -36,7 +36,6 @@ const User = sequelize.define('User', {
     type: DataTypes.BOOLEAN,
     defaultValue: true
   },
-  // Nouveaux champs pour stocker les infos de base
   phone: {
     type: DataTypes.STRING,
     allowNull: true
@@ -52,6 +51,11 @@ const User = sequelize.define('User', {
   birthDate: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  skills: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: []
   }
 }, {
   tableName: 'users',      

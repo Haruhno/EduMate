@@ -1,5 +1,6 @@
 import React from 'react';
 import styles from './HowItWorks.module.css';
+import { Link } from 'react-router-dom';
 
 const stepImages = [
   'https://media.licdn.com/dms/image/v2/D4E12AQGnEJmSOEqSIQ/article-cover_image-shrink_600_2000/article-cover_image-shrink_600_2000/0/1732537600347?e=2147483647&v=beta&t=wxJNZTDLKn0R3_kcVh-IVjTwSp8YUHNzQ2f8FHX8IlI', // Création profil
@@ -20,6 +21,8 @@ const HowItWorks: React.FC = () => {
         'Votre profil est votre identité sur la plateforme : clair, transparent et sécurisé.'
       ],
       buttonText: 'Créer mon profil',
+      buttonLink: '/choix-role',
+      isScrollButton: false,
       image: stepImages[0],
       alignment: 'left' as const
     },
@@ -33,6 +36,8 @@ const HowItWorks: React.FC = () => {
         'En tant que tuteur, crée facilement vos offres de cours (individuels, collectifs ou ateliers).'
       ],
       buttonText: 'Découvrir les tuteurs',
+      buttonLink: '/recherche-tuteur',
+      isScrollButton: false,
       image: stepImages[1],
       alignment: 'right' as const
     },
@@ -45,7 +50,9 @@ const HowItWorks: React.FC = () => {
         'Flexible : échange vos crédits entre élèves et tuteurs.',
         'Sécurisé : crédits bloqués jusqu\'à la fin de la séance.'
       ],
-      buttonText: 'Voir les tarifs',
+      buttonText: 'Réserver une séance',
+      buttonLink: '/recherche-tuteur',
+      isScrollButton: false,
       image: stepImages[2],
       alignment: 'left' as const
     },
@@ -55,17 +62,28 @@ const HowItWorks: React.FC = () => {
       description: 'Rejoignez votre tuteur via notre messagerie sécurisée et visio intégrée.',
       details: [
         'À la fin du cours, laissez votre évaluation.',
-        'Le tuteur reçoit ses crédits (convertibles en argent réel).',
+        'Le tuteur reçoit ses crédits.',
         'Continuez votre parcours personnalisé avec des recommandations adaptées.'
       ],
       buttonText: 'Commencer maintenant',
+      buttonLink: '#',
+      isScrollButton: true,
       image: stepImages[3],
       alignment: 'right' as const
     }
   ];
 
+  const scrollToHero = () => {
+    const heroSection = document.getElementById('hero-section');
+    if (heroSection) {
+      heroSection.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
-    <section className={styles.section}>
+    <section id="comment-ca-marche" className={styles.section}>
       <div className={styles.container}>
         {/* En-tête */}
         <div className={styles.header}>
@@ -108,9 +126,19 @@ const HowItWorks: React.FC = () => {
                     ))}
                   </ul>
                   
-                  <button className={styles.stepButton}>
-                    {step.buttonText}
-                  </button>
+                  {/* Condition pour le type de bouton */}
+                  {step.isScrollButton ? (
+                    <button 
+                      onClick={scrollToHero}
+                      className={styles.stepButton}
+                    >
+                      {step.buttonText}
+                    </button>
+                  ) : (
+                    <Link to={step.buttonLink} className={styles.stepButton}>
+                      {step.buttonText}
+                    </Link>
+                  )}
                 </div>
 
                 {/* Image */}
