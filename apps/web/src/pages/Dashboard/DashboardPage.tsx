@@ -246,6 +246,13 @@ const DashboardPage: React.FC = () => {
                 <h3>Messages</h3>
                 <p>Consulter vos conversations</p>
               </Link>
+
+              {/* NOUVEAU: Accès rapide aux réservations (pour tuteurs) */}
+              <Link to="/reservations" className={styles.actionCard}>
+                <div className={styles.actionIcon}>🗓️</div>
+                <h3>Réservations</h3>
+                <p>Voir les réservations des étudiants</p>
+              </Link>
             </>
           )}
 

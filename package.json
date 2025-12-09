@@ -8,7 +8,8 @@
   ],
   "scripts": {
     "start": "react-scripts start",
-    "dev": "concurrently \"npm run dev --workspace=apps/web\" \"npm run dev --workspace=services/auth-service\" \"npm run dev --workspace=services/message-service\" \"npm run dev --workspace=services/blockchain-service\"",    "build": "vite build",
+    "dev": "concurrently \"npm run dev --workspace=apps/web\" \"npm run dev --workspace=services/auth-service\" \"npm run dev --workspace=services/message-service\" \"npm run dev --workspace=services/blockchain-service\" \"npm run dev --workspace=services/booking-service\"",
+    "build": "vite build",
     "preview": "vite preview",
     "install:all": "npm install --workspaces"
   },

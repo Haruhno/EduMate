@@ -143,7 +143,14 @@ const TutorProfilePage: React.FC = () => {
   };
 
   const handleBookSession = (annonceId?: string) => {
-    console.log('Réserver avec le tuteur:', tutor?.id, 'Annonce:', annonceId);
+    // Redirect to booking page using profile tutor id (tutor.id in mapped tutor)
+    // Si tu veux pré-remplir la sélection d'annonce, tu peux ajouter query param annonceId
+    const tutorProfileId = tutor?.id || undefined;
+    if (tutorProfileId) {
+      navigate(`/booking/${tutorProfileId}`);
+    } else {
+      console.warn('Aucun id de profil tuteur disponible pour la réservation');
+    }
   };
 
   if (loading) {

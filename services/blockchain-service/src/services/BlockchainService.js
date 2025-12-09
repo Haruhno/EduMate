@@ -1,4 +1,3 @@
-// blockchain-service/src/services/BlockchainService.js
 const { LedgerBlock } = require('../models/associations');
 const sequelize = require('../config/database');
 const crypto = require('crypto');
@@ -10,12 +9,23 @@ class BlockchainService {
   }
 
   // Créer un nouveau bloc dans le ledger (VERSION CORRIGÉE)
-  async createLedgerBlock(blockData) {
-    const transaction = await sequelize.transaction();
+  async createLedgerBlock(blockData, externalTransaction = null) {
+    console.log('📦 [createLedgerBlock] Début création bloc...');
+    console.log('📦 [createLedgerBlock] Type de bloc:', blockData.blockType);
+    console.log('📦 [createLedgerBlock] Payload:', JSON.stringify(blockData.payload));
+    
+    let transaction = externalTransaction;
+    let shouldCommit = false;
+    
+    if (!transaction) {
+      console.log('🔄 [createLedgerBlock] Création transaction interne');
+      transaction = await sequelize.transaction();
+      shouldCommit = true;
+    } else {
+      console.log('🔄 [createLedgerBlock] Utilisation transaction externe fournie');
+    }
     
     try {
-      console.log('📦 Création nouveau bloc ledger...');
-
       // Récupérer le dernier bloc pour le previousHash et l'index
       const lastBlock = await LedgerBlock.findOne({
         order: [['index', 'DESC']],
@@ -25,8 +35,8 @@ class BlockchainService {
       const previousHash = lastBlock ? lastBlock.hash : '0'.repeat(64);
       const nextIndex = lastBlock ? lastBlock.index + 1 : 0;
 
-      console.log(`🔗 Previous hash: ${previousHash.substring(0, 16)}...`);
-      console.log(`📈 Next index: ${nextIndex}`);
+      console.log(`🔗 [createLedgerBlock] Previous hash: ${previousHash.substring(0, 16)}...`);
+      console.log(`📈 [createLedgerBlock] Next index: ${nextIndex}`);
 
       // Créer le bloc avec toutes les données requises
       const newBlockData = {
@@ -42,22 +52,30 @@ class BlockchainService {
       const hash = this.calculateHash(newBlockData);
       newBlockData.hash = hash;
 
-      console.log(`🔐 Hash calculé: ${hash.substring(0, 16)}...`);
+      console.log(`🔐 [createLedgerBlock] Hash calculé: ${hash.substring(0, 16)}...`);
 
       // Signer le bloc si une clé privée est disponible
       if (this.privateKey) {
         newBlockData.signature = this.signBlock(newBlockData);
       }
 
+      console.log('💾 [createLedgerBlock] Sauvegarde du bloc dans la base...');
       const newBlock = await LedgerBlock.create(newBlockData, { transaction });
 
-      await transaction.commit();
+      if (shouldCommit) {
+        console.log('✅ [createLedgerBlock] Commit de la transaction interne');
+        await transaction.commit();
+      }
       
-      console.log(`✅ Bloc ledger créé: ${newBlock.id} (index: ${newBlock.index})`);
+      console.log(`✅ [createLedgerBlock] Bloc ledger créé: ${newBlock.id} (index: ${newBlock.index})`);
       return newBlock;
     } catch (error) {
-      await transaction.rollback();
-      console.error('💥 Erreur création bloc ledger:', error);
+      console.error('💥 [createLedgerBlock] Erreur création bloc:', error);
+      
+      if (shouldCommit && transaction) {
+        console.log('↩️ [createLedgerBlock] Rollback de la transaction interne');
+        await transaction.rollback();
+      }
       throw new Error(`Erreur création bloc ledger: ${error.message}`);
     }
   }
@@ -73,12 +91,30 @@ class BlockchainService {
     if (!this.privateKey) return null;
     
     try {
+      // Vérifier que la clé privée est dans le bon format
+      // Si c'est une chaîne Base64, la décoder
+      let privateKey = this.privateKey;
+      
+      // Si la clé commence par "-----BEGIN PRIVATE KEY-----", c'est déjà au format PEM
+      if (privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+        // C'est une clé au format PEM, utiliser directement
+      } else {
+        // Essayer de traiter comme Base64
+        try {
+          privateKey = Buffer.from(privateKey, 'base64').toString('utf8');
+        } catch (e) {
+          console.warn('⚠️ Clé privée non en Base64, utilisation directe');
+        }
+      }
+      
       const sign = crypto.createSign('SHA256');
       sign.update(block.hash);
       sign.end();
-      return sign.sign(this.privateKey, 'hex');
+      
+      return sign.sign(privateKey, 'hex');
     } catch (error) {
-      console.error('❌ Erreur signature bloc:', error);
+      console.error('❌ Erreur signature bloc:', error.message);
+      console.warn('⚠️ Signature désactivée pour le moment');
       return null;
     }
   }

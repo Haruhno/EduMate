@@ -1,4 +1,3 @@
-// blockchain-service/src/services/WalletService.js
 const { Wallet, LedgerBlock, Transaction, WithdrawalRequest, User } = require('../models/associations');
 const sequelize = require('../config/database');
 const { Op } = require('sequelize');
@@ -106,12 +105,15 @@ class WalletService {
 
   // Transfert CORRIGÉ - sans problème de lock
   async transferCredits(fromUserId, toWalletAddress, amount, description, metadata = {}) {
+    console.log('🔄 [transferCredits] Début du transfert');
+    console.log(`👤 [transferCredits] De: ${fromUserId} vers: ${toWalletAddress}`);
+    console.log(`💰 [transferCredits] Montant: ${amount}`);
+    
     const transaction = await sequelize.transaction();
     
     try {
-      console.log(`🔄 Transfert de ${fromUserId} vers ${toWalletAddress}`);
-      
-      // Trouver le wallet expéditeur avec l'utilisateur
+      // Trouver le wallet expéditeur
+      console.log('🔍 [transferCredits] Recherche du wallet expéditeur...');
       const fromWallet = await Wallet.findOne({
         where: { userId: fromUserId },
         include: [{
@@ -122,6 +124,14 @@ class WalletService {
         transaction
       });
 
+      if (!fromWallet) {
+        console.error('❌ [transferCredits] Wallet expéditeur non trouvé');
+        throw new Error('Wallet expéditeur non trouvé');
+      }
+      console.log(`✅ [transferCredits] Wallet expéditeur trouvé: ${fromWallet.id}`);
+
+      // Trouver le wallet destinataire
+      console.log('🔍 [transferCredits] Recherche du wallet destinataire...');
       const toWallet = await Wallet.findOne({
         where: { walletAddress: toWalletAddress },
         include: [{
@@ -132,25 +142,26 @@ class WalletService {
         transaction
       });
 
-      // VÉRIFIEZ que les utilisateurs sont bien récupérés
-      console.log('👤 From User:', fromWallet?.user);
-      console.log('👤 To User:', toWallet?.user);
-
       if (!toWallet) {
+        console.error('❌ [transferCredits] Wallet destinataire non trouvé');
         throw new Error('Wallet destinataire non trouvé');
       }
+      console.log(`✅ [transferCredits] Wallet destinataire trouvé: ${toWallet.id}`);
 
       // Empêcher les transferts vers soi-même
       if (fromWallet.userId === toWallet.userId) {
+        console.error('❌ [transferCredits] Tentative de transfert vers soi-même');
         throw new Error('Impossible de transférer vers votre propre wallet');
       }
 
-      // Convertir en nombre
+      // Vérifier le solde
       const transferAmount = parseFloat(amount);
       const availableBalance = parseFloat(fromWallet.balanceCredits);
-
-      // Vérifier le solde
+      
+      console.log(`💰 [transferCredits] Solde disponible: ${availableBalance}, Montant: ${transferAmount}`);
+      
       if (availableBalance < transferAmount) {
+        console.error(`❌ [transferCredits] Solde insuffisant`);
         throw new Error(`Solde insuffisant. Disponible: ${availableBalance}, Requis: ${transferAmount}`);
       }
 
@@ -158,28 +169,27 @@ class WalletService {
       const fee = transferAmount * 0.01;
       const totalDebit = transferAmount + fee;
 
-      // Mettre à jour les soldes avec verrouillage explicite
-      await Wallet.update(
+      console.log(`📊 [transferCredits] Frais: ${fee}, Total débité: ${totalDebit}`);
+
+      // Mettre à jour les soldes
+      console.log('💾 [transferCredits] Mise à jour du solde expéditeur...');
+      await fromWallet.update(
         { 
           balanceCredits: parseFloat(fromWallet.balanceCredits) - totalDebit 
         },
-        { 
-          where: { id: fromWallet.id },
-          transaction 
-        }
+        { transaction }
       );
 
-      await Wallet.update(
+      console.log('💾 [transferCredits] Mise à jour du solde destinataire...');
+      await toWallet.update(
         { 
           balanceCredits: parseFloat(toWallet.balanceCredits) + transferAmount 
         },
-        { 
-          where: { id: toWallet.id },
-          transaction 
-        }
+        { transaction }
       );
 
       // Créer la transaction
+      console.log('📝 [transferCredits] Création de l\'entrée transaction...');
       const dbTransaction = await Transaction.create({
         fromWalletId: fromWallet.id,
         toWalletId: toWallet.id,
@@ -197,7 +207,10 @@ class WalletService {
         }
       }, { transaction });
 
-      // Créer le bloc ledger
+      console.log(`✅ [transferCredits] Transaction créée: ${dbTransaction.id}`);
+
+      // Créer le bloc ledger avec la MÊME transaction
+      console.log('📦 [transferCredits] Création du bloc ledger...');
       const ledgerBlock = await BlockchainService.createLedgerBlock({
         payload: {
           transactionId: dbTransaction.id,
@@ -213,24 +226,33 @@ class WalletService {
           },
           amount: transferAmount,
           fee: fee,
-          description: description
+          description: description,
+          timestamp: new Date().toISOString()
         },
         blockType: 'TRANSFER'
-      });
+      }, transaction); // ← IMPORTANT: on passe la transaction existante
+
+      console.log(`✅ [transferCredits] Bloc ledger créé: ${ledgerBlock.id}`);
 
       // Lier la transaction au bloc ledger
-      dbTransaction.referenceLedgerId = ledgerBlock.id;
-      await dbTransaction.save({ transaction });
+      console.log('🔗 [transferCredits] Liaison transaction -> bloc ledger...');
+      await dbTransaction.update({
+        referenceLedgerId: ledgerBlock.id
+      }, { transaction });
 
+      // Commit de la transaction globale
+      console.log('✅ [transferCredits] Commit de toutes les opérations...');
       await transaction.commit();
 
-      console.log('✅ Transfert réussi:', dbTransaction.id);
-
-      // Récupérer les soldes mis à jour
+      // Récupérer les soldes mis à jour pour le retour
+      console.log('🔍 [transferCredits] Récupération des soldes mis à jour...');
       const updatedFromWallet = await Wallet.findByPk(fromWallet.id);
       const updatedToWallet = await Wallet.findByPk(toWallet.id);
 
+      console.log('🎉 [transferCredits] Transfert terminé avec succès!');
+      
       return {
+        success: true,
         transaction: dbTransaction,
         ledgerBlock: ledgerBlock,
         fromUser: {
@@ -243,8 +265,13 @@ class WalletService {
         }
       };
     } catch (error) {
-      await transaction.rollback();
-      console.error('💥 Erreur transfert:', error);
+      console.error('💥 [transferCredits] Erreur lors du transfert:', error);
+      
+      if (transaction) {
+        console.log('↩️ [transferCredits] Rollback de toutes les opérations...');
+        await transaction.rollback();
+      }
+      
       throw new Error(`Erreur transfert: ${error.message}`);
     }
   }

@@ -37,7 +37,10 @@ const LedgerBlock = sequelize.define('LedgerBlock', {
       'DEPOSIT',
       'FEE',
       'REWARD',
-      'EXCHANGE'
+      'EXCHANGE',
+      'TRANSFER_PENDING',      // AJOUTER
+      'TRANSFER_CONFIRMED',    // AJOUTER
+      'TRANSFER_CANCELLED'     // AJOUTER
     ),
     allowNull: false
   },

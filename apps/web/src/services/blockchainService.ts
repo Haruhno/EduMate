@@ -28,8 +28,10 @@ authApi.interceptors.request.use(addAuthToken);
 const getCurrentUser = () => {
   try {
     const userStr = localStorage.getItem('user');
+    console.log('👤 [blockchainService] Utilisateur stocké:', userStr);
     return userStr ? JSON.parse(userStr) : null;
-  } catch {
+  } catch (error) {
+    console.error('❌ [blockchainService] Erreur parsing utilisateur:', error);
     return null;
   }
 };
@@ -99,6 +101,7 @@ export interface TransferRequest {
 }
 
 export interface TransferResponse {
+  success: boolean;
   transaction: Transaction;
   ledgerBlock: any;
   fromUser: {
@@ -177,53 +180,135 @@ export interface AuditReport {
 class BlockchainService {
   // Obtenir le solde du wallet et aussi les infos utilisateur en même temps
   async getBalance(): Promise<WalletBalance> {
+    console.log('💰 [blockchainService] Récupération du solde...');
     const user = getCurrentUser();
+    
     if (!user?.id) {
+      console.error('❌ [blockchainService] Utilisateur non connecté');
       throw new Error('Utilisateur non connecté');
     }
     
-    const response = await blockchainApi.get(`/balance?userId=${user.id}`);
-    const balanceData = response.data.data;
+    console.log(`🔍 [blockchainService] userId: ${user.id}`);
     
-    // Récupérer les infos complètes de l'utilisateur avec authApi
     try {
-      const userResponse = await authApi.get(`/users/${user.id}`);
+      const response = await blockchainApi.get(`/balance?userId=${user.id}`);
+      console.log('✅ [blockchainService] Réponse balance reçue:', response.data);
       
-      // Fusionner les données
-      balanceData.user = {
-        ...balanceData.user,
-        firstName: userResponse.data.data.firstName,
-        lastName: userResponse.data.data.lastName,
-        role: userResponse.data.data.role
-      };
-    } catch (error) {
-      console.warn('Impossible de récupérer les infos utilisateur détaillées:', error);
-      // Valeurs par défaut
-      balanceData.user = {
-        ...balanceData.user,
-        firstName: 'Utilisateur',
-        lastName: '',
-        role: 'user'
-      };
+      if (!response.data.success) {
+        console.error('❌ [blockchainService] Le serveur a retourné success: false');
+        throw new Error(response.data.message || 'Erreur lors de la récupération du solde');
+      }
+      
+      const balanceData = response.data.data;
+      console.log('📊 [blockchainService] Données balance:', balanceData);
+      
+      // Récupérer les infos complètes de l'utilisateur avec authApi
+      try {
+        console.log('👤 [blockchainService] Récupération infos utilisateur...');
+        const userResponse = await authApi.get(`/users/${user.id}`);
+        
+        // Fusionner les données
+        balanceData.user = {
+          ...balanceData.user,
+          firstName: userResponse.data.data.firstName,
+          lastName: userResponse.data.data.lastName,
+          role: userResponse.data.data.role
+        };
+        
+        console.log('✅ [blockchainService] Infos utilisateur fusionnées');
+      } catch (error) {
+        console.warn('⚠️ [blockchainService] Impossible de récupérer les infos utilisateur détaillées:', error);
+        // Valeurs par défaut
+        balanceData.user = {
+          ...balanceData.user,
+          firstName: 'Utilisateur',
+          lastName: '',
+          role: 'user'
+        };
+      }
+      
+      return balanceData;
+    } catch (error: any) {
+      console.error('💥 [blockchainService] Erreur lors de getBalance:', error);
+      
+      if (error.response) {
+        console.error('📡 [blockchainService] Détails erreur:', {
+          status: error.response.status,
+          data: error.response.data,
+          headers: error.response.headers
+        });
+      }
+      
+      throw new Error(error.response?.data?.message || error.message || 'Erreur lors de la récupération du solde');
     }
-    
-    return balanceData;
   }
 
   // Effectuer un transfert
   async transfer(transferData: TransferRequest): Promise<TransferResponse> {
+    console.log('🔄 [blockchainService] Début du transfert...');
+    console.log('📤 [blockchainService] Données de transfert:', transferData);
+    
     const user = getCurrentUser();
     if (!user?.id) {
+      console.error('❌ [blockchainService] Utilisateur non connecté pour transfert');
       throw new Error('Utilisateur non connecté');
     }
 
+    console.log(`👤 [blockchainService] fromUserId: ${user.id}`);
+    
     const payload = {
       ...transferData,
       fromUserId: user.id
     };
 
-    const response = await blockchainApi.post('/transfer', payload);
-    return response.data.data;
+    console.log('📦 [blockchainService] Payload envoyé:', payload);
+
+    try {
+      const response = await blockchainApi.post('/transfer', payload);
+      console.log('✅ [blockchainService] Réponse transfert reçue:', response.data);
+      
+      // VÉRIFICATION CRITIQUE : s'assurer que success est true
+      if (!response.data.success) {
+        console.error('❌ [blockchainService] Le serveur a retourné success: false');
+        console.error('❌ [blockchainService] Message:', response.data.message);
+        throw new Error(response.data.message || 'Erreur lors du transfert');
+      }
+
+      // Vérifier que les données sont présentes
+      if (!response.data.data) {
+        console.error('❌ [blockchainService] Pas de data dans la réponse');
+        throw new Error('Réponse incomplète du serveur');
+      }
+
+      // Vérifier la présence des éléments critiques
+      if (!response.data.data.transaction) {
+        console.warn('⚠️ [blockchainService] Aucune transaction dans la réponse');
+      }
+      
+      if (!response.data.data.ledgerBlock) {
+        console.warn('⚠️ [blockchainService] Aucun bloc ledger dans la réponse');
+      }
+
+      console.log('🎉 [blockchainService] Transfert réussi!');
+      return response.data;
+    } catch (error: any) {
+      console.error('💥 [blockchainService] Erreur lors du transfert:', error);
+      
+      // Log détaillé pour les erreurs axios
+      if (error.response) {
+        console.error('📡 [blockchainService] Détails erreur serveur:', {
+          status: error.response.status,
+          data: error.response.data,
+          headers: error.response.headers
+        });
+      } else if (error.request) {
+        console.error('📡 [blockchainService] Pas de réponse du serveur:', error.request);
+      } else {
+        console.error('📡 [blockchainService] Erreur configuration:', error.message);
+      }
+      
+      throw new Error(error.response?.data?.message || error.message || 'Erreur lors du transfert');
+    }
   }
 
   // Obtenir l'historique des transactions
@@ -234,8 +319,11 @@ class BlockchainService {
     endDate?: string;
     transactionType?: string;
   }): Promise<TransactionHistory> {
+    console.log('📋 [blockchainService] Récupération historique...');
+    
     const user = getCurrentUser();
     if (!user?.id) {
+      console.error('❌ [blockchainService] Utilisateur non connecté pour historique');
       throw new Error('Utilisateur non connecté');
     }
 
@@ -248,61 +336,213 @@ class BlockchainService {
     if (options?.endDate) params.append('endDate', options.endDate);
     if (options?.transactionType) params.append('transactionType', options.transactionType);
 
-    const response = await blockchainApi.get(`/history?${params.toString()}`);
-    return response.data.data;
+    console.log(`🔍 [blockchainService] Paramètres: ${params.toString()}`);
+
+    try {
+      const response = await blockchainApi.get(`/history?${params.toString()}`);
+      console.log(`✅ [blockchainService] Historique reçu: ${response.data.data.transactions?.length || 0} transactions`);
+      
+      if (!response.data.success) {
+        console.error('❌ [blockchainService] Le serveur a retourné success: false pour historique');
+        throw new Error(response.data.message || 'Erreur lors de la récupération de l\'historique');
+      }
+      
+      return response.data.data;
+    } catch (error: any) {
+      console.error('💥 [blockchainService] Erreur lors de getHistory:', error);
+      
+      if (error.response) {
+        console.error('📡 [blockchainService] Détails erreur:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      }
+      
+      throw new Error(error.response?.data?.message || error.message || 'Erreur lors de la récupération de l\'historique');
+    }
   }
 
   // Demander un retrait
   async requestWithdrawal(withdrawalData: WithdrawalRequest): Promise<WithdrawalResponse> {
+    console.log('🏧 [blockchainService] Demande de retrait...');
+    
     const user = getCurrentUser();
     if (!user?.id) {
+      console.error('❌ [blockchainService] Utilisateur non connecté pour retrait');
       throw new Error('Utilisateur non connecté');
     }
 
     // Pour le retrait, on a besoin du walletId
+    console.log('💰 [blockchainService] Récupération du solde pour obtenir walletId...');
     const balance = await this.getBalance();
     const walletId = balance.wallet.walletAddress; // Utiliser l'adresse comme ID temporaire
 
+    console.log(`🔑 [blockchainService] walletId: ${walletId}`);
+    
     const payload = {
       ...withdrawalData,
       walletId: walletId
     };
 
-    const response = await blockchainApi.post('/withdrawal/request', payload);
-    return response.data.data;
+    console.log('📦 [blockchainService] Payload retrait:', payload);
+
+    try {
+      const response = await blockchainApi.post('/withdrawal/request', payload);
+      console.log('✅ [blockchainService] Réponse retrait reçue:', response.data);
+      
+      if (!response.data.success) {
+        console.error('❌ [blockchainService] Le serveur a retourné success: false pour retrait');
+        throw new Error(response.data.message || 'Erreur lors de la demande de retrait');
+      }
+      
+      return response.data.data;
+    } catch (error: any) {
+      console.error('💥 [blockchainService] Erreur lors de requestWithdrawal:', error);
+      
+      if (error.response) {
+        console.error('📡 [blockchainService] Détails erreur:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      }
+      
+      throw new Error(error.response?.data?.message || error.message || 'Erreur lors de la demande de retrait');
+    }
   }
 
   // Obtenir les statistiques du wallet
   async getStats(): Promise<WalletStats> {
+    console.log('📊 [blockchainService] Récupération des statistiques...');
+    
     const user = getCurrentUser();
     if (!user?.id) {
+      console.error('❌ [blockchainService] Utilisateur non connecté pour stats');
       throw new Error('Utilisateur non connecté');
     }
 
-    const response = await blockchainApi.get(`/stats?userId=${user.id}`);
-    return response.data.data;
+    console.log(`🔍 [blockchainService] userId: ${user.id}`);
+
+    try {
+      const response = await blockchainApi.get(`/stats?userId=${user.id}`);
+      console.log('✅ [blockchainService] Statistiques reçues');
+      
+      if (!response.data.success) {
+        console.error('❌ [blockchainService] Le serveur a retourné success: false pour stats');
+        throw new Error(response.data.message || 'Erreur lors de la récupération des statistiques');
+      }
+      
+      return response.data.data;
+    } catch (error: any) {
+      console.error('💥 [blockchainService] Erreur lors de getStats:', error);
+      
+      if (error.response) {
+        console.error('📡 [blockchainService] Détails erreur:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      }
+      
+      throw new Error(error.response?.data?.message || error.message || 'Erreur lors de la récupération des statistiques');
+    }
   }
 
   // Générer un rapport d'audit
   async generateAuditReport(startDate: string, endDate: string): Promise<AuditReport> {
+    console.log('📄 [blockchainService] Génération rapport d\'audit...');
+    console.log(`📅 [blockchainService] Période: ${startDate} -> ${endDate}`);
+    
     const user = getCurrentUser();
     if (!user?.id) {
+      console.error('❌ [blockchainService] Utilisateur non connecté pour audit');
       throw new Error('Utilisateur non connecté');
     }
 
-    const response = await blockchainApi.get(`/audit?userId=${user.id}&startDate=${startDate}&endDate=${endDate}`);
-    return response.data.data;
+    try {
+      const response = await blockchainApi.get(`/audit?userId=${user.id}&startDate=${startDate}&endDate=${endDate}`);
+      console.log('✅ [blockchainService] Rapport d\'audit reçu');
+      
+      if (!response.data.success) {
+        console.error('❌ [blockchainService] Le serveur a retourné success: false pour audit');
+        throw new Error(response.data.message || 'Erreur lors de la génération du rapport d\'audit');
+      }
+      
+      return response.data.data;
+    } catch (error: any) {
+      console.error('💥 [blockchainService] Erreur lors de generateAuditReport:', error);
+      
+      if (error.response) {
+        console.error('📡 [blockchainService] Détails erreur:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      }
+      
+      throw new Error(error.response?.data?.message || error.message || 'Erreur lors de la génération du rapport d\'audit');
+    }
   }
 
   // Créer un wallet (nouvelle méthode)
   async createWallet(): Promise<any> {
+    console.log('🆕 [blockchainService] Création d\'un wallet...');
+    
     const user = getCurrentUser();
     if (!user?.id) {
+      console.error('❌ [blockchainService] Utilisateur non connecté pour création wallet');
       throw new Error('Utilisateur non connecté');
     }
 
-    const response = await blockchainApi.post('/wallet/create', { userId: user.id });
-    return response.data.data;
+    console.log(`👤 [blockchainService] userId pour création: ${user.id}`);
+
+    try {
+      const response = await blockchainApi.post('/wallet/create', { userId: user.id });
+      console.log('✅ [blockchainService] Wallet créé:', response.data);
+      
+      if (!response.data.success) {
+        console.error('❌ [blockchainService] Le serveur a retourné success: false pour création wallet');
+        throw new Error(response.data.message || 'Erreur lors de la création du wallet');
+      }
+      
+      return response.data.data;
+    } catch (error: any) {
+      console.error('💥 [blockchainService] Erreur lors de createWallet:', error);
+      
+      if (error.response) {
+        console.error('📡 [blockchainService] Détails erreur:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      }
+      
+      throw new Error(error.response?.data?.message || error.message || 'Erreur lors de la création du wallet');
+    }
+  }
+
+  // Méthode pour tester la connexion au service blockchain
+  async testConnection(): Promise<boolean> {
+    console.log('🔗 [blockchainService] Test de connexion au service...');
+    
+    try {
+      const response = await blockchainApi.get('/test');
+      console.log('✅ [blockchainService] Service blockchain accessible:', response.data);
+      return true;
+    } catch (error) {
+      console.error('❌ [blockchainService] Service blockchain inaccessible:', error);
+      return false;
+    }
+  }
+
+  // Méthode pour vérifier la santé du service
+  async checkHealth(): Promise<any> {
+    console.log('❤️ [blockchainService] Vérification santé du service...');
+    
+    try {
+      const response = await axios.get('http://localhost:3003/health');
+      console.log('✅ [blockchainService] Santé du service:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [blockchainService] Erreur vérification santé:', error);
+      throw error;
+    }
   }
 }
 

@@ -11,6 +11,15 @@ app.use(cors({
   credentials: false
 }));
 
+// Middleware pour logger les requêtes (AJOUTER ÇA)
+app.use((req, res, next) => {
+  console.log(`📨 [Blockchain] ${req.method} ${req.url}`);
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log('📦 Body:', JSON.stringify(req.body));
+  }
+  next();
+});
+
 app.use(express.json());
 
 // Import simple APRÈS la configuration de app
@@ -52,15 +61,17 @@ app.get('/health', async (req, res) => {
 
 // Gestion des erreurs
 app.use((error, req, res, next) => {
-  console.error('Erreur globale:', error);
+  console.error('💥 Erreur globale blockchain:', error);
   res.status(500).json({
     success: false,
-    message: 'Erreur interne du serveur'
+    message: 'Erreur interne du serveur',
+    details: process.env.NODE_ENV === 'development' ? error.message : undefined
   });
 });
 
 // Route 404
 app.use('*', (req, res) => {
+  console.log(`❌ Route non trouvée: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     success: false,
     message: 'Route non trouvée'
@@ -79,6 +90,8 @@ const startServer = async () => {
       console.log('📍 Routes disponibles:');
       console.log('   - /api/blockchain/balance');
       console.log('   - /api/blockchain/transfer');
+      console.log('   - /api/blockchain/transfer/booking-pending (NOUVELLE)');
+      console.log('   - /api/blockchain/transfer/booking-confirm (NOUVELLE)');
       console.log('   - /api/blockchain/history');
       console.log('   - /api/blockchain/stats');
       console.log('   - /api/blockchain/test');

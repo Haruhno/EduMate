@@ -1,0 +1,24 @@
+{
+  "name": "booking-service",
+  "version": "1.0.0",
+  "description": "Service de réservation pour EduMate",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "sequelize": "^6.35.1",
+    "uuid": "^9.0.0",
+    "body-parser": "^1.20.2",
+    "sqlite3": "^5.1.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

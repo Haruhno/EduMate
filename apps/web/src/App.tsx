@@ -19,6 +19,8 @@ import AnnoncesPage from "./pages/Annonces/AnnoncesPage";
 import CreerAnnoncePage from "./pages/CreerAnnonce/CreerAnnoncePage";
 import MessageTestPage from "./pages/Messages/MessagePage";
 import Blockchain from "./pages/Blockchain/Blockchain";
+import BookingPage from './pages/Booking/BookingPage';
+import ReservationsPage from './pages/Reservations/ReservationsPage';
 
 // Composant pour protéger les routes d'authentification
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -93,7 +95,6 @@ const App: React.FC = () => {
           />
           <Route path="/tuteur/:id" element={<TutorProfilePage />} />
           <Route path="/devenir-tuteur" element={<DevenirTuteur />} />
-          // Ajoutez ces routes
           <Route 
             path="/annonces" 
             element={
@@ -125,6 +126,14 @@ const App: React.FC = () => {
                 <Blockchain />
               </PrivateRoute>
             } 
+          />
+          <Route 
+            path="/booking/:tutorId" 
+            element={<BookingPage />} 
+          />
+          <Route 
+            path="/reservations" 
+            element={<ReservationsPage />} 
           />
         </Routes>
       </div>

@@ -43,10 +43,12 @@ const Blockchain: React.FC = () => {
 
   // Charger les données initiales
   useEffect(() => {
+    console.log('🔍 [React] Chargement des données initiales...');
     loadWalletData();
   }, []);
 
   const loadWalletData = async () => {
+    console.log('🔄 [React] Chargement des données wallet...');
     setLoading(true);
     setError(null);
     try {
@@ -56,13 +58,19 @@ const Blockchain: React.FC = () => {
         blockchainService.getStats()
       ]);
       
+      console.log('✅ [React] Données chargées:', {
+        balance: balanceData.wallet.available,
+        transactions: historyData.transactions.length,
+        stats: statsData
+      });
+      
       setBalance(balanceData);
       setTransactions(historyData.transactions);
       setStats(statsData);
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Erreur lors du chargement des données';
       setError(errorMessage);
-      console.error('Erreur chargement données:', err);
+      console.error('❌ [React] Erreur chargement données:', err);
     } finally {
       setLoading(false);
     }
@@ -75,14 +83,29 @@ const Blockchain: React.FC = () => {
     }
 
     setLoading(true);
+    setError(null);
+    setSuccess(null); // Réinitialiser le succès précédent
+    
     try {
+      console.log('🔄 [React] Début du transfert côté frontend');
+      console.log('📤 [React] Données:', transferData);
+      
+      // Appeler l'API blockchainService.transfer()
+      const response = await blockchainService.transfer(transferData);
+      
+      console.log('✅ [React] Réponse du service blockchain:', response);
+      
+      // Afficher le succès SEULEMENT après la réponse réussie
       setSuccess(`Transfert de ${transferData.amount} crédits effectué avec succès!`);
       setTransferModalOpen(false);
       setTransferData({ toWalletAddress: '', amount: 0, description: '' });
+      
+      // Recharger les données
       await loadWalletData(); 
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Erreur lors du transfert';
       setError(errorMessage);
+      console.error('❌ [React] Erreur transfert:', err);
     } finally {
       setLoading(false);
     }
@@ -95,7 +118,14 @@ const Blockchain: React.FC = () => {
     }
 
     setLoading(true);
+    setError(null);
+    setSuccess(null);
+    
     try {
+      console.log('🏧 [React] Demande de retrait...');
+      const response = await blockchainService.requestWithdrawal(withdrawalData);
+      
+      console.log('✅ [React] Retrait créé:', response);
       setSuccess(`Demande de retrait de ${withdrawalData.amount} crédits créée!`);
       setWithdrawalModalOpen(false);
       setWithdrawalData({
@@ -106,6 +136,7 @@ const Blockchain: React.FC = () => {
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Erreur lors de la demande de retrait';
       setError(errorMessage);
+      console.error('❌ [React] Erreur retrait:', err);
     } finally {
       setLoading(false);
     }
@@ -340,21 +371,21 @@ const Blockchain: React.FC = () => {
                   <div className={styles.balanceItem}>
                     <div className={styles.balanceLabel}>Solde disponible</div>
                     <div className={`${styles.balanceAmount} ${styles.primary}`}>
-                      {formatAmount(balance.wallet.available)} €
+                      {formatAmount(balance.wallet.available)} 🪙
                     </div>
                     <div className={styles.balanceTrend}>Prêt à utiliser</div>
                   </div>
                   <div className={styles.balanceItem}>
                     <div className={styles.balanceLabel}>Solde bloqué</div>
                     <div className={styles.balanceAmount}>
-                      {formatAmount(balance.wallet.locked)} €
+                      {formatAmount(balance.wallet.locked)} 🪙
                     </div>
                     <div className={styles.balanceTrend}>En attente</div>
                   </div>
                   <div className={styles.balanceItem}>
                     <div className={styles.balanceLabel}>Solde total</div>
                     <div className={styles.balanceAmount}>
-                      {formatAmount(balance.wallet.total)} €
+                      {formatAmount(balance.wallet.total)} 🪙
                     </div>
                     <div className={styles.balanceTrend}>Total</div>
                   </div>
@@ -393,7 +424,7 @@ const Blockchain: React.FC = () => {
                     <div className={styles.statIcon}>📈</div>
                     <div className={styles.statContent}>
                       <div className={`${styles.statValue} ${styles.primary}`}>
-                        {formatAmount(stats.today.sent + stats.today.received)} €
+                        {formatAmount(stats.today.sent + stats.today.received)} 🪙
                       </div>
                       <div className={styles.statLabel}>Aujourd'hui</div>
                     </div>
@@ -402,7 +433,7 @@ const Blockchain: React.FC = () => {
                     <div className={styles.statIcon}>📅</div>
                     <div className={styles.statContent}>
                       <div className={styles.statValue}>
-                        {formatAmount(stats.monthly.sent + stats.monthly.received)} €
+                        {formatAmount(stats.monthly.sent + stats.monthly.received)} 🪙
                       </div>
                       <div className={styles.statLabel}>Ce mois</div>
                     </div>
@@ -417,7 +448,7 @@ const Blockchain: React.FC = () => {
                   <div className={styles.statItem}>
                     <div className={styles.statIcon}>💸</div>
                     <div className={styles.statContent}>
-                      <div className={styles.statValue}>{formatAmount(stats.allTime.fees)} €</div>
+                      <div className={styles.statValue}>{formatAmount(stats.allTime.fees)} 🪙</div>
                       <div className={styles.statLabel}>Frais totaux</div>
                     </div>
                   </div>
@@ -471,7 +502,7 @@ const Blockchain: React.FC = () => {
                           </div>
                         </div>
                         <div className={`${styles.transactionAmount} ${details.amountColor}`}>
-                          {details.amountSign}{formatAmount(transaction.amount)} €
+                          {details.amountSign}{formatAmount(transaction.amount)} 🪙
                         </div>
                       </div>
                     );
@@ -599,11 +630,11 @@ const Blockchain: React.FC = () => {
                         </td>
                         <td className={styles.textCenter}>
                           <div className={`${styles.amount} ${details.amountColor}`}>
-                            {details.amountSign}{formatAmount(transaction.amount)} €
+                            {details.amountSign}{formatAmount(transaction.amount)} 🪙
                           </div>
                           {transaction.fee > 0 && (
                             <div className={styles.fee}>
-                              Frais: {formatAmount(transaction.fee)} €
+                              Frais: {formatAmount(transaction.fee)} 🪙
                             </div>
                           )}
                         </td>
@@ -633,7 +664,7 @@ const Blockchain: React.FC = () => {
             <div className={styles.cardHeader}>
               <h3>🔄 Effectuer un Transfert</h3>
               <div className={styles.balancePreview}>
-                Solde disponible: <strong>{balance ? formatAmount(balance.wallet.available) : '0'} €</strong>
+                Solde disponible: <strong>{balance ? formatAmount(balance.wallet.available) : '0'} 🪙</strong>
               </div>
             </div>
             <div className={styles.transferForm}>
@@ -649,7 +680,7 @@ const Blockchain: React.FC = () => {
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>Montant (€)</label>
+                  <label className={styles.formLabel}>Montant (🪙)</label>
                   <input
                     type="number"
                     value={transferData.amount}
@@ -712,7 +743,7 @@ const Blockchain: React.FC = () => {
                 />
               </div>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Montant (€)</label>
+                <label className={styles.formLabel}>Montant (🪙)</label>
                 <input
                   type="number"
                   value={transferData.amount}
@@ -770,7 +801,7 @@ const Blockchain: React.FC = () => {
             </div>
             <div className={styles.modalContent}>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Montant à retirer (€)</label>
+                <label className={styles.formLabel}>Montant à retirer (🪙)</label>
                 <input
                   type="number"
                   value={withdrawalData.amount}

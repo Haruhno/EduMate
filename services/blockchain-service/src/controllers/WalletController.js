@@ -1,4 +1,3 @@
-// blockchain-service/src/controllers/WalletController.js
 const { Wallet, LedgerBlock, Transaction, WithdrawalRequest, User } = require('../models/associations');
 const WalletService = require('../services/WalletService');
 
@@ -70,16 +69,21 @@ class WalletController {
   }
 
   async transfer(req, res) {
+    console.log('📨 [WalletController] Requête de transfert reçue');
+    console.log('📦 [WalletController] Body:', req.body);
+    
     try {
       const { fromUserId, toWalletAddress, amount, description, metadata } = req.body;
 
       if (!fromUserId) {
+        console.error('❌ [WalletController] fromUserId manquant');
         return res.status(400).json({
           success: false,
           message: 'fromUserId requis dans le body'
         });
       }
 
+      console.log('🔄 [WalletController] Appel WalletService.transferCredits...');
       const result = await WalletService.transferCredits(
         fromUserId, 
         toWalletAddress, 
@@ -88,12 +92,19 @@ class WalletController {
         metadata
       );
 
+      console.log('✅ [WalletController] Transfert réussi, retour résultat:', {
+        transactionId: result.transaction?.id,
+        ledgerId: result.ledgerBlock?.id,
+        success: true
+      });
+
       res.json({
         success: true,
         message: 'Transfert effectué avec succès',
         data: result
       });
     } catch (error) {
+      console.error('💥 [WalletController] Erreur lors du transfert:', error);
       res.status(400).json({
         success: false,
         message: error.message
