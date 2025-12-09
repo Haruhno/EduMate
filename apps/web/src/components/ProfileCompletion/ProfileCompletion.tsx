@@ -19,6 +19,7 @@ const ProfileCompletion: React.FC = () => {
   const role = location.state?.role || 'student';
   const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
   const [currentStep, setCurrentStep] = useState(0);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -78,6 +79,9 @@ const ProfileCompletion: React.FC = () => {
           if (response.success && response.data.profile) {
             const profile = response.data.profile;
             
+            // Si on a un profil, on est en mode édition
+            setIsEditMode(true);
+            
             // Formater la date de naissance si elle existe
             const formattedBirthDate = profile.birthDate 
               ? new Date(profile.birthDate).toISOString().split('T')[0]
@@ -94,7 +98,8 @@ const ProfileCompletion: React.FC = () => {
               email: userData.email || profile.email || prev.email,
             }));
           } else {
-            // Si pas de profil, utiliser les données utilisateur de base
+            // Si pas de profil, on est en mode création
+            setIsEditMode(false);
             setProfileData(prev => ({
               ...prev,
               ...userData
@@ -102,6 +107,7 @@ const ProfileCompletion: React.FC = () => {
           }
         } catch (profileError) {
           console.error('Erreur chargement profil complet:', profileError);
+          setIsEditMode(false);
           // En cas d'erreur, utiliser les données utilisateur de base
           setProfileData(prev => ({
             ...prev,
@@ -111,6 +117,7 @@ const ProfileCompletion: React.FC = () => {
 
       } catch (error) {
         console.error('Erreur lors du chargement des données utilisateur:', error);
+        setIsEditMode(false);
       } finally {
         setIsInitializing(false);
       }
@@ -120,8 +127,10 @@ const ProfileCompletion: React.FC = () => {
       loadUserData();
     } else {
       setIsInitializing(false);
+      setIsEditMode(false);
     }
   }, []);
+
 
   // Gérer le mode modification avec données existantes
   useEffect(() => {
@@ -134,9 +143,7 @@ const ProfileCompletion: React.FC = () => {
       setProfileData((prev) => ({
         ...prev,
         ...profile,
-        // Convertir la date de naissance au format YYYY-MM-DD
         birthDate: formattedBirthDate,
-        // NE PAS écraser le prénom, nom et email
         firstName: prev.firstName,
         lastName: prev.lastName,
         email: prev.email,
@@ -164,6 +171,90 @@ const ProfileCompletion: React.FC = () => {
 
   const CurrentStepComponent = steps[currentStep].component;
   const isFinalStep = currentStep === steps.length - 1;
+
+  //Gérer le clic sur une étape
+  const handleStepClick = (index: number) => {
+    // Si on est en mode édition, on peut aller partout (sauf validation si étape actuelle a des erreurs)
+    // Si on est en mode création, on ne peut aller que sur les étapes passées
+    
+    // Valider l'étape actuelle si on essaie de quitter
+    if (index !== currentStep) {
+      // Pour l'étape Expérience, utiliser la validation spécifique
+      if (steps[currentStep].title === 'Expérience') {
+        const isExperienceStepValid = (window as any).validateExperienceStep?.();
+        if (!isExperienceStepValid) {
+          const firstErrorField = Object.keys(errors).find(key => key.startsWith('experience-'));
+          if (firstErrorField) {
+            const errorElement = document.querySelector(`.${styles.experienceCard}`);
+            if (errorElement) {
+              errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }
+          return;
+        }
+      } else {
+        // Pour les autres étapes, utiliser la validation normale
+        const newErrors = validateCurrentStep();
+        
+        if (steps[currentStep].title === 'Informations générales') {
+          const isGeneralInfoStepValid = (window as any).validateGeneralInfoStep?.();
+          if (!isGeneralInfoStepValid) {
+            const firstErrorField = Object.keys(newErrors).find(key => 
+              ['firstName', 'lastName', 'email', 'birthDate', 'phone'].includes(key)
+            );
+            if (firstErrorField) {
+              const errorElement = document.getElementById(firstErrorField);
+              if (errorElement) {
+                errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }
+            return;
+          }
+        }
+
+        if (steps[currentStep].title === 'Études' || steps[currentStep].title === 'Diplômes') {
+          const isEducationStepValid = (window as any).validateEducationStep?.();
+          if (!isEducationStepValid) {
+            const firstErrorField = Object.keys(newErrors).find(key => key.startsWith('diploma-'));
+            if (firstErrorField) {
+              const errorElement = document.querySelector(`.${styles.diplomaCard}`);
+              if (errorElement) {
+                errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }
+            return;
+          }
+        }
+
+        // En mode édition, on autorise quand même le changement même avec des erreurs
+        // (l'utilisateur peut vouloir corriger une autre étape d'abord)
+        if (!isEditMode && Object.keys(newErrors).length > 0) {
+          // En mode création, on bloque si erreurs
+          setErrors(newErrors);
+          const firstErrorField = Object.keys(newErrors)[0];
+          if (firstErrorField) {
+            let errorElement;
+            
+            if (firstErrorField.startsWith('diploma-')) {
+              errorElement = document.querySelector(`.${styles.diplomaCard}`);
+            } else {
+              errorElement = document.getElementById(firstErrorField);
+            }
+            
+            if (errorElement) {
+              errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }
+          return;
+        }
+        // En mode édition, on ne bloque pas pour les erreurs
+      }
+    }
+
+    // Si validation OK ou si on est en mode édition
+    setCurrentStep(index);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Validation - MODIFIÉE pour ignorer certaines étapes
   const validateCurrentStep = () => {
@@ -363,92 +454,151 @@ const ProfileCompletion: React.FC = () => {
   }
 
   return (
-    <div className={styles.container}>
-      {/* Header avec progression */}
-      <div className={styles.header}>
-        <div className={styles.steps}>
+  <div className={styles.container}>
+    {/* Header avec progression */}
+    <div className={styles.header}>
+      {/* Pour mobile: sélecteur d'étapes */}
+      <div className={styles.mobileStepSelector}>
+        <select 
+          value={currentStep}
+          onChange={(e) => {
+            const newIndex = parseInt(e.target.value);
+            // En mode édition, on peut aller partout
+            // En mode création, on ne peut aller qu'aux étapes passées
+            if (isEditMode || newIndex <= currentStep) {
+              handleStepClick(newIndex);
+            }
+          }}
+          className={styles.mobileStepDropdown}
+        >
           {steps.map((step, index) => (
+            <option 
+              key={index} 
+              value={index}
+              // En mode création, on désactive les étapes futures
+              disabled={!isEditMode && index > currentStep}
+              className={(!isEditMode && index > currentStep) ? styles.futureOption : ''}
+            >
+              {index + 1}. {step.title} 
+              {(!isEditMode && index > currentStep) ? ' (à venir)' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Pour desktop: barre de progression */}
+      <div className={styles.steps}>
+        {steps.map((step, index) => {
+          // Déterminer la classe CSS en fonction du mode
+          let stepClass = '';
+          let isClickable = false;
+          
+          if (isEditMode) {
+            // En mode édition, toutes les étapes sont accessibles
+            stepClass = index === currentStep ? styles.active : styles.past;
+            isClickable = true;
+          } else {
+            // En mode création, seulement les étapes passées sont cliquables
+            if (index === currentStep) {
+              stepClass = styles.active;
+              isClickable = false;
+            } else if (index < currentStep) {
+              stepClass = styles.past;
+              isClickable = true;
+            } else {
+              stepClass = styles.future;
+              isClickable = false;
+            }
+          }
+
+          return (
             <div 
               key={index}
-              className={`${styles.step} ${index <= currentStep ? styles.active : ''}`}
+              className={`${styles.step} ${stepClass}`}
+              onClick={() => isClickable && handleStepClick(index)}
+              style={{ 
+                cursor: isClickable ? 'pointer' : 'default',
+                opacity: isClickable ? 1 : (stepClass === 'future' ? 0.5 : 1)
+              }}
             >
               <div className={styles.stepNumber}>{index + 1}</div>
               <span className={styles.stepTitle}>{step.title}</span>
             </div>
-          ))}
+          );
+        })}
+      </div>
+    </div>
+
+    {/* Message d'erreur global */}
+    {errors.submit && (
+      <div className={styles.errorBanner}>
+        <div className={styles.errorContent}>
+          <span className={styles.errorIcon}>⚠️</span>
+          <span>{errors.submit}</span>
+        </div>
+      </div>
+    )}
+
+    {/* Split screen principal */}
+    <div className={`${styles.splitContainer} ${isFinalStep ? styles.fullWidth : ''}`}>
+      {/* Section formulaire */}
+      <div className={`${styles.formSection} ${isFinalStep ? styles.fullWidthForm : ''}`}>
+        <div className={`${styles.formContent} ${isFinalStep ? styles.centeredFinalStep : ''}`}>
+          <CurrentStepComponent
+            profileData={profileData}
+            setProfileData={setProfileData}
+            role={role}
+            errors={errors}
+            setErrors={setErrors}
+            touched={touched}
+            setTouched={setTouched}
+          />
+          
+          {/* Navigation pour les étapes normales */}
+          {!isFinalStep && (
+            <div className={styles.navigation}>
+              <button
+                onClick={eBack}
+                disabled={currentStep === 0}
+                className={styles.backButton}
+              >
+                Retour
+              </button>
+
+              <button onClick={eNext} className={styles.nextButton}>
+                {currentStep === steps.length - 2 ? 'Voir l\'aperçu' : 'Continuer'}
+              </button>
+            </div>
+          )}
+          
+          {/* Navigation spéciale pour la finalisation */}
+          {isFinalStep && (
+            <div className={styles.finalNavigation}>
+              <button onClick={eBack} className={styles.backButton}>
+                Retour
+              </button>
+              <button 
+                onClick={eSubmit} 
+                className={styles.nextButton}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Traitement...' : 'Terminer mon profil'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Message d'erreur global */}
-      {errors.submit && (
-        <div className={styles.errorBanner}>
-          <div className={styles.errorContent}>
-            <span className={styles.errorIcon}>⚠️</span>
-            <span>{errors.submit}</span>
+      {/* Section preview (masquée en finalisation) */}
+      {!isFinalStep && (
+        <div className={styles.previewSection}>
+          <div className={styles.previewContent}>
+            <PreviewStep profileData={profileData} role={role} />
           </div>
         </div>
       )}
-
-      {/* Split screen principal */}
-      <div className={`${styles.splitContainer} ${isFinalStep ? styles.fullWidth : ''}`}>
-        {/* Section formulaire */}
-        <div className={`${styles.formSection} ${isFinalStep ? styles.fullWidthForm : ''}`}>
-          <div className={`${styles.formContent} ${isFinalStep ? styles.centeredFinalStep : ''}`}>
-            <CurrentStepComponent
-              profileData={profileData}
-              setProfileData={setProfileData}
-              role={role}
-              errors={errors}
-              setErrors={setErrors}
-              touched={touched}
-              setTouched={setTouched}
-            />
-            
-            {/* Navigation pour les étapes normales */}
-            {!isFinalStep && (
-              <div className={styles.navigation}>
-                <button
-                  onClick={eBack}
-                  disabled={currentStep === 0}
-                  className={styles.backButton}
-                >
-                  Retour
-                </button>
-
-                <button onClick={eNext} className={styles.nextButton}>
-                  {currentStep === steps.length - 2 ? 'Voir l\'aperçu' : 'Continuer'}
-                </button>
-              </div>
-            )}
-            
-            {/* Navigation spéciale pour la finalisation */}
-            {isFinalStep && (
-              <div className={styles.finalNavigation}>
-                <button onClick={eBack} className={styles.backButton}>
-                  Retour
-                </button>
-                <button 
-                  onClick={eSubmit} 
-                  className={styles.nextButton}
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Traitement...' : 'Terminer mon profil'}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Section preview (masquée en finalisation) */}
-        {!isFinalStep && (
-          <div className={styles.previewSection}>
-            <div className={styles.previewContent}>
-              <PreviewStep profileData={profileData} role={role} />
-            </div>
-          </div>
-        )}
-      </div>
     </div>
+  </div>
   );
 };
 

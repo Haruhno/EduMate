@@ -19,6 +19,7 @@ import AnnoncesPage from "./pages/Annonces/AnnoncesPage";
 import CreerAnnoncePage from "./pages/CreerAnnonce/CreerAnnoncePage";
 import MessageTestPage from "./pages/Messages/MessagePage";
 import Blockchain from "./pages/Blockchain/Blockchain";
+import MesCours from "./pages/HistoriqueCours/HistoriqueCours";
 import BookingPage from './pages/Booking/BookingPage';
 import ReservationsPage from './pages/Reservations/ReservationsPage';
 
@@ -134,6 +135,14 @@ const App: React.FC = () => {
           <Route 
             path="/reservations" 
             element={<ReservationsPage />} 
+          />
+          <Route 
+            path="/cours" 
+            element={
+              <PrivateRoute>
+                <MesCours />
+              </PrivateRoute>
+            } 
           />
         </Routes>
       </div>

@@ -6,7 +6,15 @@ class ProfileService {
     const ProfileModel = role === 'tutor' ? ProfileTutor : ProfileStudent;
     
     try {
-      let profile = await ProfileModel.findOne({ where: { userId } });
+      // Mettre à jour les compétences dans la table User
+      if (profileData.skills) {
+        await User.update(
+          { skills: profileData.skills },
+          { where: { id: userId } }
+        );
+      }
+
+    let profile = await ProfileModel.findOne({ where: { userId } });
 
       // Séparer les données du profil des diplômes et expériences
       const { diplomas, experiences, ...profileDataToSave } = profileData;
@@ -198,31 +206,37 @@ class ProfileService {
   async getProfile(userId, role) {
     try {
       const ProfileModel = role === 'tutor' ? ProfileTutor : ProfileStudent;
-      let profile = await ProfileModel.findOne({ where: { userId } });
-      
+      const profile = await ProfileModel.findOne({ where: { userId } });
+
+      // Si pas de profil, retourner null (ne pas lancer d'exception)
       if (!profile) {
-        throw new Error('Profil non trouvé');
+        return null;
       }
 
-      // Récupérer les diplômes
+      // Récupérer l'utilisateur pour avoir les compétences
+      const user = await User.findByPk(userId);
+      if (!user) {
+        throw new Error('Utilisateur non trouvé');
+      }
+
+      // Récupérer les diplômes et expériences
       const diplomas = await this.getDiplomasByUser(userId, role);
-      
-      // Récupérer les expériences
       const experiences = await this.getExperiencesByUser(userId, role);
 
       const profileData = profile.toJSON();
-      
+
       return {
         ...profileData,
-        diplomas: diplomas,
-        experiences: experiences
+        skills: user.skills || [],
+        diplomas,
+        experiences
       };
     } catch (error) {
       console.error('Erreur détaillée récupération profil:', error);
       throw error;
     }
   }
-
+  
   // Calculer le pourcentage de complétion avec les diplômes et expériences
   async calculateCompletionPercentage(profile, role, userId) {
     // Récupérer les données de l'utilisateur

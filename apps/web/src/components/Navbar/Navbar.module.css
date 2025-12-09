@@ -201,6 +201,42 @@ body {
   vertical-align: middle;
 }
 
+.userMenu {
+  position: relative;
+}
+
+.userIconBtn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  width: 60px; 
+  height: 60px; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%; 
+}
+
+.userIcon {
+  width: 100% !important; 
+  height: 100% !important; 
+  border-radius: 50%;
+  object-fit: cover; 
+  transition: transform 0.2s;
+}
+
+.userIcon:hover {
+  transform: scale(1.05);
+}
+
+.dropdownIcon {
+  width: 55px !important;
+  height: 55px !important;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .mobileInscriptionLink {
   background: linear-gradient(135deg, #e6ca9b 0%, #fff4e1 100%);
   color: black !important;
@@ -728,14 +764,6 @@ body {
   gap: 0.8rem;
 }
 
-.dropdownIcon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  background: linear-gradient(135deg, #e6ca9b 0%, #fff4e1 100%);
-  padding: 8px;
-}
 
 .userInfo {
   display: flex;

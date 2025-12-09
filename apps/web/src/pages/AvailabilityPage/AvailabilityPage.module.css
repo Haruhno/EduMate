@@ -306,7 +306,6 @@
 .availabilityLabel {
   font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.9);
-  margin-top: 0.3rem;
   font-weight: 700;
   color: rgb(78, 78, 78);
 }
@@ -320,25 +319,6 @@
   display: flex;
   align-items: center;
   font-family: Arial, Helvetica, sans-serif;
-}
-
-.deleteBlockButton {
-  position: absolute;
-  bottom: 0.25rem;
-  right: 0.25rem;
-  background: rgba(239, 68, 68, 0.9);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 0.2rem 0.5rem;
-  font-size: 0.6rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.deleteBlockButton:hover {
-  background: #dc2626;
-  transform: scale(1.05);
 }
 
 /* Style pour les dates passées */
@@ -417,6 +397,15 @@
   flex: 1;
 }
 
+.clickedHourInfo {
+  display: block;
+  font-size: 0.9rem;
+  color: #f59e0b;
+  font-weight: 500;
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
 .closeButton {
   background: none;
   border: none;
@@ -472,6 +461,14 @@
   text-align: center;
   color: #ff9900;
   font-weight: 500;
+  font-size: 1rem;
+}
+
+.selectedHour {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 600;
 }
 
 .timeSlotConfig {
@@ -489,6 +486,61 @@
   margin-bottom: 1rem;
 }
 
+/* Nouveaux styles ajoutés */
+.slotNumberInfo {
+  display: block;
+  font-size: 0.9rem;
+  color: #f59e0b;
+  font-weight: 500;
+  margin-top: 0.3rem;
+}
+
+.modifyingSlot {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #f59e0b;
+  font-weight: 600;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 0.5rem;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.modalDateInfo {
+  display: block;
+  font-size: 1rem;
+  color: #666;
+  font-weight: normal;
+  margin-top: 0.5rem;
+}
+
+.clickedHourInfo {
+  display: block;
+  font-size: 0.9rem;
+  color: #f59e0b;
+  font-weight: 500;
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+.selectedHour {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #f59e0b;
+  font-weight: 600;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 0.5rem;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.hourCell.hasAvailability {
+  cursor: pointer;
+}
+
+.hourCell.hasAvailability:hover {
+  background: rgba(245, 158, 11, 0.05) !important;
+}
 .allDayLabel {
   display: flex;
   align-items: center;
@@ -542,7 +594,7 @@
   height: 1.25rem;
 }
 
-/* Styles pour les dropdowns*/
+/* Styles pour les dropdowns */
 .customDropdown {
   position: relative;
   width: 100%;
@@ -852,7 +904,6 @@
     padding: 1rem;
   }
   
-  /* Header responsive */
   .header {
     padding: 1.5rem;
     margin-bottom: 1rem;
@@ -875,7 +926,6 @@
     min-width: auto;
   }
   
-  /* Calendar Section responsive */
   .calendarSection {
     padding: 1.5rem;
   }
@@ -901,7 +951,6 @@
     justify-content: center;
   }
   
-  /* Calendar grid responsive */
   .calendarGrid {
     grid-template-columns: 60px repeat(7, 1fr);
   }
@@ -919,7 +968,6 @@
     height: 50px;
   }
   
-  /* Modal responsive amélioré */
   .modal {
     width: 95%;
     margin: 0.5rem;
@@ -947,7 +995,6 @@
     margin-top: -0.5rem;
   }
   
-  /* Time inputs responsive */
   .timeInputs {
     flex-direction: column;
     gap: 1rem;
@@ -963,7 +1010,6 @@
     width: 100%;
   }
   
-  /* Dropdown responsive */
   .dropdownMenu {
     max-height: 150px;
   }
@@ -973,7 +1019,6 @@
     min-height: 2.75rem;
   }
   
-  /* Modal actions responsive */
   .modalActionGroup {
     flex-direction: column;
     gap: 0.75rem;
@@ -991,7 +1036,6 @@
     margin-bottom: 0.5rem;
   }
   
-  /* Delete modal responsive */
   .deleteModal {
     width: 95%;
     margin: 0.5rem;
@@ -1022,7 +1066,6 @@
     padding: 0.875rem 1rem;
   }
   
-  /* Text responsive */
   .deleteModalText {
     font-size: 1rem;
   }
@@ -1069,7 +1112,6 @@
     font-size: 0.9rem;
   }
   
-  /* Calendar très petit */
   .calendarGrid {
     grid-template-columns: 50px repeat(7, 1fr);
   }
@@ -1101,7 +1143,6 @@
   }
 }
 
-/* Support pour le mode paysage sur mobile */
 @media (max-height: 600px) and (orientation: landscape) {
   .modal {
     max-height: 85vh;
@@ -1114,4 +1155,41 @@
   .dropdownMenu {
     max-height: 120px;
   }
+}
+
+/* Nouveaux styles ajoutés */
+.modalDateInfo {
+  display: block;
+  font-size: 1rem;
+  color: #666;
+  font-weight: normal;
+  margin-top: 0.5rem;
+}
+
+.clickedHourInfo {
+  display: block;
+  font-size: 0.9rem;
+  color: #f59e0b;
+  font-weight: 500;
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+.selectedHour {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #f59e0b;
+  font-weight: 600;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 0.5rem;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.hourCell.hasAvailability {
+  cursor: pointer;
+}
+
+.hourCell.hasAvailability:hover {
+  background: rgba(245, 158, 11, 0.05) !important;
 }

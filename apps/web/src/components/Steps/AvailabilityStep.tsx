@@ -245,9 +245,7 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
   };
 
   // Ajouter un créneau avec 6h-23h
-  const addTimeSlot = (dateString: string) => {
-    console.log('➕ Ajout créneau pour:', dateString);
-    
+  const addTimeSlot = (dateString: string) => {    
     setDayAvailabilities(prev => {
       const dayAvailability = prev[dateString];
       if (!dayAvailability) return prev;

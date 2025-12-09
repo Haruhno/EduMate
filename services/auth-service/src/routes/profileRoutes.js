@@ -5,6 +5,7 @@ const path = require('path');
 const profileController = require('../controllers/profileController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
+const storage = multer.memoryStorage();
 // Configuration multer pour l'upload
 const upload = multer({
   storage: multer.diskStorage({
@@ -32,19 +33,22 @@ const upload = multer({
   }
 });
 
-// Routes sécurisées par middleware
-router.get('/status', authMiddleware, profileController.getProfileStatus);
-router.get('/', authMiddleware, profileController.getProfile);
-router.post('/save', authMiddleware, profileController.saveProfile);
-router.post('/complete', authMiddleware, profileController.completeProfile);
-router.post('/upload', authMiddleware, upload.single('file'), profileController.uploadFile);
+// Middleware pour protéger les routes
+router.use(authMiddleware);
 
-router.get('/tutor/:tutorId', profileController.getTutorById);
-router.get('/student/:studentId', profileController.getStudentById);
+// Routes existantes
+router.post('/save', profileController.saveProfile);
+router.get('/', profileController.getProfile);
+router.post('/complete', profileController.completeProfile);
+router.get('/status', profileController.getProfileStatus);
 
-router.get('/tutor/byUser/:userId', profileController.getTutorByUserId);
-router.get('/student/byUser/:userId', profileController.getStudentByUserId);
+// Routes pour les tuteurs/étudiants
+router.get('/tutors/:tutorId', profileController.getTutorById);
+router.get('/tutors/user/:userId', profileController.getTutorByUserId);
+router.get('/students/:studentId', profileController.getStudentById);
+router.get('/students/user/:userId', profileController.getStudentByUserId);
 
-router.get('/tutors/:id', profileController.getTutorProfileById);
+// Upload de fichiers
+router.post('/upload', profileController.upload.single('file'), profileController.uploadFile);
 
 module.exports = router;

@@ -211,6 +211,20 @@ const PreviewStep: React.FC<PreviewStepProps> = ({ profileData, role }) => {
                         </div>
                     </>
                     )}
+                    {profileData.skills && profileData.skills.length > 0 && (
+                        <div className={styles.infoItem}>
+                            <span className={styles.infoLabel}>
+                                {role === 'student' ? 'Compétences à acquérir' : 'Compétences'}
+                            </span>
+                            <div className={styles.tags}>
+                                {profileData.skills.map((skill: string, index: number) => (
+                                    <span key={index} className={styles.tag}>
+                                        {skill}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -413,7 +427,7 @@ const PreviewStep: React.FC<PreviewStepProps> = ({ profileData, role }) => {
                 </>
             )}
 
-            {/* Section Expériences (tuteurs) - Style unique */}
+            {/* Section Expériences (tuteurs)*/}
             {role === 'tutor' && hasSingleExperience && 
             // Vérifier qu'il y a au moins une donnée significative
             (firstExperience?.jobTitle || firstExperience?.company || firstExperience?.employmentType) && (

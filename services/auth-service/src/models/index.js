@@ -1,4 +1,3 @@
-// services/auth-service/src/models/index.js
 const User = require('./User');
 const ProfileTutor = require('./ProfileTutor');
 const ProfileStudent = require('./ProfileStudent');

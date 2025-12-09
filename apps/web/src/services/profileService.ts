@@ -1,4 +1,3 @@
-// services/profileService.ts
 import api from './api';
 
 export interface ProfileData {
@@ -12,6 +11,9 @@ export interface ProfileData {
   gender: string;
   birthDate: string;
   address: string;
+
+  // NOUVEAU : Compétences
+  skills?: string[];
 
   // Éducation
   educationLevel: string;
@@ -102,6 +104,7 @@ class ProfileService {
 
     const sanitizedProfileData = {
       ...profileData,
+      skills: profileData.skills || [], // AJOUT: Inclure les compétences
       specialties: profileData.specialties || [],
       schedule: cleanedSchedule,
       location: {
@@ -155,13 +158,13 @@ class ProfileService {
     }
   }
 
-  // AJOUTER : Finaliser le profil
+  // Finaliser le profil
   async completeProfile(): Promise<any> {
     const response = await api.post('/profile/complete');
     return response.data;
   }
 
-  // AJOUTER : Récupérer le statut du profil 
+  // Récupérer le statut du profil 
   async getProfileStatus(): Promise<ProfileStatusResponse> {
     try {
       const response = await api.get('/profile/status');
@@ -181,7 +184,7 @@ class ProfileService {
     }
   }
 
-  // AJOUTER : Uploader un fichier
+  // Uploader un fichier
   async uploadFile(file: File): Promise<{ url: string }> {
     const formData = new FormData();
     formData.append('file', file);
