@@ -3,7 +3,7 @@
   padding: 1.5rem 2rem;
   border-bottom: 1px solid #e9ecef;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  position: sticky;
+  position: relative;
   top: 0;
   z-index: 100;
 }
@@ -238,8 +238,8 @@
   padding: 2rem;
   overflow-y: auto;
   position: sticky;
-  top: 120px;
-  height: calc(100vh - 120px);
+  top: 70px;
+  height: calc(100vh - 70px);
 }
 
 .previewContent {
