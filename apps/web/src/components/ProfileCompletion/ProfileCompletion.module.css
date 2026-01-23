@@ -238,8 +238,8 @@
   padding: 2rem;
   overflow-y: auto;
   position: sticky;
-  top: 120px;
-  height: calc(100vh - 120px);
+  top: 70px;
+  height: calc(100vh - 70px);
 }
 
 .previewContent {

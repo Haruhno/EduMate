@@ -375,27 +375,6 @@ class ProfileController {
   });
 
   /**
-   * Configuration de multer pour l'analyse de CV (en mémoire)
-   */
-  cvUpload = multer({
-    storage: multer.memoryStorage(),
-    limits: {
-      fileSize: 5 * 1024 * 1024 // 5MB max
-    },
-    fileFilter: (req, file, cb) => {
-      const allowedTypes = /pdf|doc|docx/;
-      const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-      const mimetype = allowedTypes.test(file.mimetype);
-
-      if (mimetype && extname) {
-        return cb(null, true);
-      } else {
-        cb(new Error('Seuls les fichiers PDF et Word sont autorisés'));
-      }
-    }
-  }).single('cv');
-
-  /**
    * Upload de fichier (diplômes, CV, etc.)
    */
   async uploadFile(req, res) {

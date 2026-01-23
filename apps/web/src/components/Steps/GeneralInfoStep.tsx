@@ -2,14 +2,77 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import styles from './GeneralInfoStep.module.css';
 import defaultAvatar from '../../assets/images/avatar.jpg';
 import { allCountries } from 'country-telephone-data';
-import Cropper from "react-easy-crop";
+import Cropper, { type Point, type Area } from "react-easy-crop";
 import { getCroppedImg } from "../../utils/cropImage";
 import { allSkills } from '../../data/skillsData';
+import cvService, { type CVParseResponse, type CVData } from '../../services/cvService';
+import linkedinService from '../../services/linkedinService';
+
+const TS_Cropper = Cropper as unknown as React.FC<any>;
+
+// Définir une interface propre pour les données du profil
+interface ProfileData {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  countryCode?: string;
+  gender?: string;
+  birthDate?: string;
+  address?: string;
+  bio?: string;
+  skills?: string[];
+  profilePicture?: string;
+  cvFile?: File | null;
+  diplomas?: Array<{
+    educationLevel: string;
+    field: string;
+    school: string;
+    country: string;
+    startYear: number;
+    endYear?: number;
+    isCurrent: boolean;
+    diplomaName?: string;
+  }>;
+  experiences?: Array<{
+    jobTitle: string;
+    employmentType: string;
+    company: string;
+    location: string;
+    startMonth: string;
+    startYear: number;
+    endMonth?: string;
+    endYear?: number;
+    isCurrent: boolean;
+    description: string;
+    achievements?: string[];
+  }>;
+  location?: {
+    latitude?: string;
+    longitude?: string;
+    city?: string;
+  };
+}
+
+
+interface Country {
+  name: string;
+  dialCode: string;
+  iso2: string;
+}
+
 import { useNavigate } from 'react-router-dom';
 import TransformSkillToAnnonceModal from '../TransformSkillToAnnonceModal/TransformSkillToAnnonceModal';
 import DefineLearningSkillsModal from '../DefineLearningSkillsModal/DefineLearningSkillsModal.tsx'; 
 
 interface GeneralInfoStepProps {
+  profileData: any;
+  setProfileData: (data: any) => void;
+  role: 'student' | 'tutor';
+  errors: { [key: string]: string };
+  setErrors: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
+  touched: { [key: string]: boolean };
+  setTouched: React.Dispatch<React.SetStateAction<{ [key: string]: boolean }>>;
     profileData: any;
     setProfileData: (data: any) => void;
     role: string;
@@ -76,8 +139,26 @@ interface ParsedCVData {
     };
 }
 
+// Interface pour les données de pays
+interface CountryData {
+  name: string;
+  code: string;
+  flag: string;
+  iso2: string;
+}
+
 // Composant pour la barre de recherche de compétences
 const SkillsInput: React.FC<{
+  skills: string[];
+  onSkillsChange: (skills: string[]) => void;
+  role: 'student' | 'tutor';
+}> = ({ skills, onSkillsChange, role }) => {
+  const [inputValue, setInputValue] = useState('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
     skills: string[];
     onSkillsChange: (skills: string[]) => void;
     role: string;
@@ -89,6 +170,19 @@ const SkillsInput: React.FC<{
     const inputRef = useRef<HTMLInputElement>(null);
     const suggestionsRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (inputRef.current && !inputRef.current.contains(event.target as Node) &&
+          suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+        setSelectedIndex(-1);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
     // Fermer les suggestions quand on clique dehors
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -104,6 +198,15 @@ const SkillsInput: React.FC<{
         };
     }, []);
 
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedIndex(prev =>
+          prev < suggestions.length - 1 ? prev + 1 : 0
+        );
+        break;
     // Gestion des touches clavier
     const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (!showSuggestions || suggestions.length === 0) return;
@@ -182,6 +285,8 @@ const SkillsInput: React.FC<{
         }
     };
 
+  const highlightMatch = (text: string, search: string) => {
+    if (!search.trim()) return text;
     // Fonction pour mettre en évidence le texte correspondant
     const highlightMatch = (text: string, search: string) => {
         if (!search.trim()) return text;
@@ -208,6 +313,51 @@ const SkillsInput: React.FC<{
   return (
     <div className={styles.skillsContainer}>
       <p className={styles.helpText}>
+        {role === 'student'
+          ? "Quelles compétences souhaitez-vous acquérir ? Tapez et appuyez sur Entrée pour ajouter. Utilisez ↑ et ↓ pour naviguer."
+          : "Quelles compétences possédez-vous ? Tapez et appuyez sur Entrée pour ajouter. Utilisez ↑ et ↓ pour naviguer."
+        }
+      </p>
+      <div className={styles.inputWrapper} ref={inputRef}>
+        <input
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          onKeyDown={handleInputKeyDown}
+          onFocus={() => inputValue.trim() && setShowSuggestions(true)}
+          placeholder="Tapez une compétence et appuyez sur Entrée..."
+          className={styles.skillsInput}
+        />
+
+        {showSuggestions && suggestions.length > 0 && (
+          <div className={styles.suggestions} ref={suggestionsRef}>
+            {suggestions.map((skill, index) => (
+              <div
+                key={index}
+                className={`${styles.suggestion} ${index === selectedIndex ? styles.selected : ''}`}
+                onClick={() => handleAddSkill(skill)}
+                onMouseEnter={() => setSelectedIndex(index)}
+              >
+                {highlightMatch(skill, inputValue)}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className={styles.selectedSkills}>
+        {skills.sort((a, b) => a.localeCompare(b)).map((skill, index) => (
+          <span key={index} className={styles.skillTag}>
+            {skill}
+            <button
+              type="button"
+              onClick={() => handleRemoveSkill(skill)}
+              className={styles.removeTag}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
           Quelles compétences possédez-vous ? Quelles compétences souhaitez-vous acquérir ?
       </p>
     </div>
@@ -228,35 +378,30 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
     const suggestionsRef = useRef<HTMLDivElement>(null);
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [hasBeenValidated, setHasBeenValidated] = useState(false);
-    // États du recadrage
-    const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
     const [cropping, setCropping] = useState(false);
     const [imageToCrop, setImageToCrop] = useState<string | null>(null);
-    const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
-    // États pour l'import
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
     const [isParsing, setIsParsing] = useState(false);
     const [importStatus, setImportStatus] = useState<{ message: string; success: boolean }>({
         message: '',
         success: false,
     });
-    // États pour les suggestions d'adresse
     const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isLoadingAddress, setIsLoadingAddress] = useState(false);
     const [showTransformModal, setShowTransformModal] = useState(false);
     const [showLearningSkillsModal, setShowLearningSkillsModal] = useState(false);
 
-    // Génère la liste des pays
-    const countries = (allCountries as any[]).map((country) => ({
+    const countries: CountryData[] = allCountries.map((country: Country) => ({
         name: country.name,
         code: country.dialCode,
         flag: getFlagEmoji(country.iso2.toUpperCase()),
         iso2: country.iso2.toUpperCase(),
     }));
 
-    // Convertit un code ISO en emoji drapeau
-    function getFlagEmoji(countryCode: string) {
+    function getFlagEmoji(countryCode: string): string {
         const codePoints = countryCode
             .toUpperCase()
             .split('')
@@ -264,27 +409,20 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         return String.fromCodePoint(...codePoints);
     }
 
-    // Fonction pour formater les dates au format YYYY-MM-DD
-    const formatDateForInput = (dateString: string): string => {
+    const formatDateForInput = (dateString: string | undefined): string => {
         if (!dateString) return '';
-
         try {
-            // Si c'est déjà au format YYYY-MM-DD, retourner tel quel
             if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
                 return dateString;
             }
-
-            // Sinon, convertir depuis le format ISO
             const date = new Date(dateString);
             if (isNaN(date.getTime())) {
                 console.warn('Date invalide:', dateString);
                 return '';
             }
-
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
-
             return `${year}-${month}-${day}`;
         } catch (error) {
             console.error('Erreur formatage date:', error, dateString);
@@ -292,26 +430,21 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         }
     };
 
-    // Définit la France par défaut au chargement
     useEffect(() => {
         const france = countries.find((c) => c.iso2 === 'FR');
         if (france && (!profileData.countryCode || profileData.countryCode.trim() === '')) {
-            setProfileData((prev: any) => ({
+            setProfileData((prev: ProfileData) => ({
                 ...prev,
                 countryCode: france.code,
             }));
         }
     }, [countries, profileData.countryCode, setProfileData]);
 
-    // Ferme le dropdown quand on clique dehors
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            // Pour le dropdown du téléphone
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setDropdownOpen(false);
             }
-
-            // Pour les suggestions d'adresse
             if (
                 suggestionsRef.current &&
                 !suggestionsRef.current.contains(event.target as Node) &&
@@ -325,16 +458,64 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Récupère zone du crop
-    const onCropComplete = useCallback((_: any, croppedAreaPixels: any) => {
+    const [alreadyCalled, setAlreadyCalled] = useState(false);
+
+    // Handle LinkedIn OAuth success redirect on component mount
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const linkedinSuccess = urlParams.get('linkedin');
+        const token = urlParams.get('token');
+
+        if (linkedinSuccess === 'success' && token && !alreadyCalled) {
+            console.log('🔗 LinkedIn OAuth success détecté, récupération des données...');
+            setAlreadyCalled(true);
+            setIsParsing(true);
+            setImportStatus({ message: 'Récupération des données LinkedIn...', success: false });
+
+            linkedinService.getMe(token)
+                .then((response) => {
+                    if (response.success && response.linkedin) {
+                        // Map LinkedIn data to form fields
+                        setProfileData((prev: ProfileData) => ({
+                            ...prev,
+                            firstName: response.linkedin.firstName || prev.firstName,
+                            lastName: response.linkedin.lastName || prev.lastName,
+                            email: response.linkedin.email || prev.email,
+                        }));
+
+                        setImportStatus({
+                            message: 'Profil LinkedIn importé avec succès',
+                            success: true
+                        });
+
+                        // Clean up URL parameters
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    } else {
+                        setImportStatus({
+                            message: 'Échec de l\'import LinkedIn',
+                            success: false
+                        });
+                    }
+                })
+                .catch((err: any) => {
+                    console.error('Erreur récupération LinkedIn:', err);
+                    setImportStatus({
+                        message: 'Échec de l\'import LinkedIn',
+                        success: false
+                    });
+                })
+                .finally(() => {
+                    setIsParsing(false);
+                });
+        }
+    }, [alreadyCalled]);
+
+    const onCropComplete = useCallback((_: Area, croppedAreaPixels: Area) => {
         setCroppedAreaPixels(croppedAreaPixels);
     }, []);
 
-    // Fonction de validation complète
-    const validateAllFields = () => {
+    const validateAllFields = (): boolean => {
         const newErrors: { [key: string]: string } = { ...errors };
-
-        // Supprimer les anciennes erreurs des champs obligatoires
         delete newErrors.firstName;
         delete newErrors.lastName;
         delete newErrors.email;
@@ -343,7 +524,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
 
         let hasAnyError = false;
 
-        // Validation des champs obligatoires
         if (!profileData.firstName?.trim()) {
             newErrors.firstName = "⚠ Le prénom est obligatoire";
             hasAnyError = true;
@@ -362,7 +542,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
             hasAnyError = true;
         }
 
-        // Date de naissance obligatoire seulement pour les tuteurs
         if (role === 'tutor') {
             if (!profileData.birthDate) {
                 newErrors.birthDate = "⚠ La date de naissance est obligatoire";
@@ -382,7 +561,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
             }
         }
 
-        // Validation du téléphone (optionnel mais doit être valide si rempli)
         if (profileData.phone && profileData.phone.trim() !== '') {
             const digitsOnly = profileData.phone.replace(/\D/g, '');
             if (
@@ -400,13 +578,11 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         return !hasAnyError;
     };
 
-    // Exposer la fonction de validation au parent
     useEffect(() => {
         (window as any).validateGeneralInfoStep = validateAllFields;
     }, [profileData, role]);
 
-    // Fonction pour rechercher des suggestions d'adresses
-    const searchAddressSuggestions = async (query: string) => {
+    const searchAddressSuggestions = async (query: string): Promise<void> => {
         if (!query || query.length < 3) {
             setSuggestions([]);
             setShowSuggestions(false);
@@ -428,9 +604,8 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         }
     };
 
-    // Fonction pour sélectionner une suggestion d'adresse
-    const handleAddressSuggestionSelect = (suggestion: Suggestion) => {
-        setProfileData((prev: any) => ({
+    const handleAddressSuggestionSelect = (suggestion: Suggestion): void => {
+        setProfileData((prev: ProfileData) => ({
             ...prev,
             address: suggestion.display_name,
             location: {
@@ -447,36 +622,32 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         setSuggestions([]);
     };
 
-    // Gérer le changement de l'adresse avec debounce
-    const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>): (() => void) => {
         const { value } = e.target;
-
-        setProfileData((prev: any) => ({
+        setProfileData((prev: ProfileData) => ({
             ...prev,
             address: value
         }));
-
+        
         const timeoutId = setTimeout(() => {
             searchAddressSuggestions(value);
         }, 300);
+        
         return () => clearTimeout(timeoutId);
     };
 
-    // Quand utilisateur choisit une image
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
         const file = e.target.files?.[0];
         if (file) {
-            // Vérifier la taille du fichier (max 5MB)
             if (file.size > 5 * 1024 * 1024) {
-                setErrors((prev: { [key: string]: string }) => ({
+                setErrors((prev) => ({
                     ...prev,
                     profilePicture: 'L\'image est trop volumineuse (max 5MB)'
                 }));
                 return;
             }
-            // Vérifier le type de fichier
             if (!file.type.startsWith('image/')) {
-                setErrors((prev: { [key: string]: string }) => ({
+                setErrors((prev) => ({
                     ...prev,
                     profilePicture: 'Veuillez sélectionner une image valide'
                 }));
@@ -488,46 +659,38 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         }
     };
 
-    // Valider le recadrage
-    const handleCropConfirm = async () => {
+    const handleCropConfirm = async (): Promise<void> => {
         try {
             if (!imageToCrop || !croppedAreaPixels) return;
             const croppedImg = await getCroppedImg(imageToCrop, croppedAreaPixels);
-            setProfileData((prev: any) => ({
+            setProfileData((prev: ProfileData) => ({
                 ...prev,
                 profilePicture: croppedImg,
             }));
-
-            // Nettoyer les URLs créées
             URL.revokeObjectURL(imageToCrop);
             setCropping(false);
             setImageToCrop(null);
-
-            // Supprimer l'erreur si elle existait
-            setErrors((prev: { [key: string]: string }) => {
+            setErrors((prev) => {
                 const updated = { ...prev };
                 delete updated.profilePicture;
                 return updated;
             });
         } catch (e) {
             console.error('Erreur lors du recadrage:', e);
-            setErrors((prev: { [key: string]: string }) => ({
+            setErrors((prev) => ({
                 ...prev,
                 profilePicture: 'Erreur lors du recadrage de l\'image'
             }));
         }
     };
 
-    // Fonction pour gérer le changement de compétences
-    const handleSkillsChange = (newSkills: string[]) => {
-        setProfileData((prev: any) => ({
+    const handleSkillsChange = (newSkills: string[]): void => {
+        setProfileData((prev: ProfileData) => ({
             ...prev,
             skills: newSkills
         }));
-
-        // Supprimer l'erreur si elle existait
         if (newSkills.length > 0) {
-            setErrors((prev: { [key: string]: string }) => {
+            setErrors((prev) => {
                 const updated = { ...prev };
                 delete updated.skills;
                 return updated;
@@ -537,27 +700,20 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
 
     const handleInputChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-    ) => {
+    ): void => {
         const { name, value } = e.target;
-        setProfileData((prev: any) => ({
+        setProfileData((prev: ProfileData) => ({
             ...prev,
             [name]: value,
         }));
 
-        // Si on a déjà validé une fois, revalider le champ modifié
         if (hasBeenValidated) {
             const newErrors = { ...errors };
-
-            // Supprimer l'erreur pour ce champ s'il est maintenant valide
             if (value && value.trim() !== '') {
                 delete newErrors[name];
-
-                // Validation spécifique pour l'email
                 if (name === 'email' && !/\S+@\S+\.\S+/.test(value)) {
                     newErrors.email = "L'adresse e-mail n'est pas valide";
                 }
-
-                // Validation spécifique pour la date de naissance des tuteurs
                 if (name === 'birthDate' && role === 'tutor' && value) {
                     const birthDate = new Date(value);
                     const today = new Date();
@@ -573,11 +729,10 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                     }
                 }
             }
-
             setErrors(newErrors);
         }
 
-        setTouched((prev: { [key: string]: boolean }) => ({
+        setTouched((prev) => ({
             ...prev,
             [name]: true
         }));
@@ -587,30 +742,26 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         );
     };
 
-    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
         const { name, value } = e.target;
         const cleaned = value.replace(/[^\d+]/g, '');
-
-        setProfileData((prev: any) => ({
+        setProfileData((prev: ProfileData) => ({
             ...prev,
             [name]: cleaned
         }));
 
-        // Si on a déjà validé une fois, revalider le téléphone
         if (hasBeenValidated && cleaned && cleaned.trim() !== '') {
             const digitsOnly = cleaned.replace(/\D/g, '');
             const newErrors = { ...errors };
-
             if ((cleaned.match(/\+/g)?.length || 0) > 1 || digitsOnly.length < 8 || digitsOnly.length > 15) {
                 newErrors.phone = 'Numéro de téléphone invalide';
             } else {
                 delete newErrors.phone;
             }
-
             setErrors(newErrors);
         }
 
-        setTouched((prev: { [key: string]: boolean }) => ({
+        setTouched((prev) => ({
             ...prev,
             [name]: true
         }));
@@ -620,7 +771,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         );
     };
 
-    const hasCustomPhoto = () => {
+    const hasCustomPhoto = (): boolean => {
         if (!profileData.profilePicture) return false;
         if (profileData.profilePicture === defaultAvatar || profileData.profilePicture.includes('avatar'))
             return false;
@@ -629,99 +780,96 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         return false;
     };
 
-    const triggerFileInput = () => fileInputRef.current?.click();
+    const triggerFileInput = (): void => fileInputRef.current?.click();
 
-    const handleCountrySelect = (code: string) => {
-        setProfileData((prev: any) => ({ ...prev, countryCode: code }));
+    const handleCountrySelect = (code: string): void => {
+        setProfileData((prev: ProfileData) => ({ ...prev, countryCode: code }));
         setDropdownOpen(false);
     };
 
-    const handleCancelCrop = () => {
+    const handleCancelCrop = (): void => {
         if (imageToCrop) {
             URL.revokeObjectURL(imageToCrop);
         }
         setCropping(false);
         setImageToCrop(null);
-
-        // Réinitialiser le fichier input
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
     };
 
-    // Fonction pour gérer l'import de fichier
-    const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>, type: 'cv' | 'linkedin') => {
+    const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>, type: 'cv' | 'linkedin'): Promise<void> => {
         const file = e.target.files?.[0];
-        if (file) {
-            if (type === 'cv') {
-                // Vérifier la taille du fichier (max 5MB)
-                if (file.size > 5 * 1024 * 1024) {
-                    setErrors((prev: { [key: string]: string }) => ({
-                        ...prev,
-                        cvFile: 'Le fichier est trop volumineux (max 5MB)',
-                    }));
-                    return;
-                }
-                setProfileData((prev: any) => ({
+        if (!file) return;
+
+        if (type === 'cv') {
+            if (file.size > 5 * 1024 * 1024) {
+                setErrors((prev) => ({
                     ...prev,
-                    cvFile: file,
+                    cvFile: 'Le fichier est trop volumineux (max 5MB)',
                 }));
-                setErrors((prev: { [key: string]: string }) => {
-                    const updated = { ...prev };
-                    delete updated.cvFile;
-                    return updated;
-                });
+                return;
             }
+
+            setProfileData((prev: ProfileData) => ({
+                ...prev,
+                cvFile: file,
+            }));
+
+            setErrors((prev) => {
+                const updated = { ...prev };
+                delete updated.cvFile;
+                return updated;
+            });
         }
     };
 
-    // Fonction de fusion intelligente
     const intelligentlyMergeData = (
-        existing: any,
+        existing: ProfileData,
         newData: ParsedCVData
-    ): any => {
-        const updates: any = {};
-
+    ): Partial<ProfileData> => {
+        const updates: Partial<ProfileData> = {};
         console.log('🔄 Fusion intelligente des données:');
         console.log('Données existantes:', existing);
         console.log('Nouvelles données:', newData);
 
-        // 1. Informations personnelles (priorité aux nouvelles données si elles sont plus complètes)
+        // Always update personal info from CV
         if (newData.personal) {
-            if (newData.personal.firstName && (!existing.firstName || existing.firstName.trim() === '')) {
+            if (newData.personal.firstName) {
                 updates.firstName = newData.personal.firstName;
             }
-            if (newData.personal.lastName && (!existing.lastName || existing.lastName.trim() === '')) {
+            if (newData.personal.lastName) {
                 updates.lastName = newData.personal.lastName;
             }
-            if (newData.personal.email && newData.personal.email.length > 0 &&
-                (!existing.email || existing.email.trim() === '')) {
+            if (newData.personal.email && newData.personal.email.length > 0) {
                 updates.email = newData.personal.email[0];
             }
-            if (newData.personal.phone && newData.personal.phone.length > 0 &&
-                (!existing.phone || existing.phone.trim() === '')) {
+            if (newData.personal.phone && newData.personal.phone.length > 0) {
                 updates.phone = newData.personal.phone[0];
             }
-            if (newData.personal.address && (!existing.address || existing.address.trim() === '')) {
+            if (newData.personal.address) {
                 updates.address = newData.personal.address;
             }
-            if (newData.personal.birthDate && (!existing.birthDate || existing.birthDate.trim() === '')) {
+            if (newData.personal.birthDate) {
                 updates.birthDate = newData.personal.birthDate;
+            }
+            if (newData.personal.gender) {
+                updates.gender = newData.personal.gender;
             }
         }
 
+        // Replace skills with CV skills
         // 2. Compétences 
         if (newData.skills?.technical) {
-            const currentSkills = existing.skills || [];
-            updates.skills = [...new Set([...currentSkills, ...newData.skills.technical])]
+            updates.skills = [...new Set(newData.skills.technical)]
                 .filter(skill => skill && skill.trim() !== '')
                 .sort((a, b) => a.localeCompare(b));
         }
 
+        // Replace diplomas with CV diplomas
         // 3. Formations 
         if (newData.education && newData.education.length > 0) {
-            const currentDiplomas = existing.diplomas || [];
-            const newDiplomas = newData.education.map(edu => ({
+            updates.diplomas = newData.education.map(edu => ({
                 educationLevel: edu.educationLevel || '',
                 field: edu.field || '',
                 school: edu.school || '',
@@ -731,14 +879,12 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                 isCurrent: edu.isCurrent || false,
                 diplomaName: edu.diplomaName || ''
             }));
-
-            updates.diplomas = [...currentDiplomas, ...newDiplomas];
         }
 
+        // Replace experiences with CV experiences
         // 4. Expériences 
         if (newData.experience && newData.experience.length > 0) {
-            const currentExperiences = existing.experiences || [];
-            const newExperiences = newData.experience.map(exp => ({
+            updates.experiences = newData.experience.map(exp => ({
                 jobTitle: exp.jobTitle || '',
                 employmentType: exp.employmentType || '',
                 company: exp.company || '',
@@ -750,12 +896,10 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                 isCurrent: exp.isCurrent || false,
                 description: exp.description || ''
             }));
-
-            updates.experiences = [...currentExperiences, ...newExperiences];
         }
 
-        // 5. Bio/Summary (si vide)
-        if (newData.summary && (!existing.bio || existing.bio.trim() === '')) {
+        // Update bio with summary
+        if (newData.summary) {
             updates.bio = newData.summary;
         }
 
@@ -763,13 +907,64 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         return updates;
     };
 
-    // Fonction pour analyser le CV
-    const handleParseCV = async () => {
+    const handleParseCV = async (): Promise<void> => {
         if (!profileData.cvFile) return;
         setIsParsing(true);
-        setImportStatus({ message: '🔍 Analyse du CV en cours...', success: false });
+        setImportStatus({ message: 'Analyse du CV en cours...', success: false });
 
         try {
+            console.log('📤 Envoi du CV pour analyse via CVService...');
+            
+            // Utilisation du service CV
+            const response: CVParseResponse = await cvService.parseCV(profileData.cvFile);
+            
+            console.log('📊 Réponse du service CV:', response);
+
+            if (response.success && response.data) {
+                console.log('🎉 Analyse réussie! Données extraites:');
+                
+                // Convertir en format ParsedCVData
+                const parsed: ParsedCVData = {
+                    personal: {
+                        firstName: (response.data as any).firstName || '',
+                        lastName: (response.data as any).lastName || '',
+                        email: (response.data as any).email ? [(response.data as any).email] : [],
+                        phone: (response.data as any).phone ? [(response.data as any).phone] : [],
+                        address: (response.data as any).address || '',
+                        birthDate: (response.data as any).birthDate || '',
+                        gender: (response.data as any).gender || ''
+                    },
+                    education: ((response.data as any).diplomas || []).map((d: any) => ({
+                        educationLevel: d.educationLevel || '',
+                        field: d.field || '',
+                        school: d.school || '',
+                        country: d.country || '',
+                        startYear: d.startYear ? parseInt(d.startYear) : new Date().getFullYear(),
+                        endYear: d.endYear ? parseInt(d.endYear) : undefined,
+                        isCurrent: d.isCurrent || false,
+                        diplomaName: d.diplomaName || ''
+                    })),
+                    experience: ((response.data as any).experiences || []).map((exp: any) => ({
+                        jobTitle: exp.title || '',
+                        employmentType: exp.employmentType || '',
+                        company: exp.company || '',
+                        location: exp.location || '',
+                        startMonth: exp.startMonth || '',
+                        startYear: exp.startYear ? parseInt(exp.startYear) : new Date().getFullYear(),
+                        endMonth: exp.endMonth,
+                        endYear: exp.endYear ? parseInt(exp.endYear) : undefined,
+                        isCurrent: exp.isCurrent || false,
+                        description: exp.description || '',
+                        achievements: exp.achievements || []
+                    })),
+                    skills: {
+                        technical: (response.data as any).skills || []
+                    },
+                    summary: (response.data as any).summary || '',
+                    validation: {
+                        quality: response.metadata?.quality || 'BASIC'
+                    }
+                };
 
             const formData = new FormData();
             formData.append('cv', profileData.cvFile);
@@ -842,7 +1037,13 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                     console.log('- Expériences:', parsed.experience?.length);
                     console.log('- Qualité:', parsed.validation?.quality);
 
+                console.log('🔄 Fusion intelligente des données...');
 
+                setProfileData((prev: ProfileData) => {
+                    const updates = intelligentlyMergeData(prev, parsed);
+                    console.log('✅ Mises à jour appliquées:', updates);
+                    return { ...prev, ...updates };
+                });
                     setProfileData((prev: any) => {
                         const updates = intelligentlyMergeData(prev, parsed);
                         return { ...prev, ...updates };
@@ -858,39 +1059,20 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         message = '📄 Extraction basique - certaines informations manquent';
                     }
 
-                    setImportStatus({
-                        message: message,
-                        success: true
-                    });
-                    return;
-                } else {
-                    console.warn('⚠️ Réponse sans succès:', json);
-                    throw new Error(json.message || 'Échec de l\'analyse du CV');
-                }
-            } catch (backendError: any) {
-                console.warn('⚠️ Backend échoué:', backendError.message);
-
-                // Fallback à l'extraction locale améliorée
-                console.log('🔄 Fallback à l\'extraction locale améliorée...');
-                const extractedData = await extractImprovedCVInfo(profileData.cvFile);
-
-                setProfileData((prev: any) => {
-                    const updates = intelligentlyMergeData(prev, extractedData);
-                    console.log('✅ Mises à jour appliquées (fallback):', updates);
-                    return { ...prev, ...updates };
-                });
-
                 setImportStatus({
-                    message: '✅ Données extraites localement (service temporairement indisponible)',
+                    message: `CV analysé avec succès (Qualité: ${response.metadata?.quality || 'BASIC'})`,
                     success: true
+                });
+            } else {
+                setImportStatus({
+                    message: 'Échec de l\'analyse du CV',
+                    success: false
                 });
             }
         } catch (e: any) {
             console.error('💥 Erreur complète:', e);
-            console.error('Stack:', e.stack);
-
             setImportStatus({
-                message: `❌ Erreur: ${e.message || 'Erreur inconnue'}`,
+                message: 'Échec de l\'analyse du CV',
                 success: false
             });
         } finally {
@@ -1162,7 +1344,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
             <p className={styles.subtitle}>
                 Renseignez vos informations personnelles pour compléter votre profil
             </p>
-            {/* --- Photo de profil --- */}
             <div className={styles.photoSection}>
                 <div className={styles.photoContainer}>
                     <div className={styles.photoWrapper}>
@@ -1172,7 +1353,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                             className={styles.photo}
                             onError={(e) => {
                                 e.currentTarget.src = defaultAvatar;
-                                setProfileData((prev: any) => ({
+                                setProfileData((prev: ProfileData) => ({
                                     ...prev,
                                     profilePicture: defaultAvatar
                                 }));
@@ -1207,7 +1388,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                             <button
                                 type="button"
                                 onClick={() =>
-                                    setProfileData((prev: any) => ({
+                                    setProfileData((prev: ProfileData) => ({
                                         ...prev,
                                         profilePicture: defaultAvatar,
                                     }))
@@ -1224,7 +1405,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                     )}
                 </div>
             </div>
-            {/* --- Modale de recadrage --- */}
             {cropping && (
                 <div className={styles.cropModal}>
                     <div className={styles.cropModalOverlay} onClick={handleCancelCrop} />
@@ -1235,7 +1415,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         </div>
 
                         <div className={styles.cropContainer}>
-                            <Cropper
+                            <TS_Cropper
                                 image={imageToCrop!}
                                 crop={crop}
                                 zoom={zoom}
@@ -1245,11 +1425,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                                 onZoomChange={setZoom}
                                 onCropComplete={onCropComplete}
                                 showGrid={false}
-                                style={{
-                                    containerStyle: {
-                                        backgroundColor: '#f8f9fa'
-                                    }
-                                }}
                             />
                         </div>
 
@@ -1265,9 +1440,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                                         value={zoom}
                                         onChange={(e) => setZoom(Number(e.target.value))}
                                         className={styles.zoomSlider}
-                                        style={{
-                                            '--slider-progress': `${((zoom - 1) / (3 - 1)) * 100}%`
-                                        } as React.CSSProperties}
                                     />
                                 </div>
                                 <span className={styles.zoomValue}>{zoom.toFixed(1)}x</span>
@@ -1297,7 +1469,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                     Gagnez du temps en important vos données depuis un CV ou LinkedIn.
                 </p>
                 <div className={styles.importOptions}>
-                    {/* Import depuis un fichier (PDF, DOCX) */}
                     <div className={styles.importOption}>
                         <div className={styles.importHeader}>
                             <h4>Importer un CV</h4>
@@ -1321,7 +1492,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                                 <span>Fichier sélectionné : {profileData.cvFile.name}</span>
                                 <button
                                     type="button"
-                                    onClick={() => setProfileData((prev: any) => ({ ...prev, cvFile: null }))}
+                                    onClick={() => setProfileData((prev: ProfileData) => ({ ...prev, cvFile: null }))}
                                     className={styles.removeFile}
                                 >
                                     ✕
@@ -1329,14 +1500,13 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                             </div>
                         )}
                     </div>
-                    {/* Import depuis LinkedIn */}
                     <div className={styles.importOption}>
                         <div className={styles.importHeader}>
                             <h4>Importer depuis LinkedIn</h4>
                             <span className={styles.importIcon}>🔗</span>
                         </div>
                         <p className={styles.importDescription}>
-                            Connectez-vous à LinkedIn pour importer vos expériences et formations.
+                            Connectez-vous à LinkedIn pour importer automatiquement vos informations de profil.
                         </p>
                         <button
                             type="button"
@@ -1344,11 +1514,10 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                             className={styles.linkedInButton}
                             disabled={isParsing}
                         >
-                            {isParsing ? 'Chargement...' : 'Importer'}
+                            {isParsing ? 'Connexion...' : 'Se connecter à LinkedIn'}
                         </button>
                     </div>
                 </div>
-                {/* Bouton pour analyser le fichier */}
                 {profileData.cvFile && (
                     <button
                         type="button"
@@ -1359,37 +1528,13 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         {isParsing ? 'Analyse en cours...' : 'Analyser le CV'}
                     </button>
                 )}
-                {/* Message de succès/erreur */}
                 {importStatus.message && (
                     <div className={`${styles.importStatus} ${importStatus.success ? styles.success : styles.error}`}>
                         {importStatus.message}
-
-                        {importStatus.success && profileData.firstName && (
-                            <div className={styles.importDetails}>
-                                <p className={styles.importSubtitle}>Données importées :</p>
-                                <ul className={styles.importList}>
-                                    {profileData.firstName && profileData.lastName && (
-                                        <li>👤 {profileData.firstName} {profileData.lastName}</li>
-                                    )}
-                                    {profileData.email && <li>📧 {profileData.email}</li>}
-                                    {profileData.phone && <li>📱 {profileData.phone}</li>}
-                                    {profileData.birthDate && <li>🎂 {new Date(profileData.birthDate).toLocaleDateString('fr-FR')}</li>}
-                                    {profileData.address && <li>📍 {profileData.address.substring(0, 50)}...</li>}
-                                    {profileData.skills?.length > 0 && <li>💼 {profileData.skills.length} compétences</li>}
-                                    {profileData.diplomas?.length > 0 && <li>🎓 {profileData.diplomas.length} diplômes</li>}
-                                    {profileData.experiences?.length > 0 && <li>🏢 {profileData.experiences.length} expériences</li>}
-                                </ul>
-                                <p className={styles.importNote}>
-                                    ⚠️ Vérifiez et complétez les informations manquantes si nécessaire.
-                                </p>
-                            </div>
-                        )}
                     </div>
                 )}
             </div>
-            {/* --- Formulaire --- */}
             <div className={styles.formGrid}>
-                {/* Prénom */}
                 <div className={styles.formGroup}>
                     <label htmlFor="firstName" className={styles.label}>
                         Prénom <span className={styles.requiredMarker}>*</span>
@@ -1405,7 +1550,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                     />
                     {hasBeenValidated && errors.firstName && <p className={styles.errorText}>{errors.firstName}</p>}
                 </div>
-                {/* Nom */}
                 <div className={styles.formGroup}>
                     <label htmlFor="lastName" className={styles.label}>
                         Nom <span className={styles.requiredMarker}>*</span>
@@ -1421,7 +1565,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                     />
                     {hasBeenValidated && errors.lastName && <p className={styles.errorText}>{errors.lastName}</p>}
                 </div>
-                {/* Email */}
                 <div className={styles.formGroup}>
                     <label htmlFor="email" className={styles.label}>
                         Email <span className={styles.requiredMarker}>*</span>
@@ -1437,7 +1580,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                     />
                     {hasBeenValidated && errors.email && <p className={styles.errorText}>{errors.email}</p>}
                 </div>
-                {/* Téléphone */}
                 <div className={styles.formGroup}>
                     <label htmlFor="phone" className={styles.label}>Téléphone</label>
 
@@ -1482,7 +1624,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                     </div>
                     {hasBeenValidated && errors.phone && <p className={styles.errorText}>{errors.phone}</p>}
                 </div>
-                {/* Genre */}
                 <div className={styles.formGroup}>
                     <label htmlFor="gender" className={styles.label}>
                         Genre
@@ -1501,7 +1642,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         <option value="Autre">Je préfère ne pas répondre</option>
                     </select>
                 </div>
-                {/* Date de naissance */}
                 <div className={styles.formGroup}>
                     <label htmlFor="birthDate" className={styles.label}>
                         Date de naissance {role === 'tutor' && <span className={styles.requiredMarker}>*</span>}
@@ -1510,14 +1650,13 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         type="date"
                         id="birthDate"
                         name="birthDate"
-                        value={formatDateForInput(profileData.birthDate || '')}
+                        value={formatDateForInput(profileData.birthDate)}
                         onChange={handleInputChange}
                         className={`${styles.input} ${hasBeenValidated && errors.birthDate ? styles.inputError : ''}`}
                         max={new Date().toISOString().split('T')[0]}
                     />
                     {hasBeenValidated && errors.birthDate && <p className={styles.errorText}>{errors.birthDate}</p>}
                 </div>
-                {/* Adresse avec suggestions */}
                 <div className={`${styles.formGroup} ${styles.fullWidth}`}>
                     <label htmlFor="address" className={styles.label}>Adresse personnelle</label>
                     <div className={styles.autocompleteContainer}>
@@ -1562,7 +1701,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         Tapez au moins 3 caractères pour voir les suggestions d'adresses internationales
                     </p>
                 </div>
-                {/* Description */}
                 <div className={`${styles.formGroup} ${styles.fullWidth}`}>
                     <label htmlFor="description" className={styles.label}>À propos</label>
                     <textarea
