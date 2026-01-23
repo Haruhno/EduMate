@@ -1,0 +1,593 @@
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  overflow: auto;
+  padding: 0;
+}
+
+.modalContent {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  max-height: 100vh;
+  background: linear-gradient(135deg, #f0f8ff 0%, #e6f2ff 100%);
+  display: flex;
+  flex-direction: column;
+  border-radius: 0;
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
+  box-shadow: none;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* HEADER */
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background: white;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
+  flex-shrink: 0;
+}
+
+.modalHeader h2 {
+  margin: 0;
+  color: #2c5282;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.closeButton {
+  background: rgba(74, 104, 187, 0.2);
+  border: none;
+  color: #2c5282;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.closeButton:hover {
+  background: rgba(47, 44, 196, 0.3);
+  transform: rotate(90deg);
+}
+
+/* BODY */
+.modalBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem 3rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.helpText {
+  color: #4a5568;
+  font-size: 1rem;
+  margin: 1rem auto 2rem;
+  line-height: 1.5;
+  text-align: center;
+  max-width: 600px;
+}
+
+.inputWrapper {
+  position: relative;
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+
+.inputContainer {
+  position: relative;
+  width: 100%;
+  margin-bottom: 15px; 
+}
+
+.skillsInput {
+  width: 100%;
+  padding: 1.2rem 1.5rem;
+  border: 2px solid #c5d9ff;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  min-height: 60px;
+  box-sizing: border-box;
+  background: white;
+  color: #2d3748;
+  display: block;
+}
+
+.skillsInput:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+}
+
+.suggestions {
+  position: absolute;
+  top: 100%; 
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #c5d9ff;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
+  max-height: 250px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin-top: 0;
+}
+
+.suggestion {
+  padding: 0.8rem 1.2rem;
+  cursor: pointer;
+  border-bottom: 1px solid #edf2f7;
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
+  color: #4a5568;
+}
+
+.suggestion:hover {
+  background-color: #ebf4ff;
+}
+
+.suggestion.selected {
+  background-color: #cee3fa;
+  font-weight: 600;
+}
+
+.suggestion:last-child {
+  border-bottom: none;
+}
+
+.actionButtons {
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+  gap: 0.5rem;
+}
+
+.addButton {
+  padding: 0.8rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
+}
+
+.addButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(74, 144, 226, 0.3);
+  background: linear-gradient(135deg, #357abd 0%, #2c6aa3 100%);
+}
+
+.addButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #a0aec0;
+}
+
+/* SELECTED SKILLS */
+.selectedSkills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #c5d9ff;
+  min-height: 100px;
+}
+
+.skillTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1.2rem;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  animation: slideInScale 0.3s ease;
+}
+
+.learnSkillTag {
+  background: linear-gradient(135deg, #ebf4ff 0%, #d6e4ff 100%);
+  border: 1px solid #a3c4ff;
+  color: #2c5282;
+}
+
+@keyframes slideInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.removeTag {
+  background: none;
+  border: none;
+  color: #4a90e2;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0;
+  margin-left: 0.5rem;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.removeTag:hover {
+  background: rgba(74, 144, 226, 0.1);
+  color: #2c6aa3;
+}
+
+.noSkillsMessage {
+  color: #a0aec0;
+  font-size: 1rem;
+  font-style: italic;
+  margin: 0;
+  text-align: center;
+  width: 100%;
+  padding: 1rem;
+}
+
+/* FOOTER */
+.modalFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  flex-shrink: 0;
+}
+
+.secondaryButton,
+.primaryButton {
+  padding: 0.8rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.secondaryButton {
+  background: white;
+  color: #4a5568;
+  border: 2px solid #e2e8f0;
+}
+
+.secondaryButton:hover {
+  background: #f7fafc;
+  border-color: #c5d9ff;
+  transform: translateY(-2px);
+}
+
+.primaryButton {
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
+}
+
+.primaryButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(74, 144, 226, 0.3);
+  background: linear-gradient(135deg, #357abd 0%, #2c6aa3 100%);
+}
+
+.primaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* SCROLLBAR STYLING */
+.suggestions::-webkit-scrollbar,
+.modalBody::-webkit-scrollbar {
+  width: 8px;
+}
+
+.suggestions::-webkit-scrollbar-track,
+.modalBody::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.suggestions::-webkit-scrollbar-thumb,
+.modalBody::-webkit-scrollbar-thumb {
+  background: #c5d9ff;
+  border-radius: 4px;
+}
+
+.suggestions::-webkit-scrollbar-thumb:hover,
+.modalBody::-webkit-scrollbar-thumb:hover {
+  background: #a3c4ff;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .modalContent {
+    max-height: 100vh;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .modalHeader {
+    padding: 1rem 1.5rem;
+  }
+
+  .modalHeader h2 {
+    font-size: 1.3rem;
+  }
+
+  .modalBody {
+    padding: 1.5rem;
+  }
+
+  .helpText {
+    font-size: 0.95rem;
+    margin: 0.5rem auto 1.5rem;
+  }
+
+  .skillsInput {
+    width: 100%;
+    min-height: 50px;
+    font-size: 1rem;
+  }
+
+  .actionButtons {
+    width: 100%;
+  }
+
+  .addButton {
+    width: 100%;
+    padding: 0.8rem;
+    min-height: 50px;
+  }
+
+  .suggestions {
+    right: 0;
+    max-height: 200px;
+  }
+
+  .selectedSkills {
+    padding: 1rem;
+    min-height: 80px;
+  }
+
+  .skillTag {
+    font-size: 0.9rem;
+    padding: 0.6rem 1rem;
+  }
+
+  .modalFooter {
+    flex-direction: column;
+    padding: 1rem 1.5rem;
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    width: 100%;
+    padding: 0.8rem;
+    min-width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .modalBody {
+    padding: 1rem;
+  }
+
+  .skillsInput {
+    font-size: 0.95rem;
+    padding: 0.8rem;
+  }
+
+  .skillTag {
+    font-size: 0.85rem;
+    padding: 0.5rem 0.8rem;
+  }
+}
+
+/* MODAL DE SUCCÈS */
+.successModalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.successModal {
+  background: white;
+  border-radius: 16px;
+  padding: 0;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.successModalContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  padding: 30px;
+}
+
+.successIcon {
+  font-size: 48px;
+  color: #38a169;
+  background: #f0fff4;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  animation: bounce 0.5s ease;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.successModal h4 {
+  margin: 0;
+  color: #2d3748;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.successModal p {
+  margin: 0;
+  color: #4a5568;
+  line-height: 1.5;
+  font-size: 1rem;
+}
+
+.successButton {
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+  min-width: 120px;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
+}
+
+.successButton:hover {
+  background: linear-gradient(135deg, #357abd 0%, #2c6aa3 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(74, 144, 226, 0.3);
+}
+
+/* Animation pour le message de succès */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.successModal {
+  animation: fadeInUp 0.3s ease;
+}
+
+/* Version alternative avec icône check-circle */
+.successIcon::before {
+  content: "✓";
+}
+
+/* Pour les écrans mobiles */
+@media (max-width: 768px) {
+  .successModal {
+    width: 85%;
+    padding: 20px;
+  }
+  
+  .successModalContent {
+    padding: 20px;
+  }
+  
+  .successIcon {
+    width: 60px;
+    height: 60px;
+    font-size: 36px;
+  }
+  
+  .successModal h4 {
+    font-size: 1.3rem;
+  }
+  
+  .successModal p {
+    font-size: 0.95rem;
+  }
+}

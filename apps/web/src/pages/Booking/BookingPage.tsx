@@ -13,25 +13,84 @@ const BookingPage: React.FC = () => {
   const { tutorId } = useParams<{ tutorId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  
   const [tutor, setTutor] = useState<TutorFromDB | null>(null);
-  const [annonces, setAnnonces] = useState<AnnonceFromDB[]>([]);
   const [selectedAnnonce, setSelectedAnnonce] = useState<AnnonceFromDB | null>(null);
-  
+  const [tutorSchedule, setTutorSchedule] = useState<any[]>([]);
   const [date, setDate] = useState<string>('');
-  const [time, setTime] = useState<string>('10:00');
+  const [time, setTime] = useState<string>('');
   const [duration, setDuration] = useState<number>(60);
   const [amount, setAmount] = useState<number>(0);
   const [studentNotes, setStudentNotes] = useState<string>('');
-  
   const [balance, setBalance] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // Vérifier si on vient d'une annonce spécifique
+  const [weekDays, setWeekDays] = useState<any[]>([]);
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(new Date());
+
   const annonceIdFromState = location.state?.annonceId;
-  const showAnnonceSelector = !annonceIdFromState;
+
+  // Fonction pour générer la semaine à partir d'une date
+  const generateWeekDays = (startDate: Date) => {
+    const days = [];
+    
+    // Ajuster pour commencer à lundi
+    const dayOfWeek = startDate.getDay();
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(startDate);
+    monday.setDate(startDate.getDate() + diffToMonday);
+    
+    const dayNames = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+    const monthNames = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+    
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(monday);
+      day.setDate(monday.getDate() + i);
+      
+      const dayName = dayNames[i];
+      const dayNumber = day.getDate();
+      const month = monthNames[day.getMonth()];
+      const dateString = day.toISOString().split('T')[0];
+      
+      days.push({
+        dayName,
+        dayNumber,
+        month,
+        date: dateString,
+        displayName: `${dayName} ${dayNumber} ${month}`
+      });
+    }
+    
+    return days;
+  };
+
+  useEffect(() => {
+    const initialWeek = generateWeekDays(currentWeekStart);
+    setWeekDays(initialWeek);
+  }, [currentWeekStart]);
+
+  // Navigation entre les semaines
+  const goToPreviousWeek = () => {
+    const newDate = new Date(currentWeekStart);
+    newDate.setDate(newDate.getDate() - 7);
+    setCurrentWeekStart(newDate);
+  };
+
+  const goToNextWeek = () => {
+    const newDate = new Date(currentWeekStart);
+    newDate.setDate(newDate.getDate() + 7);
+    setCurrentWeekStart(newDate);
+  };
+
+  // Formater la période de la semaine (ex: "Du 16 au 22 décembre")
+  const formatWeekPeriod = () => {
+    const monday = weekDays[0];
+    const sunday = weekDays[6];
+    
+    if (!monday || !sunday) return '';
+    
+    return `Du ${monday.dayNumber} au ${sunday.dayNumber} ${sunday.month}`;
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -48,43 +107,63 @@ const BookingPage: React.FC = () => {
         const tutorResp = await tutorService.getTutorById(tutorId);
         if (tutorResp.success && tutorResp.data) {
           setTutor(tutorResp.data);
-        } else {
-          setError('Tuteur non trouvé');
-          return;
-        }
-
-        // Charger les annonces du tuteur
-        const annoncesResp = await tutorService.getAnnoncesByTutor(tutorId);
-        if (annoncesResp.success && annoncesResp.data) {
-          const annoncesList = annoncesResp.data.annonces || annoncesResp.data;
-          setAnnonces(annoncesList);
           
-          // Si on vient d'une annonce spécifique, la sélectionner
-          if (annonceIdFromState) {
-            const annonce = annoncesList.find((a: AnnonceFromDB) => a.id === annonceIdFromState);
-            if (annonce) {
-              setSelectedAnnonce(annonce);
-              setAmount(annonce.hourlyRate);
+          // Charger les disponibilités du tuteur
+          try {
+            const profileResp = await tutorService.getTutorProfile(tutorResp.data.id);
+            if (profileResp.success && profileResp.data?.schedule) {
+              setTutorSchedule(profileResp.data.schedule || []);
             }
-          } else if (annoncesList.length > 0) {
-            // Sinon, sélectionner la première annonce par défaut
-            setSelectedAnnonce(annoncesList[0]);
-            setAmount(annoncesList[0].hourlyRate);
+          } catch (scheduleError) {
+            console.warn('Impossible de charger les disponibilités:', scheduleError);
           }
         }
 
-        // Charger le solde de l'utilisateur
+        let selectedAnnonceToSet = null;
+        let amountToSet = 0;
+
+        // 1. D'abord essayer de charger l'annonce spécifique
+        if (annonceIdFromState) {
+          try {
+            const annonceResp = await annonceService.getAnnonce(annonceIdFromState);
+            if (annonceResp.success && annonceResp.data) {
+              selectedAnnonceToSet = annonceResp.data;
+              amountToSet = annonceResp.data.hourlyRate;
+            }
+          } catch (annonceError) {
+            console.error('Erreur chargement annonce spécifique:', annonceError);
+          }
+        }
+
+        // 2. Si aucune annonce spécifique, charger toutes les annonces et prendre la première
+        if (!selectedAnnonceToSet) {
+          const annoncesResp = await tutorService.getAnnoncesByTutor(tutorId);
+          if (annoncesResp.success && annoncesResp.data) {
+            const annoncesList = annoncesResp.data.annonces || annoncesResp.data;
+            if (annoncesList.length > 0) {
+              selectedAnnonceToSet = annoncesList[0];
+              amountToSet = annoncesList[0].hourlyRate;
+            }
+          }
+        }
+
+        // 3. Mettre à jour l'état
+        if (selectedAnnonceToSet) {
+          setSelectedAnnonce(selectedAnnonceToSet);
+          setAmount(amountToSet);
+        }
+
+        // Charger le solde
         const currentUser = authService.getCurrentUser();
         if (currentUser?.id) {
           try {
             const balanceData = await blockchainService.getBalance();
             const available = Number(
-              balanceData?.wallet?.available ??
-              balanceData?.wallet?.availableCredits ??
-              balanceData?.available ??
-              balanceData?.balanceCredits ??
-              balanceData?.balance ??
-              0
+              balanceData?.wallet?.available ?? 
+              balanceData?.wallet?.availableCredits ?? 
+              balanceData?.wallet?.available ?? 
+              balanceData?.wallet?.balanceCredits ?? 
+              balanceData?.wallet?.balance ?? 0
             );
             setBalance(available);
           } catch (balanceError) {
@@ -92,7 +171,6 @@ const BookingPage: React.FC = () => {
             setBalance(0);
           }
         }
-
       } catch (err: any) {
         console.error('Erreur chargement booking page:', err);
         setError('Erreur lors du chargement des données');
@@ -113,9 +191,155 @@ const BookingPage: React.FC = () => {
     }
   }, [selectedAnnonce, duration]);
 
+  // Obtenir les créneaux disponibles pour un jour donné avec vérification de la durée
+  const getAvailableSlotsForDay = (dateString: string): string[] => {
+    if (!tutorSchedule || tutorSchedule.length === 0) {
+      return [];
+    }
+    
+    const daySchedule = tutorSchedule.find(
+      (day: any) => day.date === dateString
+    );
+    
+    if (!daySchedule || !daySchedule.timeSlots || daySchedule.timeSlots.length === 0) {
+      return [];
+    }
+    
+    const availableSlots: string[] = [];
+    const timeSlots = daySchedule.timeSlots;
+    
+    timeSlots.forEach((slot: any) => {
+      if (slot.allDay) {
+        // Si disponible toute la journée, ajouter toutes les heures où la durée tient
+        for (let hour = 8; hour <= 20; hour++) {
+          for (let minute = 0; minute < 60; minute += 30) {
+            const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+            
+            // Vérifier si le créneau tient avec la durée choisie
+            if (canFitDuration(timeString, duration, slot)) {
+              availableSlots.push(timeString);
+            }
+          }
+        }
+      } else {
+        // Ajouter les heures spécifiques du créneau où la durée tient
+        const startTime = slot.startTime;
+        const endTime = slot.endTime;
+        
+        // Convertir en minutes pour la comparaison
+        const [startHour, startMinute] = startTime.split(':').map(Number);
+        const [endHour, endMinute] = endTime.split(':').map(Number);
+        const startTotalMinutes = startHour * 60 + startMinute;
+        const endTotalMinutes = endHour * 60 + endMinute;
+        
+        // Générer les créneaux de 30 minutes dans l'intervalle
+        for (let minutes = startTotalMinutes; minutes < endTotalMinutes; minutes += 30) {
+          const hour = Math.floor(minutes / 60);
+          const minute = minutes % 60;
+          const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          
+          // Vérifier si le créneau tient avec la durée choisie
+          if (canFitDuration(timeString, duration, slot)) {
+            availableSlots.push(timeString);
+          }
+        }
+      }
+    });
+    
+    return [...new Set(availableSlots)].sort();
+  };
+
+  // Vérifier si un créneau peut contenir la durée choisie
+  const canFitDuration = (startTime: string, durationMinutes: number, slot: any): boolean => {
+    if (slot.allDay) {
+      // Pour allDay, vérifier que le cours termine avant 21h
+      const [startHour, startMinute] = startTime.split(':').map(Number);
+      const startTotalMinutes = startHour * 60 + startMinute;
+      const endTotalMinutes = startTotalMinutes + durationMinutes;
+      
+      // Vérifier que le cours ne dépasse pas 21h (dernière heure possible)
+      return endTotalMinutes <= 21 * 60; // 21h = 21 * 60 minutes
+    } else {
+      // Pour un créneau spécifique, vérifier que le cours tient dans le créneau
+      const [startHour, startMinute] = startTime.split(':').map(Number);
+      const startTotalMinutes = startHour * 60 + startMinute;
+      
+      const slotStartTime = slot.startTime;
+      const slotEndTime = slot.endTime;
+      const [slotStartHour, slotStartMinute] = slotStartTime.split(':').map(Number);
+      const [slotEndHour, slotEndMinute] = slotEndTime.split(':').map(Number);
+      const slotStartTotalMinutes = slotStartHour * 60 + slotStartMinute;
+      const slotEndTotalMinutes = slotEndHour * 60 + slotEndMinute;
+      
+      const courseEndTotalMinutes = startTotalMinutes + durationMinutes;
+      
+      // Le créneau doit commencer après le début du slot et finir avant la fin du slot
+      return startTotalMinutes >= slotStartTotalMinutes && 
+             courseEndTotalMinutes <= slotEndTotalMinutes;
+    }
+  };
+
+  // Vérifier si un créneau est disponible pour un jour donné (en tenant compte de la durée)
+  const isSlotAvailable = (dayDate: string, timeSlot: string): boolean => {
+    const availableSlots = getAvailableSlotsForDay(dayDate);
+    return availableSlots.includes(timeSlot);
+  };
+
+  // Obtenir tous les créneaux uniques disponibles dans la semaine
+  const getAllAvailableTimeSlots = () => {
+    const allSlots = new Set<string>();
+    
+    weekDays.forEach(day => {
+      const slots = getAvailableSlotsForDay(day.date);
+      slots.forEach(slot => allSlots.add(slot));
+    });
+    
+    // Si aucun créneau n'est disponible, afficher une plage horaire standard
+    if (allSlots.size === 0) {
+      // Créneaux horaires standards de 8h à 20h
+      for (let hour = 8; hour <= 20; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+          const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          // Vérifier que le créneau tient avec la durée choisie (jusqu'à 21h max)
+          const [startHour, startMinute] = timeString.split(':').map(Number);
+          const startTotalMinutes = startHour * 60 + startMinute;
+          const endTotalMinutes = startTotalMinutes + duration;
+          if (endTotalMinutes <= 21 * 60) {
+            allSlots.add(timeString);
+          }
+        }
+      }
+    }
+    
+    return Array.from(allSlots).sort();
+  };
+
+  // Gérer la sélection d'un créneau
+  const handleSlotSelection = (dayDate: string, timeSlot: string) => {
+    if (isSlotAvailable(dayDate, timeSlot)) {
+      setDate(dayDate);
+      setTime(timeSlot);
+    }
+  };
+
+  // Vérifier si un créneau est actuellement sélectionné
+  const isSlotSelected = (dayDate: string, timeSlot: string): boolean => {
+    return date === dayDate && time === timeSlot;
+  };
+
+  // Lorsque la durée change, réinitialiser la sélection si le créneau n'est plus valide
+  useEffect(() => {
+    if (date && time) {
+      if (!isSlotAvailable(date, time)) {
+        setDate('');
+        setTime('');
+      }
+    }
+  }, [duration]);
+
   const formatAmount = (value: number) => {
     return new Intl.NumberFormat('fr-FR', {
-      minimumFractionDigits: 2,
+      minimumFractionDigits: 0,
       maximumFractionDigits: 2
     }).format(value || 0);
   };
@@ -133,22 +357,29 @@ const BookingPage: React.FC = () => {
     }
     
     if (!selectedAnnonce) {
-      setError('Veuillez sélectionner une annonce');
+      setError('Aucune annonce sélectionnée');
       return;
     }
-
+    
+    // Vérifier que l'heure sélectionnée est disponible
+    if (!isSlotAvailable(date, time)) {
+      setError('Ce créneau horaire n\'est plus disponible. Veuillez en choisir un autre.');
+      return;
+    }
+    
     const currentUser = authService.getCurrentUser();
     if (!currentUser) {
       navigate('/connexion');
       return;
     }
-
+    
     if (balance < amount) {
       setError('Crédits insuffisants pour cette réservation');
       return;
     }
-
+    
     setSubmitting(true);
+    
     try {
       const bookingData = {
         tutorId: tutorId as string,
@@ -160,15 +391,15 @@ const BookingPage: React.FC = () => {
         description: selectedAnnonce.description || '',
         studentNotes
       };
-
+      
       const resp = await bookingService.createBooking(bookingData);
+      
       if (resp?.success) {
-        // Redirection basée sur le rôle : étudiants -> /blockchain, tuteurs -> /reservations
-        const currentUser = authService.getCurrentUser();
         const messageState = {
           message: 'Réservation créée avec succès ! En attente de confirmation du tuteur.',
           bookingStatus: 'PENDING'
         };
+        
         if (currentUser?.role === 'tutor') {
           navigate('/reservations', { state: messageState });
         } else {
@@ -189,17 +420,6 @@ const BookingPage: React.FC = () => {
     }
   };
 
-  const getTimeSlots = () => {
-    const slots = [];
-    for (let hour = 8; hour <= 20; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        slots.push(timeString);
-      }
-    }
-    return slots;
-  };
-
   if (loading) {
     return (
       <div className={styles.container}>
@@ -213,10 +433,13 @@ const BookingPage: React.FC = () => {
     );
   }
 
+  // Récupérer tous les créneaux horaires disponibles
+  const allTimeSlots = getAllAvailableTimeSlots();
+
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        {/* Header avec infos tuteur */}
+        {/* Header */}
         <div className={styles.header}>
           <h1 className={styles.title}>
             Réserver un cours avec{' '}
@@ -230,248 +453,237 @@ const BookingPage: React.FC = () => {
             <div className={styles.tutorRating}>
               <span className={styles.stars}>★★★★★</span>
               <span className={styles.ratingValue}>{tutor.rating}</span>
-              <span className={styles.reviewsCount}>({tutor.reviewsCount} avis)</span>
+              <span>({tutor.reviewsCount} avis)</span>
             </div>
           )}
         </div>
 
-        <div className={styles.contentGrid}>
-          {/* Colonne gauche : Formulaire */}
-          <div className={styles.formColumn}>
-            {/* Sélecteur d'annonce (seulement si pas d'annonce spécifique) */}
-            {showAnnonceSelector && annonces.length > 0 && (
+        <div className={styles.content}>
+          {/* Colonne gauche - Formulaire */}
+          <div className={styles.leftColumn}>
+            {/* Annonce sélectionnée */}
+            {selectedAnnonce && (
               <div className={styles.formSection}>
-                <div className={styles.sectionHeader}>
-                  <div className={styles.sectionIcon}>📋</div>
-                  <h3>Choisir une annonce</h3>
-                </div>
-                <div className={styles.annonceSelector}>
-                  {annonces.map((annonce) => (
-                    <div 
-                      key={annonce.id}
-                      className={`${styles.annonceOption} ${
-                        selectedAnnonce?.id === annonce.id ? styles.selected : ''
-                      }`}
-                      onClick={() => {
-                        setSelectedAnnonce(annonce);
-                        setAmount(annonce.hourlyRate);
-                      }}
-                    >
-                      <div className={styles.annonceOptionHeader}>
-                        <div className={styles.annonceTitle}>{annonce.title}</div>
-                        <div className={styles.annoncePrice}>€{annonce.hourlyRate}/h</div>
-                      </div>
-                      <div className={styles.annonceSubjects}>
-                        {annonce.subject && (
-                          <span className={styles.subjectTag}>{annonce.subject}</span>
-                        )}
-                        <span className={styles.levelTag}>{annonce.level}</span>
-                      </div>
-                      <p className={styles.annonceDescription}>
-                        {annonce.description?.substring(0, 100)}...
-                      </p>
-                    </div>
-                  ))}
+                <h3 className={styles.sectionTitle}>Annonce sélectionnée</h3>
+                <div className={styles.annoncePreview}>
+                  <div className={styles.annonceHeader}>
+                    <h4 className={styles.annonceTitle}>{selectedAnnonce.title}</h4>
+                    <div className={styles.annoncePrice}>{selectedAnnonce.hourlyRate}🪙/h</div>
+                  </div>
+                  <p className={styles.annonceDescription}>
+                    {selectedAnnonce.description}
+                  </p>
                 </div>
               </div>
             )}
 
-            {/* Date et heure */}
+            {/* Disponibilités du tuteur - Style exact comme l'image */}
             <div className={styles.formSection}>
-              <div className={styles.sectionHeader}>
-                <div className={styles.sectionIcon}>📅</div>
-                <h3>Date et heure</h3>
-              </div>
-              
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Date du cours *</label>
-                  <input 
-                    type="date" 
-                    value={date} 
-                    onChange={(e) => setDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
-                    className={styles.input}
-                    required
-                  />
-                </div>
-                
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Heure *</label>
-                  <select 
-                    value={time} 
-                    onChange={(e) => setTime(e.target.value)}
-                    className={styles.select}
-                    required
+              <div className={styles.availabilityHeader}>
+                <div className={styles.weekNavigation}>
+                  <button 
+                    className={styles.navButton}
+                    onClick={goToPreviousWeek}
                   >
-                    {getTimeSlots().map((slot) => (
-                      <option key={slot} value={slot}>{slot}</option>
-                    ))}
-                  </select>
+                    &lt;
+                  </button>
+                  <div className={styles.weekPeriod}>
+                    {formatWeekPeriod()}
+                  </div>
+                  <button 
+                    className={styles.navButton}
+                    onClick={goToNextWeek}
+                  >
+                    &gt;
+                  </button>
                 </div>
               </div>
 
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Durée du cours</label>
-                <div className={styles.durationSelector}>
-                  {[30, 60, 90, 120].map((dur) => (
-                    <button
-                      key={dur}
-                      type="button"
-                      className={`${styles.durationBtn} ${
-                        duration === dur ? styles.active : ''
-                      }`}
-                      onClick={() => setDuration(dur)}
+              {/* Tableau des disponibilités */}
+              <div className={styles.availabilityTable}>
+                {/* En-tête avec jours de la semaine */}
+                <div className={styles.tableHeader}>
+                  <div className={styles.timeColumn}></div>
+                  {weekDays.map((day) => (
+                    <div 
+                      key={day.date} 
+                      className={`${styles.dayHeader} ${date === day.date ? styles.selectedDay : ''}`}
                     >
-                      {dur} min
-                    </button>
+                      <div className={styles.dayName}>{day.dayName}</div>
+                      <div className={styles.dayDate}>{day.dayNumber} {day.month}</div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Lignes de créneaux horaires */}
+                <div className={styles.tableBody}>
+                  {allTimeSlots.map((timeSlot) => (
+                    <div key={timeSlot} className={styles.timeRow}>
+                      <div className={styles.timeLabel}>{timeSlot}</div>
+                      {weekDays.map((day) => {
+                        const isAvailable = isSlotAvailable(day.date, timeSlot);
+                        const isSelected = isSlotSelected(day.date, timeSlot);
+                        
+                        return (
+                          <div 
+                            key={`${day.date}-${timeSlot}`} 
+                            className={styles.timeCell}
+                          >
+                            {isAvailable ? (
+                              <button
+                                type="button"
+                                className={`${styles.slotButton} ${isSelected ? styles.selected : ''}`}
+                                onClick={() => handleSlotSelection(day.date, timeSlot)}
+                                title={`Réserver le ${day.displayName} à ${timeSlot} (${duration}min)`}
+                              >
+                                {isSelected && '✓'}
+                              </button>
+                            ) : (
+                              <span className={styles.unavailableSlot}>—</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   ))}
                 </div>
               </div>
+              
+              {/* Affichage de la sélection actuelle */}
+              {date && time && (
+                <div className={styles.selectionDisplay}>
+                  <span className={styles.selectionLabel}>Sélectionné :</span>
+                  <span className={styles.selectionValue}>
+                    {weekDays.find(d => d.date === date)?.displayName} à {time} ({duration}min)
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* Notes pour le tuteur */}
+            {/* Durée du cours */}
             <div className={styles.formSection}>
-              <div className={styles.sectionHeader}>
-                <div className={styles.sectionIcon}>💬</div>
-                <h3>Notes pour le tuteur (optionnel)</h3>
+              <h3 className={styles.sectionTitle}>Durée du cours</h3>
+              <div className={styles.durationSelector}>
+                {[30, 60, 90, 120].map((dur) => (
+                  <button
+                    key={dur}
+                    type="button"
+                    className={`${styles.durationBtn} ${
+                      duration === dur ? styles.active : ''
+                    }`}
+                    onClick={() => setDuration(dur)}
+                  >
+                    {dur} min
+                  </button>
+                ))}
               </div>
-              <textarea 
+            </div>
+
+            {/* Notes */}
+            <div className={styles.formSection}>
+              <h3 className={styles.sectionTitle}>Notes pour le tuteur (optionnel)</h3>
+              <textarea
                 value={studentNotes}
                 onChange={(e) => setStudentNotes(e.target.value)}
                 placeholder="Précisez vos objectifs, difficultés particulières ou toute autre information utile..."
-                rows={4}
+                rows={3}
                 className={styles.textarea}
               />
             </div>
           </div>
 
-          {/* Colonne droite : Récapitulatif et solde */}
-          <div className={styles.summaryColumn}>
-            {/* Récapitulatif de l'annonce */}
-            {selectedAnnonce && (
-              <div className={styles.summarySection}>
-                <div className={styles.sectionHeader}>
-                  <div className={styles.sectionIcon}>📚</div>
-                  <h3>Détails du cours</h3>
-                </div>
-                
-                <div className={styles.annonceSummary}>
-                  <div className={styles.summaryItem}>
-                    <span className={styles.summaryLabel}>Annonce:</span>
-                    <span className={styles.summaryValue}>{selectedAnnonce.title}</span>
-                  </div>
-                  <div className={styles.summaryItem}>
-                    <span className={styles.summaryLabel}>Matière:</span>
+          {/* Colonne droite - Récapitulatif */}
+          <div className={styles.rightColumn}>
+            <div className={styles.summarySection}>
+              <h3 className={styles.summaryTitle}>Récapitulatif</h3>
+              {selectedAnnonce && (
+                <div className={styles.summaryGrid}>
+                  <div className={styles.summaryRow}>
+                    <span className={styles.summaryLabel}>Matière</span>
                     <span className={styles.summaryValue}>{selectedAnnonce.subject}</span>
                   </div>
-                  <div className={styles.summaryItem}>
-                    <span className={styles.summaryLabel}>Niveau:</span>
+                  <div className={styles.summaryRow}>
+                    <span className={styles.summaryLabel}>Niveau</span>
                     <span className={styles.summaryValue}>{selectedAnnonce.level}</span>
                   </div>
-                  <div className={styles.summaryItem}>
-                    <span className={styles.summaryLabel}>Mode:</span>
+                  <div className={styles.summaryRow}>
+                    <span className={styles.summaryLabel}>Mode</span>
                     <span className={styles.summaryValue}>{selectedAnnonce.teachingMode}</span>
                   </div>
+                  <div className={styles.summaryRow}>
+                    <span className={styles.summaryLabel}>Date & Heure</span>
+                    <span className={styles.summaryValue}>
+                      {date && time ? 
+                        `${weekDays.find(d => d.date === date)?.displayName} à ${time}` : 
+                        'Non sélectionné'
+                      }
+                    </span>
+                  </div>
+                  <div className={styles.summaryRow}>
+                    <span className={styles.summaryLabel}>Durée</span>
+                    <span className={styles.summaryValue}>{duration} minutes</span>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Résumé financier */}
-            <div className={styles.summarySection}>
-              <div className={styles.sectionHeader}>
-                <div className={styles.sectionIcon}>💰</div>
-                <h3>Résumé financier</h3>
-              </div>
-              
-              <div className={styles.financialSummary}>
-                <div className={styles.amountRow}>
-                  <span>Tarif horaire:</span>
-                  <span>€{selectedAnnonce?.hourlyRate}/h</span>
-                </div>
-                <div className={styles.amountRow}>
-                  <span>Durée:</span>
-                  <span>{duration} minutes</span>
-                </div>
-                <div className={styles.amountRow}>
-                  <span>Montant total:</span>
-                  <span className={styles.totalAmount}>€{formatAmount(amount)}</span>
-                </div>
+              )}
+              <div className={styles.total}>
+                <span className={styles.totalLabel}>Coût total</span>
+                <span className={styles.totalAmount}>{formatAmount(amount)}🪙</span>
               </div>
             </div>
 
-            {/* Information solde */}
-            <div className={styles.balanceSection}>
-              <div className={styles.balanceCard}>
-                <div className={styles.balanceHeader}>
-                  <div className={styles.balanceIcon}>🪙</div>
-                  <h4>Votre solde</h4>
-                </div>
-                
-                <div className={styles.balanceDetails}>
-                  <div className={styles.balanceRow}>
-                    <span>Solde actuel:</span>
-                    <span className={styles.currentBalance}>
-                      {formatAmount(balance)} EduCoins
-                    </span>
-                  </div>
-                  
-                  <div className={styles.balanceRow}>
-                    <span>Coût de la réservation:</span>
-                    <span className={styles.bookingCost}>
-                      - {formatAmount(amount)} EduCoins
-                    </span>
-                  </div>
-                  
-                  <div className={styles.balanceDivider}></div>
-                  
-                  <div className={styles.balanceRow}>
-                    <span>Solde après réservation:</span>
-                    <span className={calculateBalanceAfter() < 0 ? styles.insufficient : styles.finalBalance}>
-                      {formatAmount(calculateBalanceAfter())} EduCoins
-                    </span>
-                  </div>
-                </div>
-                
-                {calculateBalanceAfter() < 0 && (
-                  <div className={styles.insufficientAlert}>
-                    <div className={styles.alertIcon}>⚠️</div>
-                    <div className={styles.alertText}>
-                      <strong>Solde insuffisant</strong>
-                      <p>Veuillez recharger votre portefeuille avant de réserver.</p>
-                    </div>
-                  </div>
-                )}
+            {/* Solde */}
+            <div className={styles.balanceCard}>
+              <h4 className={styles.balanceTitle}>Votre solde</h4>
+              <div className={styles.balanceRow}>
+                <span className={styles.balanceLabel}>Solde actuel</span>
+                <span className={styles.balanceValue}>{formatAmount(balance)}🪙</span>
               </div>
+              <div className={styles.balanceRow}>
+                <span className={styles.balanceLabel}>Coût de la réservation</span>
+                <span className={styles.balanceValue}>- {formatAmount(amount)}🪙</span>
+              </div>
+              <div className={styles.balanceAfter}>
+                <span className={styles.balanceAfterLabel}>Solde après réservation</span>
+                <span className={`${styles.balanceAfterValue} ${
+                  calculateBalanceAfter() < 0 ? styles.negative : styles.positive
+                }`}>
+                  {formatAmount(calculateBalanceAfter())}🪙
+                </span>
+              </div>
+              {calculateBalanceAfter() < 0 && (
+                <div className={styles.alert}>
+                  <div className={styles.alertIcon}>⚠️</div>
+                  <div className={styles.alertText}>
+                    <p>
+                      <strong>Solde insuffisant</strong><br />
+                      Veuillez recharger votre portefeuille avant de réserver.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Note importante */}
-            <div className={styles.noteSection}>
-              <div className={styles.noteCard}>
-                <div className={styles.noteIcon}>💡</div>
-                <div className={styles.noteContent}>
-                  <p>
-                    <strong>Comment ça marche ?</strong><br />
-                    Le montant est réservé immédiatement. Le tuteur a 24h pour confirmer la réservation. 
-                    En cas de refus ou d'absence de réponse, les crédits vous seront automatiquement rendus.
-                  </p>
-                </div>
-              </div>
+            {/* Note */}
+            <div className={styles.note}>
+              <p>
+                <strong>Comment ça marche ?</strong><br />
+                Le montant est réservé immédiatement. Le tuteur a 24h pour confirmer la réservation. 
+                En cas de refus ou d'absence de réponse, les crédits vous seront automatiquement rendus.
+              </p>
             </div>
           </div>
         </div>
 
         {/* Actions */}
         <div className={styles.actions}>
-          <button 
+          <button
             className={styles.cancelBtn}
             onClick={() => navigate(-1)}
             disabled={submitting}
           >
             Annuler
           </button>
-          
-          <button 
+          <button
             className={styles.confirmBtn}
             onClick={handleConfirm}
             disabled={
@@ -494,8 +706,8 @@ const BookingPage: React.FC = () => {
         </div>
 
         {error && (
-          <div className={styles.errorAlert}>
-            <div className={styles.errorIcon}>❌</div>
+          <div className={styles.error}>
+            <div>❌</div>
             <span>{error}</span>
           </div>
         )}

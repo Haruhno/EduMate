@@ -62,7 +62,7 @@ const FiltersSidebar: React.FC<FiltersSidebarProps> = ({
           <div className={styles.filterGroup}>
             <div className={styles.priceHeader}>
               <label className={styles.filterLabel}>Tarif maximum</label>
-              <span className={styles.priceValue}>{filters.priceRange[1]} €/h</span>
+              <span className={styles.priceValue}>{filters.priceRange[1]} 🪙/h</span>
             </div>
             
             <div className={styles.priceSliderContainer}>
@@ -86,8 +86,8 @@ const FiltersSidebar: React.FC<FiltersSidebarProps> = ({
             </div>
             
             <div className={styles.priceRangeLabels}>
-              <span>7 €</span>
-              <span>100 €</span>
+              <span>7 🪙</span>
+              <span>100 🪙</span>
             </div>
           </div>
       

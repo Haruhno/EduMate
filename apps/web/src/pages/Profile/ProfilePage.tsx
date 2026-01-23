@@ -65,7 +65,7 @@ const ProfilePage: React.FC = () => {
               setExperiences(profile.experiences);
             }
             
-            // Passez user ET profile à la fonction
+            // Passez user et profile à la fonction
             calculateCompletion(profile, currentUser);
           }
         }
@@ -79,6 +79,7 @@ const ProfilePage: React.FC = () => {
     loadProfile();
   }, []);
 
+  // Dans ProfilePage.tsx - remplacer l'ancienne fonction
   const calculateCompletion = (profile: ProfileData, user: any) => {
     const checks: {name: string, completed: boolean}[] = [];
 
@@ -94,9 +95,13 @@ const ProfilePage: React.FC = () => {
     checks.push({name: 'address', completed: !!(profile?.address && String(profile.address).trim())});
     checks.push({name: 'bio', completed: !!(profile?.bio && String(profile.bio).trim())});
 
-    // Compétences
-    const skillsCompleted = !!(profile?.skills && profile.skills.length > 0);
-    checks.push({name: 'skills', completed: skillsCompleted});
+    // Compétences maitrisées (pour tous)
+    const skillsToTeachCompleted = !!(profile?.skillsToTeach && profile.skillsToTeach.length > 0);
+    checks.push({name: 'skillsToTeach', completed: skillsToTeachCompleted});
+
+    // Compétences à acquérir (pour tous)
+    const skillsToLearnCompleted = !!(profile?.skillsToLearn && profile.skillsToLearn.length > 0);
+    checks.push({name: 'skillsToLearn', completed: skillsToLearnCompleted});
 
     // Photo
     const photoCompleted = !!(profile?.profilePicture && profile.profilePicture !== '/assets/images/avatar.jpg');
@@ -477,7 +482,7 @@ const ProfilePage: React.FC = () => {
             </div>
           )}
 
-          {/* Section Expérience professionnelle - Style unique */}
+          {/* Section Expérience professionnelle */}
           {user?.role === 'tutor' && hasSingleExperience && (
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>
@@ -572,23 +577,47 @@ const ProfilePage: React.FC = () => {
         {/* Section secondaire - Droite */}
         <div className={styles.sidebar}>
           {/* Section Compétences */}
-          {profileData?.skills && profileData.skills.length > 0 && (
-            <div className={styles.section}>
-              <h3 className={styles.sectionTitle}>
-                <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                {user?.role === 'student' ? 'Compétences recherchées' : 'Compétences'}
-              </h3>
-              <div className={styles.skillsContainer}>
-                {profileData.skills.map((skill, index) => (
-                  <span key={index} className={styles.skillTag}>
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
+          {(profileData?.skillsToTeach && profileData.skillsToTeach.length > 0 || profileData?.skillsToLearn && profileData.skillsToLearn.length > 0) && (
+            <>
+              {(profileData?.skillsToTeach && profileData.skillsToTeach.length > 0) && (
+                <div className={styles.section}>
+                  <h3 className={styles.sectionTitle}>
+                    <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    Compétences maîtrisées
+                  </h3>
+                  <div className={styles.skillsContainer}>
+                    {profileData.skillsToTeach.map((skill, index) => (
+                      <span key={index} className={styles.skillTag}>
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Section Compétences à apprendre (pour tous) */}
+              {profileData?.skillsToLearn && profileData.skillsToLearn.length > 0 && (
+                <div className={styles.section}>
+                  <h3 className={styles.sectionTitle}>
+                    <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    Compétences à acquérir
+                  </h3>
+                  <div className={styles.skillsContainer}>
+                    {profileData.skillsToLearn.map((skill, index) => (
+                      <span key={index} className={`${styles.skillTag} ${styles.learningSkill}`}>
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
+
           {/* Disponibilités */}
           {user?.role === 'tutor' && profileData?.availability && (
             <div className={styles.section}>

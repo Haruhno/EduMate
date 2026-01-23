@@ -23,13 +23,22 @@ const Annonce = sequelize.define('Annonce', {
     type: DataTypes.TEXT,
     allowNull: true
   },
-  subject: { 
+  rawText: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Texte original avant transformation par IA'
+  },
+  subject: {
     type: DataTypes.STRING,
     allowNull: false
   },
-  subjects: { 
+  subjects: {
     type: DataTypes.ARRAY(DataTypes.STRING),
     allowNull: false,
+    defaultValue: []
+  },
+  detectedSkills: {
+    type: DataTypes.ARRAY(DataTypes.STRING),
     defaultValue: []
   },
   level: {
@@ -45,7 +54,7 @@ const Annonce = sequelize.define('Annonce', {
     defaultValue: 'Les deux'
   },
   location: {
-    type: DataTypes.JSON,
+    type: DataTypes.JSONB,
     defaultValue: {
       address: '',
       city: '',
@@ -53,7 +62,7 @@ const Annonce = sequelize.define('Annonce', {
     }
   },
   availability: {
-    type: DataTypes.JSON,
+    type: DataTypes.JSONB,
     defaultValue: {
       days: [],
       timeSlots: []
@@ -66,6 +75,10 @@ const Annonce = sequelize.define('Annonce', {
   isVerified: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
+  },
+  metadata: {
+    type: DataTypes.JSONB,
+    defaultValue: {}
   }
 }, {
   tableName: 'annonces',

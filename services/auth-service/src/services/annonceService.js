@@ -2,22 +2,19 @@ const { Annonce, ProfileTutor, User } = require('../models/associations');
 const { Op } = require('sequelize');
 
 class AnnonceService {
-  // Créer une annonce - CORRIGÉ
   async createAnnonce(tutorId, annonceData) {
     try {
-      // Vérifier que le tuteur existe
       const tutor = await ProfileTutor.findByPk(tutorId);
       if (!tutor) {
         throw new Error('Tuteur non trouvé');
       }
 
-      // S'assurer que subject est une string et subjects un tableau
       const annoncePayload = {
         tutorId,
         title: annonceData.title,
         description: annonceData.description,
-        subject: annonceData.subject, // String principale
-        subjects: Array.isArray(annonceData.subjects) ? annonceData.subjects : [annonceData.subject], // Tableau
+        subject: annonceData.subject,
+        subjects: Array.isArray(annonceData.subjects) ? annonceData.subjects : [annonceData.subject],
         level: annonceData.level,
         hourlyRate: annonceData.hourlyRate,
         teachingMode: annonceData.teachingMode,
@@ -29,7 +26,6 @@ class AnnonceService {
 
       const annonce = await Annonce.create(annoncePayload);
       
-      // RETOURNER L'ANNONCE AVEC LES DÉTAILS
       return await this.getAnnonceById(annonce.id);
     } catch (error) {
       console.error('Erreur détaillée création annonce:', error);
@@ -37,7 +33,6 @@ class AnnonceService {
     }
   }
 
-  // Récupérer une annonce avec détails - CORRIGÉ (renommé)
   async getAnnonceById(annonceId) {
     try {
       const annonce = await Annonce.findByPk(annonceId, {
@@ -62,7 +57,6 @@ class AnnonceService {
     }
   }
 
-  // Rechercher des annonces
   async searchAnnonces(filters = {}) {
     try {
       const {
@@ -81,12 +75,10 @@ class AnnonceService {
       const limitNum = parseInt(limit);
       const offset = (pageNum - 1) * limitNum;
 
-      // Construction de la clause WHERE
       const whereClause = {
         isActive: true
       };
 
-      // RECHERCHE DANS subject ET subjects
       if (subject) {
         whereClause[Op.or] = [
           { subject: { [Op.iLike]: `%${subject}%` } },
@@ -123,7 +115,6 @@ class AnnonceService {
         };
       }
 
-      // Compter le total
       const count = await Annonce.count({
         where: whereClause,
         include: [{
@@ -141,7 +132,6 @@ class AnnonceService {
         }]
       });
 
-      // Récupérer les annonces
       const annonces = await Annonce.findAll({
         where: whereClause,
         include: [{
@@ -182,7 +172,6 @@ class AnnonceService {
     }
   }
 
-  // Récupérer les annonces d'un tuteur
   async getAnnoncesByTutor(tutorId) {
     try {
       const annonces = await Annonce.findAll({
@@ -205,7 +194,6 @@ class AnnonceService {
     }
   }
 
-  // Mettre à jour une annonce
   async updateAnnonce(annonceId, updateData) {
     try {
       const annonce = await Annonce.findByPk(annonceId);
@@ -220,7 +208,6 @@ class AnnonceService {
     }
   }
 
-  // Supprimer une annonce
   async deleteAnnonce(annonceId) {
     try {
       const annonce = await Annonce.findByPk(annonceId);
@@ -235,7 +222,6 @@ class AnnonceService {
     }
   }
 
-  // Désactiver/activer une annonce
   async toggleAnnonce(annonceId, isActive) {
     try {
       const annonce = await Annonce.findByPk(annonceId);
@@ -247,6 +233,56 @@ class AnnonceService {
       return annonce;
     } catch (error) {
       throw new Error(`Erreur lors de la modification du statut de l'annonce: ${error.message}`);
+    }
+  }
+
+  async createAnnonceFromText(tutorId, rawText, additionalData = {}) {
+    try {
+      console.log('📝 Création annonce depuis texte pour tuteur:', tutorId);
+      
+      const AITextProcessor = require('./aiTextProcessor');
+      const analysis = await AITextProcessor.analyzeTextWithAI(rawText);
+      
+      const validTeachingModes = ['En ligne', 'En présentiel', 'Les deux'];
+      let teachingMode = analysis.teachingMode || additionalData.teachingMode || 'Les deux';
+      
+      if (!validTeachingModes.includes(teachingMode)) {
+        if (teachingMode.toLowerCase().includes('ligne')) {
+          teachingMode = 'En ligne';
+        } else if (teachingMode.toLowerCase().includes('présentiel')) {
+          teachingMode = 'En présentiel';
+        } else {
+          teachingMode = 'Les deux';
+        }
+      }
+      
+      const annonceData = {
+        tutorId,
+        title: analysis.title,
+        description: rawText,
+        subject: analysis.skills.length > 0 ? analysis.skills[0] : 'Compétences diverses',
+        subjects: analysis.skills,
+        detectedSkills: analysis.skills,
+        level: analysis.levels.join(', '),
+        hourlyRate: additionalData.hourlyRate || 20,
+        teachingMode: teachingMode,
+        location: additionalData.location,
+        availability: additionalData.availability,
+        rawText: rawText,
+        metadata: {
+          aiGenerated: true,
+          extractionConfidence: analysis.extractionMetadata.confidence,
+          originalTextLength: rawText.length
+        }
+      };
+      
+      console.log('📦 Données annonce préparées:', annonceData);
+      
+      const annonce = await Annonce.create(annonceData);
+      return await this.getAnnonceById(annonce.id);
+    } catch (error) {
+      console.error('❌ Erreur création annonce depuis texte:', error);
+      throw new Error(`Erreur lors de la création de l'annonce depuis texte: ${error.message}`);
     }
   }
 }

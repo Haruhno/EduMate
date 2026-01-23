@@ -5,8 +5,8 @@ export interface AnnonceFromDB {
   tutorId: string;
   title: string;
   description: string;
-  subject: string; // RÉTABLIR subject comme string
-  subjects: string[]; // Garder subjects pour la recherche
+  subject: string;
+  subjects: string[];
   level: string;
   hourlyRate: number;
   teachingMode: string;
@@ -14,6 +14,8 @@ export interface AnnonceFromDB {
   availability: any;
   isActive: boolean;
   isVerified: boolean;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
   tutor: {
     id: string;
     user: {
@@ -34,13 +36,22 @@ export interface AnnonceFromDB {
 export interface CreateAnnonceData {
   title: string;
   description: string;
-  subject: string; // RÉTABLIR subject comme string principal
-  subjects: string[]; // Garder pour compatibilité
+  subject: string;
+  subjects: string[];
   level: string;
   hourlyRate: number;
   teachingMode: string;
   location: any;
   availability: any;
+}
+
+export interface CreateAnnonceFromTextData {
+  rawText: string;
+  hourlyRate: number;
+  teachingMode: string;
+  level?: string;
+  title?: string;
+  description?: string;
 }
 
 export interface AnnoncesResponse {
@@ -55,7 +66,6 @@ export interface AnnoncesResponse {
 }
 
 class AnnonceService {
-  // Rechercher des annonces - MODIFIÉ pour chercher dans le tableau subjects
   async searchAnnonces(filters: {
     page?: number;
     limit?: number;
@@ -83,16 +93,34 @@ class AnnonceService {
     return response.data;
   }
 
-  // Récupérer les annonces d'un tuteur
   async getAnnoncesByTutor(tutorId: string) {
     const response = await api.get(`/annonces/tutor/${tutorId}`);
     return response.data;
   }
 
-  // Créer une annonce - CORRIGÉ pour utiliser subject comme string principal
   async createAnnonce(annonceData: CreateAnnonceData) {
     try {
-      console.log('🔄 Données envoyées au backend:', annonceData);
+      console.log('🔄 Données envoyées au backend:', JSON.stringify(annonceData, null, 2));
+      
+      // Validation avant envoi
+      const requiredFields = ['title', 'subject', 'hourlyRate', 'teachingMode'];
+      for (const field of requiredFields) {
+        if (!annonceData[field as keyof CreateAnnonceData]) {
+          throw new Error(`Le champ "${field}" est requis`);
+        }
+      }
+      
+      // ⭐ CORRECTION : Accepter les valeurs en français POUR LA BASE DE DONNÉES
+      const validTeachingModes = ['En ligne', 'En présentiel', 'Les deux', 'online', 'in_person', 'both', 'hybrid'];
+      if (!validTeachingModes.includes(annonceData.teachingMode)) {
+        throw new Error(`teachingMode doit être l'une de ces valeurs: ${validTeachingModes.join(', ')}`);
+      }
+      
+      // Vérifier hourlyRate
+      if (annonceData.hourlyRate < 10 || annonceData.hourlyRate > 100) {
+        throw new Error('hourlyRate doit être entre 10 et 100');
+      }
+      
       const response = await api.post('/annonces', annonceData);
       console.log('✅ Réponse création annonce:', response.data);
       return response.data;
@@ -100,37 +128,54 @@ class AnnonceService {
       console.error('❌ Erreur détaillée création annonce:', {
         status: error.response?.status,
         data: error.response?.data,
-        message: error.message
+        message: error.message,
+        config: {
+          url: error.config?.url,
+          data: error.config?.data ? JSON.parse(error.config.data) : null
+        }
       });
+      
+      // Afficher l'erreur du backend si disponible
+      if (error.response?.data) {
+        console.error('📋 Erreur backend:', error.response.data);
+      }
+      
       throw error;
     }
   }
 
-  // Récupérer mes annonces
+  async createAnnonceFromText(annonceData: CreateAnnonceFromTextData) {
+    try {
+      console.log('🔄 Création depuis texte:', annonceData);
+      const response = await api.post('/annonces/from-text', annonceData);
+      console.log('✅ Réponse création depuis texte:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Erreur création depuis texte:', error);
+      throw error;
+    }
+  }
+
   async getMyAnnonces() {
     const response = await api.get('/annonces/my-annonces');
     return response.data;
   }
 
-  // Récupérer une annonce spécifique
   async getAnnonce(annonceId: string) {
     const response = await api.get(`/annonces/${annonceId}`);
     return response.data;
   }
 
-  // Mettre à jour une annonce
   async updateAnnonce(annonceId: string, updateData: Partial<CreateAnnonceData>) {
     const response = await api.put(`/annonces/${annonceId}`, updateData);
     return response.data;
   }
 
-  // Supprimer une annonce
   async deleteAnnonce(annonceId: string) {
     const response = await api.delete(`/annonces/${annonceId}`);
     return response.data;
   }
 
-  // Désactiver/activer une annonce
   async toggleAnnonce(annonceId: string, isActive: boolean) {
     const response = await api.patch(`/annonces/${annonceId}/toggle`, { isActive });
     return response.data;

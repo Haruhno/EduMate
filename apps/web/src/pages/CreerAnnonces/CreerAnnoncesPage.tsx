@@ -1,23 +1,20 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import styles from './CreerAnnoncePage.module.css';
+import styles from './CreerAnnoncesPage.module.css';
 import authService from '../../services/authService';
 import annonceService from '../../services/annonceService';
+import profileService from '../../services/profileService';
+import { allSkills } from '../../data/skillsData';
 
 interface AnnonceQuestion {
   id: string;
   question: string;
-  type: 'specialties' | 'multi-select' | 'slider' | 'confirmation';
+  type: 'skills' | 'multi-select' | 'slider' | 'confirmation';
   options?: string[];
   field?: string;
   min?: number;
   max?: number;
   step?: number;
-}
-
-interface SpecialtiesInputProps {
-  onSelect: (value: string[]) => void;
-  initialValue?: string[];
 }
 
 interface PriceSliderProps {
@@ -26,88 +23,104 @@ interface PriceSliderProps {
   onChange: (value: number) => void;
 }
 
-// Composant SpecialtiesInput corrigé
-const SpecialtiesInput: React.FC<SpecialtiesInputProps> = ({
-  onSelect,
-  initialValue = []
-}) => {
-  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>(initialValue);
+// Composant pour la barre de recherche de compétences
+const SkillsInput: React.FC<{
+  skills: string[];
+  onSkillsChange: (skills: string[]) => void;
+  role: string;
+}> = ({ skills, onSkillsChange, role }) => {
   const [inputValue, setInputValue] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [showAllSpecialties, setShowAllSpecialties] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
-  const availableSpecialties = [
-    "Allemand", "Anglais", "Arabe", "Archéologie", "Architecture",
-    "Arts", "Arts plastiques", "Biologie", "Chimie", "Chinois", "Commerce International",
-    "Communication", "Comptabilité", "Culture générale", "Dessin",
-    "Droit", "Économie", "Éducation civique", "Électrotechnique",
-    "Espagnol", "Finance", "Français", "Géographie", "Gestion",
-    "Graphisme", "Histoire", "Histoire-Géographie", "Histoire de l'art",
-    "Informatique", "Italien", "Japonais", "Latin", "Littérature",
-    "Marketing", "Management et gestion des entreprises", "Mathématiques", "Mécanique", "Médecine", "Méthodologie", "Musique",
-    "Philosophie", "Physique", "Portugais", "Programmation",
-    "Psychologie", "Russe", "SES", "SVT", "Sciences de l'ingénieur",
-    "Sciences politiques", "Sociologie", "Statistiques", "Sport",
-    "Théâtre", "Électronique", "Génie civil", "Génie électrique",
-    "Génie mécanique", "Biochimie", "Géologie", "Astronomie",
-    "Écologie", "Bureautique", "Rédaction", "Préparation aux concours",
-    "Aide aux devoirs", "Méthodologie", "Orientation scolaire",
-    "Soutien scolaire", "Russe", "Néerlandais", "Coréen"
-  ].sort();
-
-  const INITIAL_DISPLAY_COUNT = 9;
-  const displayedSpecialties = showAllSpecialties 
-    ? availableSpecialties 
-    : availableSpecialties.slice(0, INITIAL_DISPLAY_COUNT);
-
+  // Fermer les suggestions quand on clique dehors
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (inputRef.current && !inputRef.current.contains(event.target as Node)) {
+      if (inputRef.current && !inputRef.current.contains(event.target as Node) &&
+        suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
+        setSelectedIndex(-1);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
-  const updateSelectedSpecialties = useCallback((newSpecialties: string[]) => {
-    setSelectedSpecialties(newSpecialties);
-    onSelect(newSpecialties);
-  }, [onSelect]);
+  // Gestion des touches clavier
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedIndex(prev =>
+          prev < suggestions.length - 1 ? prev + 1 : 0
+        );
+        break;
 
-  const handleAddSpecialty = (specialty: string) => {
-    updateSelectedSpecialties([specialty]); // UNE SEULE MATIÈRE
-    setInputValue('');
-    setShowSuggestions(false);
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedIndex(prev =>
+          prev > 0 ? prev - 1 : suggestions.length - 1
+        );
+        break;
+
+      case 'Enter':
+        e.preventDefault();
+        if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
+          handleAddSkill(suggestions[selectedIndex]);
+        } else if (inputValue.trim() && !skills.includes(inputValue.trim())) {
+          handleAddSkill(inputValue.trim());
+        }
+        break;
+
+      case 'Escape':
+        e.preventDefault();
+        setShowSuggestions(false);
+        setSelectedIndex(-1);
+        break;
+    }
   };
 
+  const handleAddSkill = (skill: string) => {
+    if (!skills.includes(skill) && skill.trim()) {
+      const newSkills = [...skills, skill.trim()];
+      onSkillsChange(newSkills);
+    }
+    setInputValue('');
+    setShowSuggestions(false);
+    setSelectedIndex(-1);
+  };
 
-  const handleRemoveSpecialty = (specialty: string) => {
-    const newSpecialties = selectedSpecialties.filter(s => s !== specialty);
-    updateSelectedSpecialties(newSpecialties);
+  const handleRemoveSkill = (skill: string) => {
+    const newSkills = skills.filter(s => s !== skill);
+    onSkillsChange(newSkills);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInputValue(value);
-
+    setSelectedIndex(-1);
     if (value.trim()) {
       const searchTerm = value.toLowerCase();
-      const startsWithMatches = availableSpecialties.filter(specialty =>
-        specialty.toLowerCase().startsWith(searchTerm) &&
-        !selectedSpecialties.includes(specialty)
-      );
-      const includesMatches = availableSpecialties.filter(specialty =>
-        specialty.toLowerCase().includes(searchTerm) &&
-        !specialty.toLowerCase().startsWith(searchTerm) &&
-        !selectedSpecialties.includes(specialty)
-      );
-      const filtered = [...startsWithMatches, ...includesMatches].slice(0, 8);
+
+      const startsWithMatches = allSkills.filter(skill =>
+        skill.toLowerCase().startsWith(searchTerm) &&
+        !skills.includes(skill)
+      ).sort((a, b) => a.localeCompare(b));
+
+      const includesMatches = allSkills.filter(skill =>
+        skill.toLowerCase().includes(searchTerm) &&
+        !skill.toLowerCase().startsWith(searchTerm) &&
+        !skills.includes(skill)
+      ).sort((a, b) => a.localeCompare(b));
+
+      const filtered = [...startsWithMatches, ...includesMatches].slice(0, 10);
+
       setSuggestions(filtered);
       setShowSuggestions(true);
     } else {
@@ -116,34 +129,20 @@ const SpecialtiesInput: React.FC<SpecialtiesInputProps> = ({
     }
   };
 
-  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && inputValue.trim() && !availableSpecialties.includes(inputValue)) {
-      handleAddSpecialty(inputValue.trim());
-    }
-  };
-
-  const handleSpecialtyClick = (specialty: string) => {
-    updateSelectedSpecialties([specialty]); // UNE SEULE MATIÈRE
-  };
-
-
-  const toggleShowAll = () => {
-    setShowAllSpecialties(!showAllSpecialties);
-  };
-
+  // Fonction pour mettre en évidence le texte correspondant
   const highlightMatch = (text: string, search: string) => {
     if (!search.trim()) return text;
-    
+
     const lowerText = text.toLowerCase();
     const lowerSearch = search.toLowerCase();
     const matchIndex = lowerText.indexOf(lowerSearch);
-    
+
     if (matchIndex === -1) return text;
-    
+
     const before = text.substring(0, matchIndex);
     const match = text.substring(matchIndex, matchIndex + search.length);
     const after = text.substring(matchIndex + search.length);
-    
+
     return (
       <>
         {before}
@@ -154,11 +153,11 @@ const SpecialtiesInput: React.FC<SpecialtiesInputProps> = ({
   };
 
   return (
-    <div className={styles.specialtiesContainer}>
+    <div className={styles.skillsContainer}>
       <p className={styles.helpText}>
-        Cliquez sur les matières pour les sélectionner. <br />Vous pouvez aussi en ajouter de nouvelles en les tapant.
+        Quelles compétences possédez-vous ? Tapez et appuyez sur Entrée pour ajouter. Utilisez ↑ et ↓ pour naviguer.
       </p>
-
+      {/* Input avec autocomplétion */}
       <div className={styles.inputWrapper} ref={inputRef}>
         <input
           type="text"
@@ -166,31 +165,34 @@ const SpecialtiesInput: React.FC<SpecialtiesInputProps> = ({
           onChange={handleInputChange}
           onKeyDown={handleInputKeyDown}
           onFocus={() => inputValue.trim() && setShowSuggestions(true)}
-          placeholder="Rechercher une matière..."
-          className={styles.specialtiesInput}
+          placeholder="Tapez une compétence et appuyez sur Entrée..."
+          className={styles.skillsInput}
         />
-        
+
+        {/* Suggestions d'autocomplétion avec navigation clavier */}
         {showSuggestions && suggestions.length > 0 && (
-          <div className={styles.suggestions}>
-            {suggestions.map((specialty, index) => (
+          <div className={styles.suggestions} ref={suggestionsRef}>
+            {suggestions.map((skill, index) => (
               <div
                 key={index}
-                className={styles.suggestion}
-                onClick={() => handleAddSpecialty(specialty)}
+                className={`${styles.suggestion} ${index === selectedIndex ? styles.selected : ''}`}
+                onClick={() => handleAddSkill(skill)}
+                onMouseEnter={() => setSelectedIndex(index)}
               >
-                {highlightMatch(specialty, inputValue)}
+                {highlightMatch(skill, inputValue)}
               </div>
             ))}
           </div>
         )}
       </div>
-
-      <div className={styles.selectedSpecialties}>
-        {selectedSpecialties.map((specialty, index) => (
-          <span key={index} className={styles.specialtyTag}>
-            {specialty}
+      {/* Liste des compétences sélectionnées (tags) */}
+      <div className={styles.selectedSkills}>
+        {skills.sort((a, b) => a.localeCompare(b)).map((skill, index) => (
+          <span key={index} className={styles.skillTag}>
+            {skill}
             <button
-              onClick={() => handleRemoveSpecialty(specialty)}
+              type="button"
+              onClick={() => handleRemoveSkill(skill)}
               className={styles.removeTag}
             >
               ×
@@ -198,42 +200,6 @@ const SpecialtiesInput: React.FC<SpecialtiesInputProps> = ({
           </span>
         ))}
       </div>
-
-      <div className={styles.specialtiesGrid}>
-        {displayedSpecialties.map((specialty, index) => (
-          <button
-            key={index}
-            className={`${styles.specialtyButton} ${
-              selectedSpecialties.includes(specialty) ? styles.selected : ''
-            }`}
-            onClick={() => handleSpecialtyClick(specialty)}
-          >
-            {specialty}
-            {selectedSpecialties.includes(specialty) && (
-              <span className={styles.checkmark}>✓</span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {availableSpecialties.length > INITIAL_DISPLAY_COUNT && (
-        <div className={styles.showMoreContainer}>
-          <button
-            onClick={toggleShowAll}
-            className={styles.showMoreButton}
-          >
-            {showAllSpecialties ? 'Afficher moins' : `Afficher plus (${availableSpecialties.length - INITIAL_DISPLAY_COUNT} autres)`}
-            <svg 
-              className={`${styles.showMoreIcon} ${showAllSpecialties ? styles.rotated : ''}`} 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-        </div>
-      )}
     </div>
   );
 };
@@ -243,7 +209,6 @@ const PriceSlider: React.FC<PriceSliderProps> = ({ question, value, onChange }) 
   const maxValue = question.max ?? 100;
   const stepValue = 1;
   
-  // Utilisez useRef pour suivre si c'est le rendu initial
   const initialValueRef = useRef(value || minValue);
   const currentValue = value !== undefined ? value : initialValueRef.current;
   
@@ -251,7 +216,6 @@ const PriceSlider: React.FC<PriceSliderProps> = ({ question, value, onChange }) 
   const [inputValue, setInputValue] = useState(currentValue.toString());
   const [error, setError] = useState<string | null>(null);
 
-  // Synchronisation uniquement quand la valeur externe change
   useEffect(() => {
     if (value !== undefined && value !== currentValue) {
       setInputValue(value.toString());
@@ -398,23 +362,25 @@ const PriceSlider: React.FC<PriceSliderProps> = ({ question, value, onChange }) 
   );
 };
 
-const CreerAnnoncePage: React.FC = () => {
+const CreerAnnoncesPage: React.FC = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [answers, setAnswers] = useState<Record<string, any>>({
-    rate: 15 // <-- valeur par défaut du slider
+    rate: 15,
+    skills: []
   });
+  const [userSkills, setUserSkills] = useState<string[]>([]);
+  const [loadingSkills, setLoadingSkills] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
 
-
-  // Questions identiques à DevenirTuteur
   const annonceQuestions: AnnonceQuestion[] = [
     {
-      id: 'subjects',
-      question: "Dans quelle matière souhaitez-vous donner des cours ?",
-      type: 'specialties',
-      field: 'subjects'
+      id: 'skills',
+      question: "Quelle(s) compétence(s) possédez-vous ?",
+      type: 'skills',
+      field: 'skills'
     },
     {
       id: 'levels',
@@ -461,12 +427,62 @@ const CreerAnnoncePage: React.FC = () => {
       navigate('/devenir-tuteur');
       return;
     }
+
+    const loadUserProfile = async () => {
+      setLoadingSkills(true);
+      try {
+        const response = await profileService.getProfile();
+        
+        if (response.success && response.data.profile) {
+          setProfile(response.data.profile);
+          
+          const profileSkills = response.data.profile.skills || [];
+          
+          if (profileSkills.length > 0) {
+            setUserSkills(profileSkills);
+            setAnswers(prev => ({ ...prev, skills: profileSkills }));
+          } else if (response.data.profile.specialties && response.data.profile.specialties.length > 0) {
+            const specialtiesAsSkills = response.data.profile.specialties;
+            setUserSkills(specialtiesAsSkills);
+            setAnswers(prev => ({ ...prev, skills: specialtiesAsSkills }));
+          } else {
+            const defaultSkills = ['Mathématiques', 'Français', 'Anglais'];
+            setUserSkills(defaultSkills);
+            setAnswers(prev => ({ ...prev, skills: defaultSkills }));
+          }
+        } else {
+          const defaultSkills = ['Mathématiques', 'Français'];
+          setUserSkills(defaultSkills);
+          setAnswers(prev => ({ ...prev, skills: defaultSkills }));
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement du profil:', error);
+        const localSkills = localStorage.getItem(`user_${currentUser.id}_skills`);
+        if (localSkills) {
+          const skills = JSON.parse(localSkills);
+          setUserSkills(skills);
+          setAnswers(prev => ({ ...prev, skills }));
+        } else {
+          const defaultSkills = ['Mathématiques', 'Français'];
+          setUserSkills(defaultSkills);
+          setAnswers(prev => ({ ...prev, skills: defaultSkills }));
+        }
+      } finally {
+        setLoadingSkills(false);
+      }
+    };
+
+    loadUserProfile();
   }, [navigate]);
 
   const handleAnswer = (answer: any) => {
     const currentQuestion = annonceQuestions[currentStep];
     const newAnswers = { ...answers, [currentQuestion.id]: answer };
     setAnswers(newAnswers);
+    
+    if (currentQuestion.id === 'skills' && user) {
+      localStorage.setItem(`user_${user.id}_skills`, JSON.stringify(answer));
+    }
   };
 
   const handleNext = () => {
@@ -486,21 +502,24 @@ const CreerAnnoncePage: React.FC = () => {
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      const subjects = Array.isArray(answers.subjects) ? answers.subjects : [answers.subjects || 'Tutorat général'];
-      const primarySubject = subjects[0];
+      const skills = Array.isArray(answers.skills) ? answers.skills : [answers.skills || 'Général'];
+      const primarySkill = skills[0];
       
       const annonceData = {
-        title: `Cours de ${primarySubject}`,
-        description: `Cours personnalisé de ${subjects.join(', ')} pour niveau ${Array.isArray(answers.levels) ? answers.levels.join(', ') : answers.levels}`,
-        subject: primarySubject, 
-        subjects: subjects,
+        title: `Cours de ${primarySkill}`,
+        description: `Cours personnalisé de ${skills.join(', ')} pour niveau ${Array.isArray(answers.levels) ? answers.levels.join(', ') : answers.levels}`,
+        subject: primarySkill, 
+        subjects: skills,
         level: Array.isArray(answers.levels) ? answers.levels.join(', ') : answers.levels || 'Tous niveaux',
         hourlyRate: answers.rate ?? 15,
         teachingMode: 'Les deux',
         location: {
-          address: '',
-          city: '',
-          coordinates: { lat: 0, lng: 0 }
+          address: profile?.location?.address || user?.address || '',
+          city: profile?.location?.city || '',
+          coordinates: { 
+            lat: profile?.location?.coordinates?.lat || 0, 
+            lng: profile?.location?.coordinates?.lng || 0 
+          }
         },
         availability: {
           days: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'],
@@ -516,9 +535,12 @@ const CreerAnnoncePage: React.FC = () => {
             message: 'Votre annonce a été créée avec succès !' 
           }
         });
+      } else {
+        throw new Error(response.message || 'Erreur lors de la création de l\'annonce');
       }
     } catch (error) {
       console.error('Erreur création annonce:', error);
+      alert('Erreur lors de la création de l\'annonce. Veuillez réessayer.');
     } finally {
       setIsLoading(false);
     }
@@ -535,7 +557,7 @@ const CreerAnnoncePage: React.FC = () => {
     if (!answer) return false;
     
     switch (currentQuestion.type) {
-      case 'specialties':
+      case 'skills':
         return Array.isArray(answer) && answer.length > 0;
       case 'multi-select':
         return Array.isArray(answer) && answer.length > 0;
@@ -550,11 +572,21 @@ const CreerAnnoncePage: React.FC = () => {
 
   const renderQuestion = (question: AnnonceQuestion) => {
     switch (question.type) {
-      case 'specialties':
+      case 'skills':
+        if (loadingSkills) {
+          return (
+            <div className={styles.loadingContainer}>
+              <div className={styles.spinner}></div>
+              <p>Chargement de vos compétences...</p>
+            </div>
+          );
+        }
+        
         return (
-          <SpecialtiesInput
-            onSelect={(value: string[]) => handleAnswer(value)}
-            initialValue={answers[question.id]}
+          <SkillsInput
+            skills={answers[question.id] || userSkills}
+            onSkillsChange={(value: string[]) => handleAnswer(value)}
+            role="tutor"
           />
         );
 
@@ -614,11 +646,11 @@ const CreerAnnoncePage: React.FC = () => {
               </h3>
               <div className={styles.summaryGrid}>
                 <div className={styles.summaryItem}>
-                  <span className={styles.summaryLabel}>Matières:</span>
+                  <span className={styles.summaryLabel}>Compétences:</span>
                   <span className={styles.summaryValue}>
-                    {Array.isArray(answers.subjects) 
-                      ? answers.subjects.join(', ') 
-                      : answers.subjects || 'Non spécifié'}
+                    {Array.isArray(answers.skills) 
+                      ? answers.skills.join(', ') 
+                      : answers.skills || 'Non spécifié'}
                   </span>
                 </div>
                 <div className={styles.summaryItem}>
@@ -633,6 +665,12 @@ const CreerAnnoncePage: React.FC = () => {
                   <span className={styles.summaryLabel}>Tarif horaire:</span>
                   <span className={styles.summaryValue}>€{answers.rate ?? '15'}/heure</span>
                 </div>
+                {profile?.location?.address && (
+                  <div className={styles.summaryItem}>
+                    <span className={styles.summaryLabel}>Localisation:</span>
+                    <span className={styles.summaryValue}>{profile.location.address}</span>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -767,4 +805,4 @@ const CreerAnnoncePage: React.FC = () => {
   );
 };
 
-export default CreerAnnoncePage;
+export default CreerAnnoncesPage;

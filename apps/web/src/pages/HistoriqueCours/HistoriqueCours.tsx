@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import type { FC } from 'react'; // Import type-only
+import type { FC } from 'react'; 
 import styles from './HistoriqueCours.module.css';
 
-// Définir les types
 interface User {
   name: string;
   avatar: string;
@@ -54,7 +53,7 @@ const tutorUpcomingSessions: Session[] = [
     subject: "Mathématiques",
     level: "Terminale",
     mode: "online",
-    price: "45€",
+    price: "45🪙",
     notes: "Révision chapitres 7 et 8 - Préparation au bac",
     duration: "2h",
     color: "#FF6B6B"
@@ -73,7 +72,7 @@ const tutorUpcomingSessions: Session[] = [
     subject: "Économie",
     level: "1ère",
     mode: "inperson",
-    price: "40€",
+    price: "40🪙",
     notes: "Introduction à la macroéconomie - TD sur les indicateurs",
     duration: "1h30",
     color: "#4ECDC4"
@@ -95,7 +94,7 @@ const tutorPastSessions: Session[] = [
     subject: "Physique-Chimie",
     level: "Terminale",
     mode: "online",
-    price: "45€",
+    price: "45🪙",
     review: {
       rating: 5,
       comment: "Professeur exceptionnel ! Les explications sont claires et les exercices pertinents."
@@ -116,7 +115,7 @@ const tutorPastSessions: Session[] = [
     subject: "Mathématiques",
     level: "CPGE",
     mode: "inperson",
-    price: "50€",
+    price: "50🪙",
     review: {
       rating: 4,
       comment: "Très bon cours, quelques points à approfondir pour le prochain chapitre."
@@ -137,7 +136,7 @@ const tutorPastSessions: Session[] = [
     subject: "Statistiques",
     level: "L3",
     mode: "online",
-    price: "42€",
+    price: "42🪙",
     review: {
       rating: 5,
       comment: "Merci pour votre patience et vos explications détaillées !"
@@ -158,7 +157,7 @@ const tutorPastSessions: Session[] = [
     subject: "Marketing",
     level: "BTS",
     mode: "online",
-    price: "38€",
+    price: "38🪙",
     review: {
       rating: 4,
       comment: "Cours très pratique avec des cas concrets. Très utile !"
@@ -179,7 +178,7 @@ const tutorPastSessions: Session[] = [
     subject: "Data Science",
     level: "M1",
     mode: "inperson",
-    price: "55€",
+    price: "55🪙",
     review: {
       rating: 5,
       comment: "Expertise impressionnante. Les exemples en Python étaient parfaits."
@@ -204,7 +203,7 @@ const studentUpcomingSessions: Session[] = [
     subject: "Philosophie",
     level: "Terminale",
     mode: "online",
-    price: "55€",
+    price: "55🪙",
     notes: "Préparation dissertation - Thème : La liberté",
     duration: "2h",
     color: "#9D4EDD"
@@ -224,7 +223,7 @@ const studentUpcomingSessions: Session[] = [
     subject: "Informatique",
     level: "BTS",
     mode: "inperson",
-    price: "60€",
+    price: "60🪙",
     notes: "Algorithmique avancée - Structures de données",
     duration: "1h30",
     color: "#FF9E00"
@@ -247,7 +246,7 @@ const studentPastSessions: Session[] = [
     subject: "Physique Quantique",
     level: "Master",
     mode: "online",
-    price: "65€",
+    price: "65🪙",
     review: {
       rating: 5,
       comment: "Explications lumineuses sur des concepts complexes. Je recommande !"
@@ -269,7 +268,7 @@ const studentPastSessions: Session[] = [
     subject: "Chimie Organique",
     level: "Licence",
     mode: "inperson",
-    price: "70€",
+    price: "70🪙",
     review: {
       rating: 5,
       comment: "Un cours magistral ! La qualité d'enseignement est exceptionnelle."
@@ -291,7 +290,7 @@ const studentPastSessions: Session[] = [
     subject: "Python",
     level: "Débutant",
     mode: "online",
-    price: "45€",
+    price: "45🪙",
     review: {
       rating: 4,
       comment: "Bon cours d'introduction, pratique et bien structuré."
@@ -313,7 +312,7 @@ const studentPastSessions: Session[] = [
     subject: "Biologie Moléculaire",
     level: "Licence",
     mode: "inperson",
-    price: "60€",
+    price: "60🪙",
     review: {
       rating: 5,
       comment: "Passionnant ! Beaucoup de schémas et d'explications claires."
@@ -335,7 +334,7 @@ const studentPastSessions: Session[] = [
     subject: "Droit Civil",
     level: "Master",
     mode: "online",
-    price: "75€",
+    price: "75🪙",
     review: {
       rating: 4,
       comment: "Approche très pédagogique des articles de loi complexes."

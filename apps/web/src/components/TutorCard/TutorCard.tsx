@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import styles from './TutorCard.module.css';
 
 interface Tutor {
-  id: string;
+  id: string; 
+  profilePicture: string;
   name: string;
   subject: string;
   rating: number;
@@ -14,6 +15,14 @@ interface Tutor {
   badge: string;
   specialties: string[];
   gradient: string;
+  tutorId?: string; 
+  annonceId?: string; 
+  annonceData?: {
+    title?: string;
+    hourlyRate?: number;
+    teachingMode?: string;
+    description?: string;
+  };
 }
 
 interface TutorCardProps {
@@ -37,7 +46,14 @@ const TutorCard: React.FC<TutorCardProps> = ({ tutor }) => {
   };
 
   const goToProfile = () => {
-    navigate(`/tuteur/${tutor.id}`);
+    navigate(`/tuteur/${tutor.id}`, {
+      state: {
+        annonceId: tutor.annonceId || undefined, 
+        fromSearch: true,
+        annonceData: tutor.annonceData,
+        tutorId: tutor.tutorId || tutor.id
+      }
+    });
   };
 
   return (
@@ -56,7 +72,11 @@ const TutorCard: React.FC<TutorCardProps> = ({ tutor }) => {
 
         <div className={styles.tutorAvatar}>
           <div className={styles.avatarCircle}>
-            <span className={styles.avatarEmoji}>{tutor.emoji}</span>
+            <img 
+              src={tutor.profilePicture} 
+              alt={tutor.name}
+              className={styles.avatarImage}
+            />
           </div>
         </div>
       </div>

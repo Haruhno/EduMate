@@ -5,254 +5,211 @@ import { allCountries } from 'country-telephone-data';
 import Cropper from "react-easy-crop";
 import { getCroppedImg } from "../../utils/cropImage";
 import { allSkills } from '../../data/skillsData';
+import { useNavigate } from 'react-router-dom';
+import TransformSkillToAnnonceModal from '../TransformSkillToAnnonceModal/TransformSkillToAnnonceModal';
+import DefineLearningSkillsModal from '../DefineLearningSkillsModal/DefineLearningSkillsModal.tsx'; 
 
 interface GeneralInfoStepProps {
-  profileData: any;
-  setProfileData: (data: any) => void;
-  role: string;
-  errors: { [key: string]: string };
-  setErrors: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
-  touched: { [key: string]: boolean };
-  setTouched: React.Dispatch<React.SetStateAction<{ [key: string]: boolean }>>;
+    profileData: any;
+    setProfileData: (data: any) => void;
+    role: string;
+    errors: { [key: string]: string };
+    setErrors: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
+    touched: { [key: string]: boolean };
+    setTouched: React.Dispatch<React.SetStateAction<{ [key: string]: boolean }>>;
 }
 
 interface Suggestion {
-  display_name: string;
-  lat: string;
-  lon: string;
-  address?: {
-    city?: string;
-    town?: string;
-    village?: string;
-    municipality?: string;
-    country?: string;
-  };
+    display_name: string;
+    lat: string;
+    lon: string;
+    address?: {
+        city?: string;
+        town?: string;
+        village?: string;
+        municipality?: string;
+        country?: string;
+    };
 }
 
 interface ParsedCVData {
-  personal?: {
-    firstName?: string;
-    lastName?: string;
-    email?: string[];
-    phone?: string[];
-    address?: string;
-    birthDate?: string;
-    gender?: string;
-  };
-  education?: Array<{
-    educationLevel: string;
-    field: string;
-    school: string;
-    country: string;
-    startYear: number;
-    endYear?: number;
-    isCurrent: boolean;
-    diplomaName?: string;
-  }>;
-  experience?: Array<{
-    jobTitle: string;
-    employmentType: string;
-    company: string;
-    location: string;
-    startMonth: string;
-    startYear: number;
-    endMonth?: string;
-    endYear?: number;
-    isCurrent: boolean;
-    description: string;
-    achievements?: string[];
-  }>;
-  skills?: {
-    technical: string[];
-    languages?: string[];
-    soft?: string[];
-  };
-  summary?: string;
-  validation?: {
-    quality?: string;
-  };
+    personal?: {
+        firstName?: string;
+        lastName?: string;
+        email?: string[];
+        phone?: string[];
+        address?: string;
+        birthDate?: string;
+        gender?: string;
+    };
+    education?: Array<{
+        educationLevel: string;
+        field: string;
+        school: string;
+        country: string;
+        startYear: number;
+        endYear?: number;
+        isCurrent: boolean;
+        diplomaName?: string;
+    }>;
+    experience?: Array<{
+        jobTitle: string;
+        employmentType: string;
+        company: string;
+        location: string;
+        startMonth: string;
+        startYear: number;
+        endMonth?: string;
+        endYear?: number;
+        isCurrent: boolean;
+        description: string;
+        achievements?: string[];
+    }>;
+    skills?: {
+        technical: string[];
+        languages?: string[];
+        soft?: string[];
+    };
+    summary?: string;
+    validation?: {
+        quality?: string;
+    };
 }
 
 // Composant pour la barre de recherche de compétences
 const SkillsInput: React.FC<{
-  skills: string[];
-  onSkillsChange: (skills: string[]) => void;
-  role: string;
-}> = ({ skills, onSkillsChange, role }) => {
-  const [inputValue, setInputValue] = useState('');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(-1);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const suggestionsRef = useRef<HTMLDivElement>(null);
+    skills: string[];
+    onSkillsChange: (skills: string[]) => void;
+    role: string;
+    }> = ({ skills, onSkillsChange, role }) => {
+    const [inputValue, setInputValue] = useState('');
+    const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [selectedIndex, setSelectedIndex] = useState(-1);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const suggestionsRef = useRef<HTMLDivElement>(null);
 
-  // Fermer les suggestions quand on clique dehors
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (inputRef.current && !inputRef.current.contains(event.target as Node) &&
-          suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-        setSelectedIndex(-1);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  // Gestion des touches clavier
-  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!showSuggestions || suggestions.length === 0) return;
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setSelectedIndex(prev =>
-          prev < suggestions.length - 1 ? prev + 1 : 0
-        );
-        break;
-
-      case 'ArrowUp':
-        e.preventDefault();
-        setSelectedIndex(prev =>
-          prev > 0 ? prev - 1 : suggestions.length - 1
-        );
-        break;
-
-      case 'Enter':
-        e.preventDefault();
-        if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
-          handleAddSkill(suggestions[selectedIndex]);
-        } else if (inputValue.trim() && !skills.includes(inputValue.trim())) {
-          handleAddSkill(inputValue.trim());
+    // Fermer les suggestions quand on clique dehors
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+        if (inputRef.current && !inputRef.current.contains(event.target as Node) &&
+            suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+            setShowSuggestions(false);
+            setSelectedIndex(-1);
         }
-        break;
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
 
-      case 'Escape':
-        e.preventDefault();
+    // Gestion des touches clavier
+    const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!showSuggestions || suggestions.length === 0) return;
+        switch (e.key) {
+        case 'ArrowDown':
+            e.preventDefault();
+            setSelectedIndex(prev =>
+            prev < suggestions.length - 1 ? prev + 1 : 0
+            );
+            break;
+
+        case 'ArrowUp':
+            e.preventDefault();
+            setSelectedIndex(prev =>
+            prev > 0 ? prev - 1 : suggestions.length - 1
+            );
+            break;
+
+        case 'Enter':
+            e.preventDefault();
+            if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
+            handleAddSkill(suggestions[selectedIndex]);
+            } else if (inputValue.trim() && !skills.includes(inputValue.trim())) {
+            handleAddSkill(inputValue.trim());
+            }
+            break;
+
+        case 'Escape':
+            e.preventDefault();
+            setShowSuggestions(false);
+            setSelectedIndex(-1);
+            break;
+        }
+    };
+
+    const handleAddSkill = (skill: string) => {
+        if (!skills.includes(skill) && skill.trim()) {
+        const newSkills = [...skills, skill.trim()];
+        onSkillsChange(newSkills);
+        }
+        setInputValue('');
         setShowSuggestions(false);
         setSelectedIndex(-1);
-        break;
-    }
-  };
+    };
 
-  const handleAddSkill = (skill: string) => {
-    if (!skills.includes(skill) && skill.trim()) {
-      const newSkills = [...skills, skill.trim()];
-      onSkillsChange(newSkills);
-    }
-    setInputValue('');
-    setShowSuggestions(false);
-    setSelectedIndex(-1);
-  };
+    const handleRemoveSkill = (skill: string) => {
+        const newSkills = skills.filter(s => s !== skill);
+        onSkillsChange(newSkills);
+    };
 
-  const handleRemoveSkill = (skill: string) => {
-    const newSkills = skills.filter(s => s !== skill);
-    onSkillsChange(newSkills);
-  };
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setInputValue(value);
+        setSelectedIndex(-1);
+        if (value.trim()) {
+        const searchTerm = value.toLowerCase();
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setInputValue(value);
-    setSelectedIndex(-1);
-    if (value.trim()) {
-      const searchTerm = value.toLowerCase();
+        const startsWithMatches = allSkills.filter(skill =>
+            skill.toLowerCase().startsWith(searchTerm) &&
+            !skills.includes(skill)
+        ).sort((a, b) => a.localeCompare(b));
 
-      const startsWithMatches = allSkills.filter(skill =>
-        skill.toLowerCase().startsWith(searchTerm) &&
-        !skills.includes(skill)
-      ).sort((a, b) => a.localeCompare(b));
+        const includesMatches = allSkills.filter(skill =>
+            skill.toLowerCase().includes(searchTerm) &&
+            !skill.toLowerCase().startsWith(searchTerm) &&
+            !skills.includes(skill)
+        ).sort((a, b) => a.localeCompare(b));
 
-      const includesMatches = allSkills.filter(skill =>
-        skill.toLowerCase().includes(searchTerm) &&
-        !skill.toLowerCase().startsWith(searchTerm) &&
-        !skills.includes(skill)
-      ).sort((a, b) => a.localeCompare(b));
+        const filtered = [...startsWithMatches, ...includesMatches].slice(0, 10);
 
-      const filtered = [...startsWithMatches, ...includesMatches].slice(0, 10);
+        setSuggestions(filtered);
+        setShowSuggestions(true);
+        } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        }
+    };
 
-      setSuggestions(filtered);
-      setShowSuggestions(true);
-    } else {
-      setSuggestions([]);
-      setShowSuggestions(false);
-    }
-  };
+    // Fonction pour mettre en évidence le texte correspondant
+    const highlightMatch = (text: string, search: string) => {
+        if (!search.trim()) return text;
 
-  // Fonction pour mettre en évidence le texte correspondant
-  const highlightMatch = (text: string, search: string) => {
-    if (!search.trim()) return text;
+        const lowerText = text.toLowerCase();
+        const lowerSearch = search.toLowerCase();
+        const matchIndex = lowerText.indexOf(lowerSearch);
 
-    const lowerText = text.toLowerCase();
-    const lowerSearch = search.toLowerCase();
-    const matchIndex = lowerText.indexOf(lowerSearch);
+        if (matchIndex === -1) return text;
 
-    if (matchIndex === -1) return text;
+        const before = text.substring(0, matchIndex);
+        const match = text.substring(matchIndex, matchIndex + search.length);
+        const after = text.substring(matchIndex + search.length);
 
-    const before = text.substring(0, matchIndex);
-    const match = text.substring(matchIndex, matchIndex + search.length);
-    const after = text.substring(matchIndex + search.length);
-
-    return (
-      <>
-        {before}
-        <strong style={{ color: '#FBBF24' }}>{match}</strong>
-        {after}
-      </>
-    );
-  };
+        return (
+        <>
+            {before}
+            <strong style={{ color: '#FBBF24' }}>{match}</strong>
+            {after}
+        </>
+        );
+    };
 
   return (
     <div className={styles.skillsContainer}>
       <p className={styles.helpText}>
-        {role === 'student'
-          ? "Quelles compétences souhaitez-vous acquérir ? Tapez et appuyez sur Entrée pour ajouter. Utilisez ↑ et ↓ pour naviguer."
-          : "Quelles compétences possédez-vous ? Tapez et appuyez sur Entrée pour ajouter. Utilisez ↑ et ↓ pour naviguer."
-        }
+          Quelles compétences possédez-vous ? Quelles compétences souhaitez-vous acquérir ?
       </p>
-      {/* Input avec autocomplétion */}
-      <div className={styles.inputWrapper} ref={inputRef}>
-        <input
-          type="text"
-          value={inputValue}
-          onChange={handleInputChange}
-          onKeyDown={handleInputKeyDown}
-          onFocus={() => inputValue.trim() && setShowSuggestions(true)}
-          placeholder="Tapez une compétence et appuyez sur Entrée..."
-          className={styles.skillsInput}
-        />
-
-        {/* Suggestions d'autocomplétion avec navigation clavier */}
-        {showSuggestions && suggestions.length > 0 && (
-          <div className={styles.suggestions} ref={suggestionsRef}>
-            {suggestions.map((skill, index) => (
-              <div
-                key={index}
-                className={`${styles.suggestion} ${index === selectedIndex ? styles.selected : ''}`}
-                onClick={() => handleAddSkill(skill)}
-                onMouseEnter={() => setSelectedIndex(index)}
-              >
-                {highlightMatch(skill, inputValue)}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      {/* Liste des compétences sélectionnées (tags) */}
-      <div className={styles.selectedSkills}>
-        {skills.sort((a, b) => a.localeCompare(b)).map((skill, index) => (
-          <span key={index} className={styles.skillTag}>
-            {skill}
-            <button
-              type="button"
-              onClick={() => handleRemoveSkill(skill)}
-              className={styles.removeTag}
-            >
-              ×
-            </button>
-          </span>
-        ))}
-      </div>
     </div>
   );
 };
@@ -287,6 +244,8 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
     const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isLoadingAddress, setIsLoadingAddress] = useState(false);
+    const [showTransformModal, setShowTransformModal] = useState(false);
+    const [showLearningSkillsModal, setShowLearningSkillsModal] = useState(false);
 
     // Génère la liste des pays
     const countries = (allCountries as any[]).map((country) => ({
@@ -751,7 +710,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
             }
         }
 
-        // 2. Compétences (fusionner sans doublons)
+        // 2. Compétences 
         if (newData.skills?.technical) {
             const currentSkills = existing.skills || [];
             updates.skills = [...new Set([...currentSkills, ...newData.skills.technical])]
@@ -759,7 +718,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                 .sort((a, b) => a.localeCompare(b));
         }
 
-        // 3. Formations (ajouter si nouvelle)
+        // 3. Formations 
         if (newData.education && newData.education.length > 0) {
             const currentDiplomas = existing.diplomas || [];
             const newDiplomas = newData.education.map(edu => ({
@@ -776,7 +735,7 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
             updates.diplomas = [...currentDiplomas, ...newDiplomas];
         }
 
-        // 4. Expériences (ajouter si nouvelle)
+        // 4. Expériences 
         if (newData.experience && newData.experience.length > 0) {
             const currentExperiences = existing.experiences || [];
             const newExperiences = newData.experience.map(exp => ({
@@ -811,16 +770,11 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         setImportStatus({ message: '🔍 Analyse du CV en cours...', success: false });
 
         try {
-            console.log('📤 Envoi du CV pour analyse réelle...');
-            console.log('📄 Fichier:', profileData.cvFile.name, profileData.cvFile.size, 'bytes');
 
             const formData = new FormData();
             formData.append('cv', profileData.cvFile);
 
-            // Essayer directement le backend principal (port 3001)
             try {
-                console.log('🔄 Tentative avec backend principal sur port 3001...');
-
                 const token = localStorage.getItem('token');
                 if (!token) {
                     throw new Error('Token d\'authentification manquant. Veuillez vous reconnecter.');
@@ -834,8 +788,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                     },
                     signal: AbortSignal.timeout(60000) // 60 secondes pour l'analyse
                 });
-
-                console.log('📥 Réponse brute reçue, status:', response.status);
 
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -851,7 +803,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                 }
 
                 const responseText = await response.text();
-                console.log('📄 Réponse texte (premiers 500 chars):', responseText.substring(0, 500));
 
                 let json;
                 try {
@@ -862,20 +813,13 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                     throw new Error('Réponse invalide du serveur');
                 }
 
-                console.log('📊 Données JSON parsées:', json);
 
                 // Vérifier si ce sont des données réelles ou mockées
                 if (json.data && json.data.personal && json.data.personal.firstName === "Mirmir") {
-                    console.warn('⚠️ ATTENTION: Données mockées détectées!');
-                    console.warn('L\'agent CV Parser ne fonctionne pas correctement sur le backend');
-
-                    // Forcer l'extraction locale améliorée
-                    console.log('🔄 Utilisation de l\'extraction locale améliorée...');
                     const extractedData = await extractImprovedCVInfo(profileData.cvFile);
 
                     setProfileData((prev: any) => {
                         const updates = intelligentlyMergeData(prev, extractedData);
-                        console.log('✅ Mises à jour appliquées (local):', updates);
                         return { ...prev, ...updates };
                     });
 
@@ -890,7 +834,6 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                 if (json.success && json.data) {
                     const parsed: ParsedCVData = json.data;
 
-                    console.log('🎉 Analyse réussie! Données extraites:');
                     console.log('- Prénom/Nom:', parsed.personal?.firstName, parsed.personal?.lastName);
                     console.log('- Email:', parsed.personal?.email);
                     console.log('- Téléphone:', parsed.personal?.phone);
@@ -899,11 +842,9 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                     console.log('- Expériences:', parsed.experience?.length);
                     console.log('- Qualité:', parsed.validation?.quality);
 
-                    console.log('🔄 Fusion intelligente des données...');
 
                     setProfileData((prev: any) => {
                         const updates = intelligentlyMergeData(prev, parsed);
-                        console.log('✅ Mises à jour appliquées:', updates);
                         return { ...prev, ...updates };
                     });
 
@@ -1155,6 +1096,66 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
         }
     };
 
+    // Fonction pour sauvegarder les compétences à apprendre
+    const handleSaveLearningSkills = async (newSkills: string[]) => {
+        try {
+            // Mettre à jour le profil local avec skillsToLearn
+            setProfileData((prev: any) => ({
+            ...prev,
+            skillsToLearn: newSkills
+            }));
+
+            // Sauvegarder dans la base de données via l'API
+            const token = localStorage.getItem('token');
+            if (token) {
+                await fetch('http://localhost:3001/api/profile/save', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        profileData: {
+                            ...profileData,
+                            skillsToLearn: newSkills
+                        }
+                    })
+                });
+            }
+        } catch (error) {
+            console.error('Erreur sauvegarde compétences à apprendre:', error);
+        }
+    };
+    // Fonction pour sauvegarder les compétences à enseigner
+    const handleSaveTeachingSkills = async (newSkills: string[]) => {
+        try {
+            // Mettre à jour le profil local avec skillsToTeach
+            setProfileData((prev: any) => ({
+                ...prev,
+                skillsToTeach: newSkills
+            }));
+
+            // Sauvegarder dans la base de données via l'API
+            const token = localStorage.getItem('token');
+            if (token) {
+                await fetch('http://localhost:3001/api/profile/save', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        profileData: {
+                            ...profileData,
+                            skillsToTeach: newSkills
+                        }
+                    })
+                });
+            }
+        } catch (error) {
+            console.error('Erreur sauvegarde compétences à enseigner:', error);
+        }
+    };
     return (
         <div className={styles.container}>
             <h2>Informations générales</h2>
@@ -1589,6 +1590,46 @@ const GeneralInfoStep: React.FC<GeneralInfoStepProps> = ({
                         <p className={styles.errorText}>{errors.skills}</p>
                     )}
                 </div>
+                <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+                    {/* Bouton pour les compétences à enseigner */}
+                    <button
+                        type="button"
+                        className={styles.transformSkillButton}
+                        onClick={() => setShowTransformModal(true)}
+                    >
+                        Définir vos compétences et transformer les en annonce
+                    </button>
+                    
+                    {/* Bouton pour les compétences à apprendre */}
+                    <button
+                        type="button"
+                        className={styles.learningSkillsButton}
+                        onClick={() => setShowLearningSkillsModal(true)}
+                    >
+                        Définir les compétences que vous voulez acquérir
+                    </button>
+                    </div>
+
+                    {/* Modal pour les compétences à acquérir */}
+                    {showLearningSkillsModal && (
+                    <DefineLearningSkillsModal
+                        currentSkills={profileData.skillsToLearn || []}
+                        onClose={() => setShowLearningSkillsModal(false)}
+                        onSave={handleSaveLearningSkills}
+                    />
+                    )}
+
+                    {/* Modal pour transformer en annonce (compétences à enseigner) */}
+                    {showTransformModal && (
+                    <TransformSkillToAnnonceModal
+                        skills={profileData.skillsToTeach || []} 
+                        onClose={() => setShowTransformModal(false)}
+                        onCreated={() => {
+                            setShowTransformModal(false);                           
+                            }}
+                            profileData={profileData} 
+                        />
+                    )}
             </div>
             {/* Indication des champs obligatoires */}
             <div className={styles.requiredInfo}>

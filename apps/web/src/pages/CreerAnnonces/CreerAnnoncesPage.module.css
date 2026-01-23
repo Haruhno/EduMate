@@ -26,7 +26,7 @@
 /* En-tête */
 .statusHeader {
   background: #fffaf6; 
-  box-shadow: none; 
+  padding: 1.5rem 0;
   margin-top: 1rem;
 }
 
@@ -382,8 +382,8 @@
   display: inline-block;
 }
 
-/* Composant Spécialités */
-.specialtiesContainer {
+/* Styles pour le composant SkillsInput */
+.skillsContainer {
   margin-top: 1rem;
 }
 
@@ -392,7 +392,7 @@
   margin-bottom: 1.5rem;
 }
 
-.specialtiesInput {
+.skillsInput {
   width: 100%;
   padding: 1rem 1.5rem;
   border: 2px solid #e9ecef;
@@ -402,7 +402,7 @@
   font-family: 'DMSans', sans-serif;
 }
 
-.specialtiesInput:focus {
+.skillsInput:focus {
   outline: none;
   border-color: #FBBF24;
   box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
@@ -434,18 +434,23 @@
   background: #f8f9fa;
 }
 
+.suggestion.selected {
+  background: #fef3c7;
+  border-left: 3px solid #FBBF24;
+}
+
 .suggestion:last-child {
   border-bottom: none;
 }
 
-.selectedSpecialties {
+.selectedSkills {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 2rem;
 }
 
-.specialtyTag {
+.skillTag {
   background: linear-gradient(135deg, #FBBF24 0%, #FB923C 100%);
   color: white;
   padding: 0.5rem 1rem;
@@ -456,6 +461,18 @@
   align-items: center;
   gap: 0.5rem;
   font-family: 'DMSans', sans-serif;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .removeTag {
@@ -479,86 +496,12 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
-.specialtiesGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.specialtyButton {
-  background: #f8f9fa;
-  border: 2px solid #e9ecef;
-  border-radius: 12px;
-  padding: 1rem 1.5rem;
-  font-size: 1rem;
-  font-weight: 500;
-  color: #333;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-align: left;
-  position: relative;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-family: 'DMSans', sans-serif;
-}
-
-.specialtyButton:hover {
-  border-color: #FBBF24;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(251, 191, 36, 0.1);
-}
-
-.specialtyButton.selected {
-  background: linear-gradient(135deg, #FBBF24 0%, #FB923C 100%);
-  color: white;
-  border-color: #FBBF24;
-}
-
 .helpText {
   color: #666;
   font-size: 0.9rem;
   margin-bottom: 1rem;
+  font-family: 'DMSans', sans-serif;
   text-align: center;
-  font-family: 'DMSans', sans-serif;
-}
-
-.showMoreContainer {
-  display: flex;
-  justify-content: center;
-  margin: 1.5rem 0;
-}
-
-.showMoreButton {
-  background: none;
-  border: 2px solid #e9ecef;
-  color: #666;
-  border-radius: 8px;
-  padding: 0.75rem 1.5rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-family: 'DMSans', sans-serif;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.showMoreButton:hover {
-  border-color: #FBBF24;
-  color: #FBBF24;
-}
-
-.showMoreIcon {
-  width: 16px;
-  height: 16px;
-  transition: transform 0.3s ease;
-}
-
-.showMoreIcon.rotated {
-  transform: rotate(180deg);
 }
 
 /* Section de confirmation */
@@ -708,6 +651,27 @@
   font-family: 'DMSans', sans-serif;
 }
 
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+}
+
+.loadingContainer p {
+  margin-top: 1rem;
+  color: #666;
+  font-size: 1rem;
+  font-family: 'DMSans', sans-serif;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 .spinner {
   width: 40px;
   height: 40px;
@@ -717,19 +681,7 @@
   animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
 /* En-tête de statut */
-.statusHeader {
-  background: #fffaf6; 
-  border-radius: 16px;
-  padding: 2rem;  
-  box-shadow: none;
-}
-
 .statusInfo {
   display: flex;
   align-items: center;
@@ -801,10 +753,6 @@
     width: 100%;
   }
   
-  .specialtiesGrid {
-    grid-template-columns: 1fr;
-  }
-  
   .priceValue {
     font-size: 3rem;
     padding: 0.4rem 0.8rem;
@@ -825,8 +773,27 @@
   }
   
   .statusInfo {
-    flex-direction: column;
+    flex-direction: column; 
     text-align: center;
     gap: 0.8rem;
+  }
+  
+  .confirmationView {
+    padding: 1.5rem;
+  }
+  
+  .summary {
+    padding: 1.5rem;
+  }
+  
+  .summaryItem {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .summaryLabel,
+  .summaryValue {
+    width: 100%;
+    text-align: left;
   }
 }

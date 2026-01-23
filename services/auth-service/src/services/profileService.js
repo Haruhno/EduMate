@@ -7,12 +7,18 @@ class ProfileService {
     
     try {
       // Mettre à jour les compétences dans la table User
-      if (profileData.skills) {
-        await User.update(
-          { skills: profileData.skills },
-          { where: { id: userId } }
-        );
-      }
+        if (profileData.skillsToTeach) {
+          await User.update(
+            { skillsToTeach: profileData.skillsToTeach },
+            { where: { id: userId } }
+          );
+        }
+        if (profileData.skillsToLearn) {
+          await User.update(
+            { skillsToLearn: profileData.skillsToLearn },
+            { where: { id: userId } }
+          );
+        }
 
     let profile = await ProfileModel.findOne({ where: { userId } });
 
@@ -227,7 +233,8 @@ class ProfileService {
 
       return {
         ...profileData,
-        skills: user.skills || [],
+        skillsToTeach: user.skillsToTeach || [],
+        skillsToLearn: user.skillsToLearn || [],
         diplomas,
         experiences
       };

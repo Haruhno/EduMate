@@ -15,8 +15,8 @@ import AvailabilityPage from "./pages/AvailabilityPage/AvailabilityPage";
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import DevenirTuteur from './pages/DevenirTuteur/DevenirTuteur';
 import TutorProfilePage from "./pages/TutorProfilePage/TutorProfilePage";
+import CreerAnnoncesPage from "./pages/CreerAnnonces/CreerAnnoncesPage";
 import AnnoncesPage from "./pages/Annonces/AnnoncesPage";
-import CreerAnnoncePage from "./pages/CreerAnnonce/CreerAnnoncePage";
 import MessageTestPage from "./pages/Messages/MessagePage";
 import Blockchain from "./pages/Blockchain/Blockchain";
 import MesCours from "./pages/HistoriqueCours/HistoriqueCours";
@@ -96,19 +96,12 @@ const App: React.FC = () => {
           />
           <Route path="/tuteur/:id" element={<TutorProfilePage />} />
           <Route path="/devenir-tuteur" element={<DevenirTuteur />} />
+          <Route path="/creer-annonce" element={<CreerAnnoncesPage />} />
           <Route 
             path="/annonces" 
             element={
               <PrivateRoute>
                 <AnnoncesPage />
-              </PrivateRoute>
-            } 
-          />
-          <Route 
-            path="/creer-annonce" 
-            element={
-              <PrivateRoute>
-                <CreerAnnoncePage />
               </PrivateRoute>
             } 
           />

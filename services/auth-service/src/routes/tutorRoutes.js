@@ -208,7 +208,6 @@ router.post('/seed-force', authMiddleware, async (req, res) => {
   }
 });
 
-// routes/tutorRoutes.js
 router.get('/search', authMiddleware, async (req, res) => {
   try {
     const { 
@@ -232,7 +231,7 @@ router.get('/search', authMiddleware, async (req, res) => {
       isCompleted: true
     };
 
-    // Filtre par matière - CORRECTION IMPORTANTE
+    // Filtre par matière 
     if (subject) {
       whereClause.specialties = {
         [Op.contains]: [subject]  // Utiliser contains pour chercher dans le tableau
@@ -336,7 +335,7 @@ router.get('/search', authMiddleware, async (req, res) => {
   }
 });
 
-// Récupérer tous les tuteurs (sans pagination)
+// Récupérer tous les tuteurs
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const tutors = await ProfileTutor.findAll({
@@ -362,7 +361,6 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-// routes/tutorRoutes.js - AJOUTEZ CETTE ROUTE
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
@@ -397,6 +395,46 @@ router.get('/:id', authMiddleware, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération du tuteur',
+      error: error.message
+    });
+  }
+});
+
+router.get('/profile/:tutorId', authMiddleware, async (req, res) => {
+  try {
+    const { tutorId } = req.params;
+
+    const tutor = await ProfileTutor.findOne({
+      where: { 
+        id: tutorId
+      },
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['id', 'firstName', 'lastName', 'email']
+      }]
+    });
+
+    if (!tutor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tuteur non trouvé'
+      });
+    }
+
+    // Retourner spécifiquement le schedule et availability
+    res.json({
+      success: true,
+      data: {
+        schedule: tutor.schedule || [],
+        availability: tutor.availability || { online: false, inPerson: false }
+      }
+    });
+  } catch (error) {
+    console.error('Erreur récupération profil tuteur:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération du profil',
       error: error.message
     });
   }

@@ -42,6 +42,9 @@ router.get('/', profileController.getProfile);
 router.post('/complete', profileController.completeProfile);
 router.get('/status', profileController.getProfileStatus);
 
+// Route pour ajouter des compétences
+router.post('/skills/add', profileController.addSkills);
+
 // Routes pour les tuteurs/étudiants
 router.get('/tutors/:tutorId', profileController.getTutorById);
 router.get('/tutors/user/:userId', profileController.getTutorByUserId);

@@ -1,316 +1,735 @@
 .container {
   min-height: 100vh;
-  padding: 2rem;
+  background-color: #fffaf6;
+  padding: 0;
+}
+
+/* Header */
+.header {
   max-width: 1200px;
   margin: 0 auto;
+  padding: 2rem 1.5rem;
 }
 
-.header {
-  text-align: center;
-  margin-bottom: 3rem;
+.headerContent {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
 }
 
-.title {
+.headerText h1 {
+  margin: 0;
   font-size: 3rem;
   font-weight: 700;
   background: linear-gradient(120deg, #facc15 0%, #fb923c 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  background-clip: text;  
-  margin: 0 0 1rem 0;
+  background-clip: text;
   font-family: 'Recoleta', serif;
+  text-align: center;
 }
 
-.subtitle {
-  font-size: 1.1rem;
+.headerText p {
+  margin: 8px 0 0;
   color: #666;
-  margin: 0 0 1.5rem 0;
+  font-size: 1.1rem;
+  text-align: center;
   font-family: 'DMSans', sans-serif;
 }
 
-.annoncesSection {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.sectionTitle {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #333;
-  margin: 0 0 1.5rem 0;
-  font-family: 'DMSans', sans-serif;
-}
-
-.annoncesGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 1.5rem;
-}
-
-/* --- Amélioration du design des cartes d'annonces --- */
-
-.annonceCard {
-  background: #ffffff;
-  border: 1px solid #eaeaea;
-  border-radius: 16px;
-  padding: 1.75rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  position: relative;
+/* Stats Overview */
+.statsOverview {
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  gap: 2rem;
+  margin-top: 2rem;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
-.annonceCard:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-  border-color: #fbbf24;
+.statItem {
+  text-align: center;
+  padding: 1rem;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e9ecef;
+  min-width: 120px;
+  transition: all 0.3s ease;
 }
 
-/* En-tête avec badge mieux intégré */
-.annonceHeader {
+.statItem:hover {
+  border-color: #facc15;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.1);
+}
+
+.statValue {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #facc15;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+.statLabel {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Main Content */
+.mainContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem 3rem;
+}
+
+/* Content Header */
+.contentHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.25rem;
-  border-bottom: 1px solid #f2f2f2;
-  padding-bottom: 0.75rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+  width: 100%;
 }
 
-.annonceTitle {
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: #222;
-  margin: 0;
-  font-family: 'DMSans', sans-serif;
+.headerLeft {
+  flex: 1;
+  min-width: 300px;
 }
 
-/* Badges arrondis et élégants */
-.statusBadge {
-  padding: 0.35rem 0.9rem;
-  border-radius: 30px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  font-family: 'DMSans', sans-serif;
-  text-transform: uppercase;
-}
-
-.statusBadge.active {
-  background: rgba(16, 185, 129, 0.12);
-  color: #047857;
-  border: 1px solid rgba(16, 185, 129, 0.25);
-}
-
-.statusBadge.inactive {
-  background: rgba(239, 68, 68, 0.12);
-  color: #991b1b;
-  border: 1px solid rgba(239, 68, 68, 0.25);
-}
-
-/* Détails organisés comme une fiche d’info */
-.annonceDetails {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  row-gap: 0.75rem;
-  column-gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-
-.detailItem {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.detailLabel {
-  font-size: 0.8rem;
-  color: #888;
-  text-transform: uppercase;
-  font-weight: 500;
-  letter-spacing: 0.4px;
-}
-
-.detailValue {
-  font-size: 0.95rem;
-  color: #222;
-  font-weight: 600;
-}
-
-/* Description plus fluide et agréable à lire */
-.annonceDescription {
-  font-size: 0.9rem;
-  color: #555;
-  line-height: 1.5;
-  margin: 1rem 0;
-  font-family: 'DMSans', sans-serif;
-  background: #fafafa;
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  max-height: 4.2rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
-
-/* Bouton d’action plus sobre et intégré */
-.annonceActions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: auto;
-}
-
-.editButton {
-  background: #fbbf24;
-  background: linear-gradient(90deg, #fbbf24 0%, #fb923c 100%);
-  color: #fff;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  font-family: 'DMSans', sans-serif;
-}
-
-.editButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(251, 191, 36, 0.35);
-}
-
-.noAnnonces {
-  text-align: center;
-  padding: 3rem 2rem;
-  background: #f5f5f5;
-  border-radius: 8px;
-  border: 2px solid #dee2e6;
-}
-
-.noAnnonces h3 {
-  font-size: 1.2rem;
-  font-weight: 600;
+.contentTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
   color: #333;
-  margin: 0 0 0.5rem 0;
-  font-family: 'DMSans', sans-serif;
+  margin: 0 0 1rem 0;
 }
 
-.noAnnonces p {
+.sortContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sortLabel {
   font-size: 0.9rem;
   color: #666;
-  margin: 0 0 1.5rem 0;
-  font-family: 'DMSans', sans-serif;
+  font-weight: 500;
 }
 
-.createAnnonceButton {
-  display: inline-block;
-  background: linear-gradient(90deg, #FBBF24 0%, #FB923C 100%);
-  color: white;
-  text-decoration: none;
-  padding: 0.75rem 1.5rem;
+.sortSelect {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e9ecef;
   border-radius: 8px;
-  font-weight: 600;
+  background: white;
+  color: #333;
   font-size: 0.9rem;
+  cursor: pointer;
   transition: all 0.3s ease;
-  font-family: 'DMSans', sans-serif;
 }
 
-.createAnnonceButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+.sortSelect:focus {
+  outline: none;
+  border-color: #facc15;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
 }
 
-.loading {
+/* Header Actions */
+.headerActions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+}
+
+/* Container pour centrer le bouton */
+.centerButtonContainer {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 50vh;
-  font-size: 1.2rem;
-  color: #666;
-  font-family: 'DMSans', sans-serif;
+  width: 100%;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .container {
-    padding: 1rem;
-  }
-
-  .title {
-    font-size: 2rem;
-  }
-
-  .annoncesGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .annonceCard {
-    padding: 1.25rem;
-  }
-
-  .annonceHeader {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-  }
-
-  .detailItem {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
-  }
-}
-
-/* Ajoutez ces styles à votre fichier AnnoncesPage.module.css existant */
-
-.annonceActions {
+/* Buttons */
+.btnPrimary {
+  background: linear-gradient(120deg, #facc15 0%, #fb923c 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
   display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.2);
+}
+
+.btnPrimary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(251, 191, 36, 0.3);
+}
+
+#create-first-annonce-btn {
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+}
+
+.btnSecondary {
+  background: white;
+  color: #333;
+  border: 1px solid #e9ecef;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btnSecondary:hover {
+  border-color: #facc15;
+  color: #facc15;
+}
+
+.buttonPlus {
+  font-size: 1.2rem;
+  font-weight: 300;
+}
+
+/* Cards Grid */
+.annoncesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.card {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f1f3f4;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border-color: #fde68a;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.titleWithIcon {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.cardHeader h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+  max-width: 80%;
+}
+
+.annonceCode {
+  font-size: 0.8rem;
+  color: #999;
+  background: #f8f9fa;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Consolas', monospace;
+}
+
+.cardActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Status Button */
+.statusButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.statusActive {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.statusInactive {
+  background: #fef3c7;
+  color: #854d0e;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotActive {
+  background: #16a34a;
+}
+
+.dotInactive {
+  background: #ca8a04;
+}
+
+/* Annonce Meta */
+.annonceMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.annonceDate {
+  font-size: 0.85rem;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.statusBadge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.statusCompleted {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.statusPending {
+  background: #fef3c7;
+  color: #854d0e;
+}
+
+/* Annonce Details */
+.annonceDetails {
+  flex-grow: 1;
+}
+
+.detailSection {
+  margin-bottom: 1.5rem;
+}
+
+.detailLabel {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.skillsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.skillTag {
+  background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: 1px solid #fcd34d;
+  white-space: nowrap;
+}
+
+/* Info Grid */
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.infoLabel {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}
+
+.infoValue {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  word-break: break-word;
+}
+
+.priceValue {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.priceAmount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+.priceUnit {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.modeValue {
+  display: inline-block;
+  padding: 0.4rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  word-break: break-word;
+  margin-left: -0.2rem;
+}
+
+.modeRemote {
+  background: #fffec0;
+  color: #ff9100;
+}
+
+.modeInPerson {
+  background: #fffec0;
+  color: #ff9100;
+}
+
+.modeBoth {
+  background: #fffec0;
+  color: #ff9100;
+}
+
+.typeValue {
+  color: #666;
+  font-weight: 500;
+}
+
+/* Description */
+.descriptionSection {
+  margin-bottom: 1.5rem;
+}
+
+.descriptionLabel {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.annonceDescription {
+  color: #555;
+  line-height: 1.6;
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  word-break: break-word;
+}
+
+.btnText {
+  background: none;
+  border: none;
+  color: #f59e0b;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  display: inline-block;
+  text-align: left;
+}
+
+.btnText:hover {
+  text-decoration: underline;
+}
+
+/* Card Footer */
+.cardFooter {
+  padding-top: 1.5rem;
+  border-top: 1px solid #f1f3f4;
   margin-top: auto;
 }
 
-.editButton {
-  background: #fbbf24;
-  background: linear-gradient(90deg, #fbbf24 0%, #fb923c 100%);
-  color: #fff;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 8px;
+.actionButtons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Empty State */
+.emptyState {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f1f3f4;
+  margin-top: 1rem;
+}
+
+.emptyStateContent {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.emptyState h4 {
+  margin: 0 0 1rem;
+  color: #333;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.emptyState p {
+  margin: 0 0 2rem;
+  color: #666;
+  line-height: 1.6;
+  font-size: 1.1rem;
+}
+
+/* Availability Info */
+.availabilityInfo {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 2rem;
+  border: 1px solid #e9ecef;
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.infoRow:last-child {
+  border-bottom: none;
+}
+
+.infoLabel {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.infoValue {
   font-size: 0.9rem;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  font-family: 'DMSans', sans-serif;
-  flex: 1;
+  color: #333;
+  text-align: left;
 }
 
-.editButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(251, 191, 36, 0.35);
+/* Empty State Tips */
+.emptyStateTips {
+  text-align: left;
+  max-width: 300px;
+  margin: 0 auto 2rem;
 }
 
-.deleteButton {
-  background: #dc2626;
-  color: #fff;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  font-family: 'DMSans', sans-serif;
-  flex: 1;
+.tipItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f1f3f4;
 }
 
-.deleteButton:hover {
-  background: #b91c1c;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.35);
+.tipItem:last-child {
+  border-bottom: none;
+}
+
+.tipBullet {
+  width: 8px;
+  height: 8px;
+  background: #f59e0b;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.emptyStateActions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+/* Loading */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 70vh;
+  gap: 1rem;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f1f5f9;
+  border-left: 4px solid #facc15;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .annoncesGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .annoncesGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .headerText h1 {
+    font-size: 2rem;
+  }
+  
+  .statsOverview {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .statItem {
+    width: 100%;
+    max-width: 300px;
+  }
+  
+  .contentHeader {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.5rem;
+  }
+  
+  .headerLeft {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  .headerActions {
+    width: 100%;
+    justify-content: center !important;
+  }
+  
+  .centerButtonContainer {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .btnPrimary,
+  .btnSecondary {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .infoGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .actionButtons {
+    flex-direction: column;
+  }
+  
+  .emptyStateTips {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 1.5rem 1rem;
+  }
+  
+  .mainContent {
+    padding: 0 1rem 2rem;
+  }
+  
+  .card {
+    padding: 1.5rem;
+  }
+  
+  .cardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .annonceMeta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .cardHeader h3 {
+    max-width: 100%;
+  }
+  
+  #create-first-annonce-btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+  }
 }

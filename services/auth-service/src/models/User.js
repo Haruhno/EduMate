@@ -29,7 +29,7 @@ const User = sequelize.define('User', {
     allowNull: false
   },
   role: {
-    type: DataTypes.ENUM('student', 'tutor', 'admin'),
+    type: DataTypes.STRING,
     defaultValue: 'student'
   },
   isVerified: {
@@ -52,7 +52,12 @@ const User = sequelize.define('User', {
     type: DataTypes.DATE,
     allowNull: true
   },
-  skills: {
+  skillsToTeach: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: []
+  },
+  skillsToLearn: {
     type: DataTypes.JSON,
     allowNull: true,
     defaultValue: []

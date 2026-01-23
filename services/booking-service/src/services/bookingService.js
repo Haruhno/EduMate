@@ -1,4 +1,3 @@
-// booking-service/services/bookingService.js
 const Reservation = require('../models/Reservation');
 const blockchainClient = require('./blockchainClient');
 const { Op } = require('sequelize');

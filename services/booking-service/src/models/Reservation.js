@@ -1,4 +1,3 @@
-// booking-service/models/Reservation.js
 const { DataTypes, Op } = require('sequelize');
 const sequelize = require('../config/database');
 

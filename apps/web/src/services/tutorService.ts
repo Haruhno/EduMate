@@ -1,4 +1,5 @@
 import api from './api';
+import type { AnnonceFromDB } from './annonceService';
 
 export interface TutorFromDB {
   id: string;
@@ -21,6 +22,7 @@ export interface TutorFromDB {
     lastName: string;
     email: string;
   };
+  schedule?: any[]; // Ajouter le schedule
 }
 
 export interface TutorsResponse {
@@ -56,6 +58,54 @@ class TutorService {
   async requestVerification() {
     const response = await api.post('/tutor/request-verification');
     return response.data;
+  }
+
+  // Méthode pour récupérer le profil complet du tuteur (avec disponibilités)
+  async getTutorProfile(tutorId: string): Promise<{
+    success: boolean;
+    data?: {
+      schedule: any[];
+      availability: { online: boolean; inPerson: boolean };
+    };
+    message?: string;
+  }> {
+    try {
+      // CORRECTION : Utiliser l'endpoint /tutors/:id qui existe déjà
+      const response = await api.get(`/tutors/${tutorId}`);
+      
+      if (response?.data?.success && response?.data?.data) {
+        const tutorData = response.data.data;
+        return {
+          success: true,
+          data: {
+            schedule: tutorData.schedule || [],
+            availability: tutorData.availability || { online: false, inPerson: false }
+          }
+        };
+      }
+      
+      return {
+        success: false,
+        message: response?.data?.message || 'Profil non trouvé'
+      };
+    } catch (error: any) {
+      console.error('Erreur récupération profil tuteur:', error);
+      
+      if (error.response?.status === 404) {
+        return {
+          success: true,
+          data: {
+            schedule: [],
+            availability: { online: false, inPerson: false }
+          }
+        };
+      }
+      
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Erreur lors de la récupération du profil'
+      };
+    }
   }
 
   // Méthode principale pour récupérer un tuteur avec gestion des profils non vérifiés
@@ -181,6 +231,51 @@ class TutorService {
       return {
         success: false,
         message: error.response?.data?.message || 'Erreur lors de la récupération des annonces'
+      };
+    }
+  }
+
+  // NOUVELLE MÉTHODE OPTIMISÉE
+  async getTutorWithAnnonces(tutorId: string): Promise<{
+    success: boolean;
+    data?: {
+      tutor: TutorFromDB;
+      annonces: AnnonceFromDB[];
+    };
+    message?: string;
+  }> {
+    try {
+      // Récupérer tuteur et annonces en parallèle
+      const [tutorResp, annoncesResp] = await Promise.all([
+        this.getTutorById(tutorId),
+        this.getAnnoncesByTutor(tutorId)
+      ]);
+
+      if (tutorResp.success && tutorResp.data) {
+        // Extraire les annonces de la réponse
+        let annoncesList: AnnonceFromDB[] = [];
+        if (annoncesResp.success) {
+          annoncesList = annoncesResp.data?.annonces || annoncesResp.data || [];
+        }
+
+        return {
+          success: true,
+          data: {
+            tutor: tutorResp.data,
+            annonces: annoncesList
+          }
+        };
+      }
+
+      return {
+        success: false,
+        message: tutorResp.message || 'Tuteur non trouvé'
+      };
+    } catch (error: any) {
+      console.error('Erreur récupération tuteur avec annonces:', error);
+      return {
+        success: false,
+        message: 'Erreur lors de la récupération des données'
       };
     }
   }
