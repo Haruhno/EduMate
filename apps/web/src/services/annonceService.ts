@@ -100,7 +100,6 @@ class AnnonceService {
 
   async createAnnonce(annonceData: CreateAnnonceData) {
     try {
-      console.log('🔄 Données envoyées au backend:', JSON.stringify(annonceData, null, 2));
       
       // Validation avant envoi
       const requiredFields = ['title', 'subject', 'hourlyRate', 'teachingMode'];
@@ -110,7 +109,6 @@ class AnnonceService {
         }
       }
       
-      // ⭐ CORRECTION : Accepter les valeurs en français POUR LA BASE DE DONNÉES
       const validTeachingModes = ['En ligne', 'En présentiel', 'Les deux', 'online', 'in_person', 'both', 'hybrid'];
       if (!validTeachingModes.includes(annonceData.teachingMode)) {
         throw new Error(`teachingMode doit être l'une de ces valeurs: ${validTeachingModes.join(', ')}`);

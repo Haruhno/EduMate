@@ -94,6 +94,7 @@ const Navbar: React.FC = () => {
   const getNavLinks = () => {
     if (currentUser?.role === 'tutor') {
       return [
+        { name: 'Trouver un tuteur', path: '/recherche-tuteur' },   
         { name: 'Tableau de bord', path: '/dashboard' },
         { name: 'Gestion des annonces', path: '/annonces' },
         { name: 'Mes cours', path: '/cours' },

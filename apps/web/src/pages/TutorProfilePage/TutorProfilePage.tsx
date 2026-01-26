@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useParams,useNavigate, useLocation} from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import styles from './TutorProfilePage.module.css';
 import tutorService from '../../services/tutorService';
 import annonceService from '../../services/annonceService';
-import profileService from '../../services/profileService';
 import authService from '../../services/authService';
 import type { TutorFromDB } from '../../services/tutorService';
 import type { AnnonceFromDB } from '../../services/annonceService';
@@ -24,6 +23,7 @@ interface Tutor {
   experience?: string;
   educationLevel?: string;
   profilePicture?: string;
+  userId?: string; // Ajout de l'ID de l'utilisateur
 }
 
 interface Diploma {
@@ -62,10 +62,8 @@ const TutorProfilePage: React.FC = () => {
   const location = useLocation();
   const [tutor, setTutor] = useState<Tutor | null>(null);
   const [user, setUser] = useState<any>(null);
-  const [profileData, setProfileData] = useState<any>(null);
   const [diplomas, setDiplomas] = useState<Diploma[]>([]);
   const [experiences, setExperiences] = useState<Experience[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [annonces, setAnnonces] = useState<AnnonceFromDB[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'about' | 'annonces' | 'reviews'>('about');
@@ -93,43 +91,64 @@ const TutorProfilePage: React.FC = () => {
   const hasSingleDiploma = diplomas.length === 1;
   const hasMultipleExperiences = experiences.length > 1;
   const hasSingleExperience = experiences.length === 1;
+  const hasDiplomas = diplomas.length > 0;
+  const hasExperiences = experiences.length > 0;
 
-   useEffect(() => {
-      const loadProfile = async () => {
-        try {
-          setIsLoading(true);
-          const currentUser = authService.getCurrentUser();
-          setUser(currentUser);
-  
-          if (currentUser) {
-            const response = await profileService.getProfile();
-            if (response.success && response.data.profile) {
-              const profile = response.data.profile;
-              setProfileData(profile);
-              
-              if (profile.diplomas && Array.isArray(profile.diplomas)) {
-                setDiplomas(profile.diplomas);
-              }
-              
-              if (profile.experiences && Array.isArray(profile.experiences)) {
-                setExperiences(profile.experiences);
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Erreur lors du chargement du profil:', error);
-        } finally {
-          setIsLoading(false);
+  // Vérifier si l'utilisateur courant est le tuteur lui-même
+  const isCurrentUserTutor = () => {
+    console.log('Debug - isCurrentUserTutor appelé');
+    console.log('Debug - user:', user);
+    console.log('Debug - tutor:', tutor);
+    
+    if (!user || !tutor) {
+      console.log('Debug - user ou tutor est null');
+      return false;
+    }
+    
+    // Vérifier l'ID de l'utilisateur courant
+    const currentUserId = user.id;
+    const tutorUserId = tutor.userId; // ID de l'utilisateur associé au tuteur
+    
+    console.log('Debug - currentUserId:', currentUserId);
+    console.log('Debug - tutorUserId:', tutorUserId);
+    
+    // Comparer les IDs d'utilisateur
+    const isSameUser = currentUserId && tutorUserId && currentUserId === tutorUserId;
+    
+    console.log('Debug - isSameUser:', isSameUser);
+    
+    return isSameUser;
+  };
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        // Méthode 1: Vérifier si l'utilisateur est stocké dans le localStorage
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          setUser(JSON.parse(userData));
         }
-      };
-  
-      loadProfile();
-    }, []);
+        
+        // Méthode 2: Utiliser authService pour récupérer l'utilisateur
+        const currentUser = authService.getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+          console.log('Debug - Utilisateur chargé via authService:', currentUser);
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement de l\'utilisateur:', error);
+      }
+    };
+
+    loadUser();
+  }, []);
 
   const mapTutorFromDB = (tutorData: TutorFromDB): Tutor => {
     const availability = typeof tutorData.availability === 'string' 
       ? JSON.parse(tutorData.availability) 
       : tutorData.availability;
+    
+    console.log('Debug - tutorData.user:', tutorData.user);
     
     return {
       id: tutorData.id,
@@ -146,7 +165,8 @@ const TutorProfilePage: React.FC = () => {
       bio: tutorData.bio,
       experience: tutorData.experience,
       educationLevel: tutorData.educationLevel,
-      profilePicture: tutorData.profilePicture
+      profilePicture: tutorData.profilePicture,
+      userId: tutorData.user?.id // Stocker l'ID de l'utilisateur associé
     };
   };
 
@@ -169,7 +189,6 @@ const TutorProfilePage: React.FC = () => {
     return "default-gradient";
   };
 
-  // Fonction pour retourner à la page précédente
   const handleGoBack = () => {
     if (window.history.length > 1) {
       navigate(-1);
@@ -186,10 +205,17 @@ const TutorProfilePage: React.FC = () => {
         setLoading(true);
         setErrorType(null);
         
+        console.log('Debug - Chargement du tuteur avec ID:', id);
+        
         const tutorResponse = await tutorService.getTutorById(id);
         
+        console.log('Debug - Réponse du tuteur:', tutorResponse);
+        
         if (tutorResponse.success && tutorResponse.data) {
+          
           const profileTutorId = tutorResponse.data.id;
+          
+          // Charger les annonces
           const annoncesResponse = await annonceService.getAnnoncesByTutor(profileTutorId);
 
           let calculatedMinPrice = 30;
@@ -202,22 +228,38 @@ const TutorProfilePage: React.FC = () => {
           
           setMinPrice(calculatedMinPrice);
           
+          // Mapper le tuteur
           const mappedTutor = mapTutorFromDB(tutorResponse.data);
           mappedTutor.price = `À partir de ${calculatedMinPrice}`;
           
           setTutor(mappedTutor);
+          
+          // Charger les diplômes et expériences depuis la réponse du tuteur
+          const tutorData = tutorResponse.data as any;
+          
+          if (tutorData.diplomas && Array.isArray(tutorData.diplomas)) {
+            setDiplomas(tutorData.diplomas);
+          } else {
+            setDiplomas([]);
+          }
+          
+          if (tutorData.experiences && Array.isArray(tutorData.experiences)) {
+            setExperiences(tutorData.experiences);
+          } else {
+            setExperiences([]);
+          }
+          
         } else {
+          console.log('❌ Tuteur non trouvé');
           setTutor(null);
-          // Détection améliorée du type d'erreur 
           if (tutorResponse.existsButUnverified) {
-            // Le profil existe mais n'est pas vérifié/complété
             setErrorType('unverified');
           } else {
             setErrorType('not_found');
           }
         }
       } catch (error) {
-        console.error('Erreur lors du chargement du profil:', error);
+        console.error('Erreur lors du chargement du tuteur:', error);
         setTutor(null);
         setErrorType('not_found');
       } finally {
@@ -233,13 +275,16 @@ const TutorProfilePage: React.FC = () => {
   };
 
   const handleBookSession = (annonceId?: string) => {
+    if (isCurrentUserTutor()) {
+      console.log('❌ Impossible de réserver avec soi-même');
+      return;
+    }
+
     const targetAnnonceId = annonceId || annonceIdFromState;
 
-    // Vérifie si on a un tutorId 
     const tutorProfileId = tutor?.id || undefined;
     
     if (tutorProfileId) {
-      // Navigue vers la page de réservation avec l'annonceId en paramètre d'état
       navigate(`/booking/${tutorProfileId}`, {
         state: {
           annonceId: targetAnnonceId || undefined, 
@@ -310,6 +355,10 @@ const TutorProfilePage: React.FC = () => {
     );
   }
 
+  // Vérifier si l'utilisateur est le tuteur
+  const isSelf = isCurrentUserTutor();
+  console.log('Debug - Rendu, isSelf:', isSelf);
+
   return (
     <div className={styles.tutorProfilePage}>
       <div className={styles.container}>
@@ -365,10 +414,12 @@ const TutorProfilePage: React.FC = () => {
                 <span className={styles.price}>{tutor.price}🪙</span>
                 <span className={styles.priceLabel}>par heure</span>
               </div>
+              
               <div className={styles.actionButtons}>
                 <button 
                   onClick={() => handleBookSession()}
-                  className={styles.primaryButton}
+                  className={`${styles.primaryButton} ${isSelf ? styles.disabledButton : ''}`}
+                  disabled={isSelf}
                 >
                   Réserver un cours
                 </button>
@@ -422,27 +473,30 @@ const TutorProfilePage: React.FC = () => {
 
             <div className={styles.tabContent}>
               {activeTab === 'about' && (
-                  <div className={styles.section}>
-                    <h3 className={styles.sectionTitle1}>
+                <div className={styles.section}>
+                  <h3 className={styles.sectionTitle1}>
                     <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                    À propos</h3>
-                    <p className={styles.bio}>
-                      {tutor.bio || `${tutor.name} est un tuteur passionné spécialisé en ${tutor.subject}. Avec une approche pédagogique adaptée à chaque élève, il/elle s'engage à vous faire progresser et atteindre vos objectifs.`}
-                    </p>
+                    À propos
+                  </h3>
+                  <p className={styles.bio}>
+                    {tutor.bio || `${tutor.name} est un tuteur passionné spécialisé en ${tutor.subject}. Avec une approche pédagogique adaptée à chaque élève, il/elle s'engage à vous faire progresser et atteindre vos objectifs.`}
+                  </p>
 
-                   {/* Section Diplôme */}
-                    {hasSingleDiploma && (
-                      <div className={styles.section}>
-                        <h3 className={styles.sectionTitle2}>
-                          <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 14l9-5-9-5-9 5 9 5z" />
-                            <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
-                          </svg>
-                          Diplôme
-                        </h3>
+                  {/* Section Diplômes */}
+                  {hasDiplomas && (
+                    <div className={styles.section}>
+                      <h3 className={styles.sectionTitle2}>
+                        <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 14l9-5-9-5-9 5 9 5z" />
+                          <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
+                        </svg>
+                        {hasSingleDiploma ? 'Diplôme' : 'Diplômes'}
+                      </h3>
+                      
+                      {hasSingleDiploma ? (
                         <div className={styles.infoGrid}>
                           {diplomas[0].educationLevel && (
                             <div className={styles.infoItem}>
@@ -522,58 +576,51 @@ const TutorProfilePage: React.FC = () => {
                             </div>
                           )}
                         </div>
-                      </div>
-                    )}
-
-                    {/* Section Expériences professionnelles - Style multiple */}
-                    {hasMultipleExperiences && (
-                      <div className={styles.section}>
-                        <h3 className={styles.sectionTitle3}>
-                          <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                          </svg>
-                          Expériences professionnelles
-                        </h3>
-                        <div className={styles.experiencesList}>
-                          {experiences.map((experience, index) => (
-                            <div key={experience.id || index} className={styles.experienceItem}>
-                              <div className={styles.experienceHeader}>
-                                <h4 className={styles.experienceTitle}>{experience.jobTitle}</h4>
-                                <span className={styles.experiencePeriod}>
-                                  {formatExperiencePeriod(
-                                    experience.startMonth, 
-                                    experience.startYear, 
-                                    experience.endMonth, 
-                                    experience.endYear, 
-                                    experience.isCurrent
-                                  )}
+                      ) : (
+                        <div className={styles.diplomasList}>
+                          {diplomas.map((diploma, index) => (
+                            <div key={diploma.id || index} className={styles.diplomaItem}>
+                              <div className={styles.diplomaHeader}>
+                                <h4 className={styles.diplomaTitle}>{diploma.educationLevel}</h4>
+                                <span className={styles.diplomaPeriod}>
+                                  {formatYearRange(diploma.startYear, diploma.endYear, diploma.isCurrent)}
                                 </span>
                               </div>
-                              <div className={styles.experienceDetails}>
-                                <p className={styles.experienceCompany}><strong>Entreprise:</strong> {experience.company}</p>
-                                <p className={styles.experienceType}><strong>Type d'emploi:</strong> {experience.employmentType}</p>
-                                <p className={styles.experienceLocation}><strong>Lieu:</strong> {experience.location}</p>
+                              <div className={styles.diplomaDetails}>
+                                <p className={styles.diplomaField}><strong>Domaine:</strong> {diploma.field}</p>
+                                <p className={styles.diplomaSchool}><strong>Établissement:</strong> {diploma.school}</p>
+                                <p className={styles.diplomaCountry}><strong>Pays:</strong> {diploma.country}</p>
                               </div>
-                              {experience.description && (
-                                <div className={styles.experienceDescription}>
-                                  <p className={styles.experienceDescriptionText}>{experience.description}</p>
+                              {diploma.diplomaFile && (
+                                <div className={styles.diplomaFile}>
+                                  <a 
+                                    href={diploma.diplomaFile.path} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className={styles.fileLink}
+                                  >
+                                    📎 {diploma.diplomaFile.name}
+                                  </a>
                                 </div>
                               )}
                             </div>
                           ))}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
+                  )}
 
-                    {/* Section Expérience professionnelle */}
-                    {hasSingleExperience && (
-                      <div className={styles.section}>
-                        <h3 className={styles.sectionTitle3}>
-                          <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                          </svg>
-                          Expérience professionnelle
-                        </h3>
+                  {/* Section Expériences */}
+                  {hasExperiences && (
+                    <div className={styles.section}>
+                      <h3 className={styles.sectionTitle3}>
+                        <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        {hasSingleExperience ? 'Expérience professionnelle' : 'Expériences professionnelles'}
+                      </h3>
+                      
+                      {hasSingleExperience ? (
                         <div className={styles.infoGrid}>
                           {experiences[0].jobTitle && (
                             <div className={styles.infoItem}>
@@ -653,101 +700,125 @@ const TutorProfilePage: React.FC = () => {
                             </div>
                           )}
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      ) : (
+                        <div className={styles.experiencesList}>
+                          {experiences.map((experience, index) => (
+                            <div key={experience.id || index} className={styles.experienceItem}>
+                              <div className={styles.experienceHeader}>
+                                <h4 className={styles.experienceTitle}>{experience.jobTitle}</h4>
+                                <span className={styles.experiencePeriod}>
+                                  {formatExperiencePeriod(
+                                    experience.startMonth, 
+                                    experience.startYear, 
+                                    experience.endMonth, 
+                                    experience.endYear, 
+                                    experience.isCurrent
+                                  )}
+                                </span>
+                              </div>
+                              <div className={styles.experienceDetails}>
+                                <p className={styles.experienceCompany}><strong>Entreprise:</strong> {experience.company}</p>
+                                <p className={styles.experienceType}><strong>Type d'emploi:</strong> {experience.employmentType}</p>
+                                <p className={styles.experienceLocation}><strong>Lieu:</strong> {experience.location}</p>
+                              </div>
+                              {experience.description && (
+                                <div className={styles.experienceDescription}>
+                                  <p className={styles.experienceDescriptionText}>{experience.description}</p>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
 
-             {activeTab === 'annonces' && (
-            <div className={styles.annoncesSection}>
-              <div className={styles.annoncesHeader}>
-                <h3 className={styles.annoncesTitle}>
-                  Mes Annonces de Cours
-                </h3>
-              </div>
+              {activeTab === 'annonces' && (
+                <div className={styles.annoncesSection}>
+                  <div className={styles.annoncesHeader}>
+                    <h3 className={styles.annoncesTitle}>
+                      Mes Annonces de Cours
+                    </h3>
+                  </div>
 
-              {annonces.length > 0 ? (
-                <div className={styles.annoncesGrid}>
-                  {annonces.map((annonce: AnnonceFromDB) => (
-                    <div key={annonce.id} className={styles.annonceCard}>
-                      {/* Titre et prix */}
-                      <div className={styles.annonceHeader}>
-                        <div className={styles.annonceTitleSection}>
-                          <h4 className={styles.annonceTitle}>Cours de <span className={styles.subjectHighlight}>{annonce.subject}</span></h4>
-                        </div>
-                        <div className={styles.annoncePricePremium}>
-                          <span className={styles.priceValue}>{annonce.hourlyRate}</span>
-                          <span className={styles.priceCurrency}>🪙/heure</span>
-                        </div>
+                  {annonces.length > 0 ? (
+                    <div className={styles.annoncesGrid}>
+                      {annonces.map((annonce: AnnonceFromDB) => (
+                        <div key={annonce.id} className={styles.annonceCard}>
+                          <div className={styles.annonceHeader}>
+                            <div className={styles.annonceTitleSection}>
+                              <h4 className={styles.annonceTitle}>Cours de <span className={styles.subjectHighlight}>{annonce.subject}</span></h4>
+                            </div>
+                            <div className={annonce.hourlyRate > 50 ? styles.annoncePricePremium : styles.annoncePrice}>
+                              <span className={styles.priceValue}>{annonce.hourlyRate}</span>
+                              <span className={styles.priceCurrency}>🪙/heure</span>
+                            </div>
+                          </div>
 
-                        {/* Ou selon le prix */}
-                        <div className={annonce.hourlyRate > 50 ? styles.annoncePricePremium : styles.annoncePrice}>
-                          <span className={styles.priceValue}>{annonce.hourlyRate}</span>
-                          <span className={styles.priceCurrency}>🪙/heure</span>
-                        </div>
-                      </div>
+                          <div className={styles.annonceDetails}>
+                            <div className={styles.detailItem}>
+                              <span className={styles.detailIcon}>🎯</span>
+                              <div className={styles.detailContent}>
+                                <span className={styles.detailLabel}>Niveau</span>
+                                <span className={styles.detailValue}>{annonce.level}</span>
+                              </div>
+                            </div>
+                            <div className={styles.detailItem}>
+                              <span className={styles.detailIcon}>💻</span>
+                              <div className={styles.detailContent}>
+                                <span className={styles.detailLabel}>Mode</span>
+                                <span className={styles.detailValue}>{annonce.teachingMode}</span>
+                              </div>
+                            </div>
+                            <div className={styles.detailItem}>
+                              <span className={styles.detailIcon}>⏱️</span>
+                              <div className={styles.detailContent}>
+                                <span className={styles.detailLabel}>Durée</span>
+                                <span className={styles.detailValue}>60 min</span>
+                              </div>
+                            </div>
+                            <div className={styles.detailItem}>
+                              <span className={styles.detailIcon}>⭐</span>
+                              <div className={styles.detailContent}>
+                                <span className={styles.detailLabel}>Disponibilité</span>
+                                <span className={styles.detailValue}>Immédiate</span>
+                              </div>
+                            </div>
+                          </div>
 
-                      {/* Détails en grille */}
-                      <div className={styles.annonceDetails}>
-                        <div className={styles.detailItem}>
-                          <span className={styles.detailIcon}>🎯</span>
-                          <div className={styles.detailContent}>
-                            <span className={styles.detailLabel}>Niveau</span>
-                            <span className={styles.detailValue}>{annonce.level}</span>
-                          </div>
+                          <button 
+                            onClick={() => handleBookSession(annonce.id)}
+                            className={`${styles.reserveButton} ${isSelf ? styles.disabledButton : ''}`}
+                            disabled={isSelf}
+                          >
+                            <span className={styles.buttonText}>
+                              {isSelf ? 'Mon annonce' : 'Réserver ce cours →'}
+                            </span>
+                          </button>
                         </div>
-                        <div className={styles.detailItem}>
-                          <span className={styles.detailIcon}>💻</span>
-                          <div className={styles.detailContent}>
-                            <span className={styles.detailLabel}>Mode</span>
-                            <span className={styles.detailValue}>{annonce.teachingMode}</span>
-                          </div>
-                        </div>
-                        <div className={styles.detailItem}>
-                          <span className={styles.detailIcon}>⏱️</span>
-                          <div className={styles.detailContent}>
-                            <span className={styles.detailLabel}>Durée</span>
-                            <span className={styles.detailValue}>60 min</span>
-                          </div>
-                        </div>
-                        <div className={styles.detailItem}>
-                          <span className={styles.detailIcon}>⭐</span>
-                          <div className={styles.detailContent}>
-                            <span className={styles.detailLabel}>Disponibilité</span>
-                            <span className={styles.detailValue}>Immédiate</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* CTA Bouton */}
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.noAnnonces}>
+                      <div className={styles.noAnnoncesIcon}>📭</div>
+                      <h4 className={styles.noAnnoncesTitle}>Aucune annonce disponible</h4>
+                      <p className={styles.noAnnoncesText}>
+                        Ce tuteur n'a pas encore publié d'annonces. 
+                        Contactez-le directement pour discuter d'un cours personnalisé.
+                      </p>
                       <button 
-                        onClick={() => handleBookSession(annonce.id)}
-                        className={styles.reserveButton}
+                        onClick={handleContact}
+                        className={styles.contactButton}
                       >
-                        <span className={styles.buttonText}>Réserver ce cours →</span>
+                        <span className={styles.contactIcon}>💬</span>
+                        Contacter le tuteur
                       </button>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className={styles.noAnnonces}>
-                  <div className={styles.noAnnoncesIcon}>📭</div>
-                  <h4 className={styles.noAnnoncesTitle}>Aucune annonce disponible</h4>
-                  <p className={styles.noAnnoncesText}>
-                    Ce tuteur n'a pas encore publié d'annonces. 
-                    Contactez-le directement pour discuter d'un cours personnalisé.
-                  </p>
-                  <button 
-                    onClick={handleContact}
-                    className={styles.contactButton}
-                  >
-                    <span className={styles.contactIcon}>💬</span>
-                    Contacter le tuteur
-                  </button>
+                  )}
                 </div>
               )}
-            </div>
-          )}
 
               {activeTab === 'reviews' && (
                 <div className={styles.reviewsSection}>

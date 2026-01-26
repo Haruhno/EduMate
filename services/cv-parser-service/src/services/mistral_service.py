@@ -142,40 +142,57 @@ class MistralCVService:
     
     def _call_mistral_api(self, system_prompt: str, user_prompt: str) -> Dict[str, Any]:
         """Appeler l'API Mistral via OpenRouter"""
-        try:
-            client = OpenAI(
-                api_key=self.api_key,
-                base_url="https://openrouter.ai/api/v1",
-            )
-            
-            logger.debug(f"📡 Appel API Mistral ({self.model})...")
-            
-            message = client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=Config.MISTRAL_TEMPERATURE,
-                max_tokens=Config.MISTRAL_MAX_TOKENS,
-            )
-            
-            content = message.choices[0].message.content or ""
-            
-            logger.debug(f"✅ Réponse API reçue ({len(content)} caractères)")
-            
-            return {
-                "content": content,
-                "model": message.model,
-                "usage": {
-                    "prompt_tokens": message.usage.prompt_tokens,
-                    "completion_tokens": message.usage.completion_tokens
+        errors = []
+        models_to_try = [m for m in [self.model, Config.MISTRAL_FALLBACK_MODEL] if m]
+        
+        for model in models_to_try:
+            try:
+                client = OpenAI(
+                    api_key=self.api_key,
+                    base_url="https://openrouter.ai/api/v1",
+                )
+                
+                logger.debug(f"📡 Appel API Mistral ({model})...")
+                
+                # Certains modèles Google Gemma rejettent les messages système.
+                if model.startswith("google/gemma"):
+                    merged_prompt = f"{system_prompt}\n\n{user_prompt}"
+                    messages = [{"role": "user", "content": merged_prompt}]
+                else:
+                    messages = [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ]
+                
+                message = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=Config.MISTRAL_TEMPERATURE,
+                    max_tokens=Config.MISTRAL_MAX_TOKENS,
+                )
+                
+                content = message.choices[0].message.content or ""
+                logger.debug(f"✅ Réponse API reçue ({len(content)} caractères) depuis {model}")
+                
+                # Si on a utilisé le modèle de fallback, mémoriser pour les prochains appels
+                self.model = model
+                
+                return {
+                    "content": content,
+                    "model": message.model,
+                    "usage": {
+                        "prompt_tokens": message.usage.prompt_tokens,
+                        "completion_tokens": message.usage.completion_tokens
+                    }
                 }
-            }
-            
-        except Exception as e:
-            logger.error(f"❌ Erreur appel API Mistral: {type(e).__name__}: {e}")
-            raise
+                
+            except Exception as e:
+                logger.error(f"❌ Erreur appel API Mistral ({model}): {type(e).__name__}: {e}")
+                errors.append(f"{model}: {type(e).__name__}: {e}")
+                continue
+        
+        # Si tous les modèles échouent, re-raise avec le détail
+        raise Exception("Tous les modèles Mistral ont échoué: " + " | ".join(errors))
     
     def _get_system_prompt(self, language: str) -> str:
         """Générer le prompt système selon la langue"""
@@ -195,163 +212,103 @@ Gère correctement plusieurs langues et formats.
 IMPORTANT: Retourne UNIQUEMENT le JSON valide, sans texte supplémentaire, sans commentaires, sans markdown."""
     
     def _get_user_prompt(self, cv_text: str, language: str) -> str:
-        """Générer le prompt utilisateur"""
-        if language == "en":
-            return f"""Analyze the following CV text and extract all relevant information in the specified JSON structure:
-
-{cv_text}
-
-Return the data in this exact JSON structure:
-{{
-    "personal": {{
-        "firstName": "",
-        "lastName": "",
-        "email": [],
-        "phone": [],
-        "address": "",
-        "birthDate": "",
-        "gender": "",
-        "nationality": "",
-        "linkedin": "",
-        "github": ""
-    }},
-    "education": [
-        {{
-            "educationLevel": "",
-            "diplomaName": "",
-            "field": "",
-            "school": "",
-            "country": "",
-            "city": "",
-            "startYear": null,
-            "endYear": null,
-            "isCurrent": false,
-            "description": "",
-            "gpa": null
-        }}
-    ],
-    "experience": [
-        {{
-            "jobTitle": "",
-            "employmentType": "",
-            "company": "",
-            "location": "",
-            "startMonth": "",
-            "startYear": null,
-            "endMonth": "",
-            "endYear": null,
-            "isCurrent": false,
-            "description": "",
-            "achievements": [],
-            "technologies": []
-        }}
-    ],
-    "skills": {{
-        "technical": [],
-        "languages": [],
-        "soft": [],
-        "tools": [],
-        "frameworks": []
-    }},
-    "summary": "",
-    "certifications": [],
-    "projects": [],
-    "languages": [],
-    "validation": {{
-        "quality": "",
-        "confidence": 0.0,
-        "extractionDate": ""
-    }}
-}}
-
-Guidelines:
-1. Extract ALL emails and phone numbers you find
-2. Analyze dates intelligently (mm/dd/yyyy, mm/yyyy, yyyy, etc.)
-3. Normalize skill names (e.g., "Python" not "python", "React.js" not "react")
-4. If information is missing, leave the field empty or null
-5. Handle English content correctly
-6. For employmentType: use "Full-time", "Part-time", "Contract", "Internship", "Freelance", "Temporary", "Other"
-7. For educationLevel: use "High School", "Bachelor", "Master", "PhD", "Other"
-
-IMPORTANT: Return ONLY valid JSON, without additional text."""
+        """Générer un prompt utilisateur plus détaillé"""
+        # Limiter la taille du texte CV
+        if len(cv_text) > 4000:
+            cv_text = cv_text[:4000] + "... [tronqué]"
         
-        return f"""Analyse le texte de CV suivant et extrais toutes les informations pertinentes dans la structure JSON spécifiée:
+        if language == "en":
+            return f"""Analyze this CV and extract ALL information:
 
-{cv_text}
+    {cv_text}
 
-Retourne les données dans cette structure JSON exacte:
-{{
-    "personal": {{
-        "firstName": "",
-        "lastName": "",
-        "email": [],
-        "phone": [],
-        "address": "",
-        "birthDate": "",
-        "gender": "",
-        "nationality": "",
-        "linkedin": "",
-        "github": ""
-    }},
-    "education": [
-        {{
-            "educationLevel": "",
-            "diplomaName": "",
-            "field": "",
-            "school": "",
-            "country": "",
-            "city": "",
-            "startYear": null,
-            "endYear": null,
-            "isCurrent": false,
-            "description": "",
-            "gpa": null
-        }}
-    ],
-    "experience": [
-        {{
-            "jobTitle": "",
-            "employmentType": "",
-            "company": "",
-            "location": "",
-            "startMonth": "",
-            "startYear": null,
-            "endMonth": "",
-            "endYear": null,
-            "isCurrent": false,
-            "description": "",
-            "achievements": [],
-            "technologies": []
-        }}
-    ],
-    "skills": {{
-        "technical": [],
-        "languages": [],
-        "soft": [],
-        "tools": [],
-        "frameworks": []
-    }},
-    "summary": "",
-    "certifications": [],
-    "projects": [],
-    "languages": [],
-    "validation": {{
-        "quality": "",
-        "confidence": 0.0,
-        "extractionDate": ""
+    Return ONLY valid JSON in this exact structure:
+    {{
+        "personal": {{
+            "firstName": "",
+            "lastName": "",
+            "email": [],
+            "phone": [],
+            "address": "",
+            "birthDate": "",
+            "gender": ""
+        }},
+        "education": [
+            {{
+                "educationLevel": "",
+                "field": "",
+                "school": "",
+                "startYear": null,
+                "endYear": null,
+                "isCurrent": false
+            }}
+        ],
+        "experience": [
+            {{
+                "jobTitle": "",
+                "company": "",
+                "startYear": null,
+                "endYear": null,
+                "isCurrent": false,
+                "description": ""
+            }}
+        ],
+        "skills": {{
+            "technical": []
+        }},
+        "summary": "",
+        "languages": []
     }}
-}}
 
-Consignes:
-1. Extrais TOUS les emails et numéros de téléphone que tu trouves
-2. Analyse les dates intelligemment (jj/mm/aaaa, mm/aaaa, aaaa, etc.)
-3. Normalise les noms de compétences (ex: "Python" pas "python", "React.js" pas "react")
-4. Si l'information est manquante, laisse le champ vide ou null
-5. Gère correctement le contenu français et anglais
-6. Pour employmentType: utilise "CDI", "CDD", "Stage", "Alternance", "Freelance", "Intérim", "Autre"
-7. Pour educationLevel: utilise "Brevet des collèges", "Baccalauréat", "Bac+2", "BUT", "Licence", "Master", "Doctorat", "Autre"
+    CRITICAL: You MUST include ALL sections: personal, education, experience, skills, summary, languages.
+    If a section has no data, return empty array [] or empty object {{}}.
+    Do NOT skip any section."""
 
-IMPORTANT: Retourne UNIQUEMENT du JSON valide, sans texte supplémentaire."""
+        return f"""Analyse ce CV et extrais TOUTES les informations:
+
+    {cv_text}
+
+    Retourne UNIQUEMENT du JSON valide dans cette structure exacte:
+    {{
+        "personal": {{
+            "firstName": "",
+            "lastName": "",
+            "email": [],
+            "phone": [],
+            "address": "",
+            "birthDate": "",
+            "gender": ""
+        }},
+        "education": [
+            {{
+                "educationLevel": "",
+                "field": "",
+                "school": "",
+                "startYear": null,
+                "endYear": null,
+                "isCurrent": false
+            }}
+        ],
+        "experience": [
+            {{
+                "jobTitle": "",
+                "company": "",
+                "startYear": null,
+                "endYear": null,
+                "isCurrent": false,
+                "description": ""
+            }}
+        ],
+        "skills": {{
+            "technical": []
+        }},
+        "summary": "",
+        "languages": []
+    }}
+
+    CRITIQUE: Tu DOIS inclure TOUTES les sections: personal, education, experience, skills, summary, languages.
+    Si une section n'a pas de données, retourne un tableau vide [] ou un objet vide {{}}.
+    Ne SAUTE AUCUNE section."""
     
     def _clean_json_response(self, content: str) -> str:
         """

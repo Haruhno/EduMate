@@ -6,7 +6,7 @@ const BLOCKCHAIN_SERVICE_URL = process.env.BLOCKCHAIN_SERVICE_URL || process.env
 exports.create = async (req, res) => {
   try {
     const studentId = req.user.id;
-    const { tutorId, annonceId, date, time, amount, duration, description, studentNotes } = req.body;
+    const { tutorId, annonceId, annonceTitle, date, time, amount, duration, description, studentNotes } = req.body;
     
     if (!tutorId || !annonceId || !date || !time || amount === undefined) {
       return res.status(400).json({ 
@@ -19,6 +19,7 @@ exports.create = async (req, res) => {
       tutorId,
       studentId,
       annonceId,
+      annonceTitle,
       date,
       time,
       amount,
@@ -120,40 +121,33 @@ exports.getByUser = async (req, res) => {
   }
 };
 
-// booking-service/controllers/bookingController.js
-
-// Dans bookingController.js, remplacez exports.getByTutor :
-
 exports.getByTutor = async (req, res) => {
   try {
     const paramTutorId = req.params.tutorId;
     const requestingUserId = req.user.id;
     const userRole = req.user.role;
+    const authToken = req.headers.authorization; // ← Récupérer le token
     const { status, startDate, endDate } = req.query;
 
     console.log(`🔍 getByTutor appelé: paramTutorId=${paramTutorId}, requestingUserId=${requestingUserId}, role=${userRole}`);
 
-    // Resolve the actual tutor user ID
     let tutorUserId = null;
 
-    // Si l'utilisateur est un tuteur, utiliser son propre userId
     if (userRole === 'tutor') {
       tutorUserId = requestingUserId;
       
-      // Vérifier que le paramTutorId correspond bien au userId du tuteur
       if (paramTutorId && String(paramTutorId) !== String(tutorUserId)) {
         console.log(`❌ Tentative accès non autorisé: ${requestingUserId} essaie d'accéder aux réservations de ${paramTutorId}`);
-        return res.status(403).json({ 
-          success: false, 
-          message: 'Vous n\'êtes pas autorisé à voir ces réservations' 
+        return res.status(403).json({
+          success: false,
+          message: 'Vous n\'êtes pas autorisé à voir ces réservations'
         });
       }
     } else {
-      // Pour les non-tuteurs (admin), le paramTutorId doit être fourni
       if (!paramTutorId) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'tutorId requis' 
+        return res.status(400).json({
+          success: false,
+          message: 'tutorId requis'
         });
       }
       tutorUserId = paramTutorId;
@@ -161,7 +155,6 @@ exports.getByTutor = async (req, res) => {
 
     console.log(`✅ tutorUserId final: ${tutorUserId}`);
 
-    // Construire les filtres
     const filters = {};
     if (status !== undefined && status !== null && String(status).trim() !== '') {
       filters.status = String(status).toUpperCase();
@@ -169,32 +162,34 @@ exports.getByTutor = async (req, res) => {
     if (startDate) filters.startDate = startDate;
     if (endDate) filters.endDate = endDate;
 
-    // Récupérer les réservations pour le userId du tuteur
-    const reservations = await bookingService.getReservationsByTutor(tutorUserId, filters);
+    // Passer le token au service
+    const reservations = await bookingService.getReservationsByTutor(
+      tutorUserId, 
+      filters,
+      authToken // ← Passer le token
+    );
 
-    // Calculer les stats
     const stats = await bookingService.getReservationStats(tutorUserId, 'tutor');
 
     const count = Array.isArray(reservations) ? reservations.length : (reservations?.length ?? 0);
     console.log(`✅ Résultats: ${count} réservations pour tutorUserId=${tutorUserId}`);
 
-    return res.json({ 
-      success: true, 
-      data: { 
-        reservations, 
-        stats 
-      } 
+    return res.json({
+      success: true,
+      data: {
+        reservations,
+        stats
+      }
     });
   } catch (error) {
     console.error('💥 Erreur récupération réservations tuteur:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: error.message || 'Erreur lors de la récupération des réservations' 
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Erreur lors de la récupération des réservations'
     });
   }
 };
 
-// Aussi, modifiez getStats pour utiliser directement userId
 exports.getStats = async (req, res) => {
   try {
     const userId = req.params.userId;

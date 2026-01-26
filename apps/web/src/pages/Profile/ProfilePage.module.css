@@ -575,6 +575,52 @@
   margin-top: 0.25rem;
 }
 
+/* Carte Leaflet */
+.mapContainer {
+  margin: 16px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.leafletMap {
+  border-radius: 8px;
+}
+
+.mapLegend {
+  margin-top: 8px;
+  font-size: 0.875rem;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radiusIndicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.radiusCircle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #FBBF24;
+  border: 2px solid #FB923C;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .mapContainer {
+    margin: 12px 0;
+  }
+  
+  .leafletMap {
+    height: 250px !important;
+  }
+}
+
 /* Styles pour les compétences */
 .skillsContainer {
   display: flex;

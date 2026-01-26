@@ -70,7 +70,6 @@ class TutorService {
     message?: string;
   }> {
     try {
-      // CORRECTION : Utiliser l'endpoint /tutors/:id qui existe déjà
       const response = await api.get(`/tutors/${tutorId}`);
       
       if (response?.data?.success && response?.data?.data) {

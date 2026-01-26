@@ -4,7 +4,7 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  background: #f8fafc;
+  background: #fffaf6;
 }
 
 .card {
@@ -30,27 +30,31 @@
 }
 
 .tutorName {
-  color: #3b82f6;
+  background: linear-gradient(120deg, #facc15 0%, #fb923c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .tutorRating {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: #64748b;
+  color: #666;
   font-size: 0.9rem;
-  background: #f8fafc;
+  background: #f8f9fa;
   padding: 0.4rem 0.8rem;
   border-radius: 6px;
+  border: 1px solid #e9ecef;
 }
 
 .stars {
-  color: #fbbf24;
+  color: #facc15;
 }
 
 .ratingValue {
   font-weight: 600;
-  color: #1e293b;
+  color: #333;
 }
 
 /* Layout principal */
@@ -77,14 +81,14 @@
 .sectionTitle {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #1e293b;
+  color: #333;
   margin: 0 0 1rem 0;
 }
 
 /* Annonce sélectionnée */
 .annoncePreview {
   background: white;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e9ecef;
   border-radius: 6px;
   padding: 1rem;
 }
@@ -99,18 +103,18 @@
 .annonceTitle {
   font-size: 1rem;
   font-weight: 600;
-  color: #1e293b;
+  color: #333;
   margin: 0;
 }
 
 .annoncePrice {
   font-weight: 600;
-  color: #3b82f6;
+  color: #f59e0b;
   font-size: 0.9rem;
 }
 
 .annonceDescription {
-  color: #64748b;
+  color: #666;
   font-size: 0.9rem;
   line-height: 1.4;
   margin: 0;
@@ -132,59 +136,72 @@
 .navButton {
   width: 32px;
   height: 32px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e9ecef;
   background: white;
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #64748b;
+  color: #666;
   font-size: 0.9rem;
+  transition: all 0.3s ease;
 }
 
 .navButton:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: #fef3c7;
+  border-color: #facc15;
+  color: #92400e;
 }
 
 .weekPeriod {
   font-size: 0.9rem;
-  color: #64748b;
+  color: #333;
   font-weight: 500;
 }
 
 /* Tableau des disponibilités */
 .availabilityTable {
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e9ecef;
   border-radius: 6px;
   overflow: hidden;
   margin-bottom: 1rem;
   background: white;
+  width: 100%;
 }
 
 .tableHeader {
   display: grid;
   grid-template-columns: 80px repeat(7, 1fr);
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
+  border-bottom: 1px solid #facc15;
+  width: 100%;
 }
 
 .timeColumn {
-  padding: 0.75rem;
+  padding: 0.75rem 0.5rem;
   font-size: 0.85rem;
-  color: #64748b;
-  background: #f8fafc;
+  color: #92400e;
+  background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
   text-align: center;
-  border-right: 1px solid #e2e8f0;
-  font-weight: 500;
+  border-right: 1px solid #facc15;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .dayHeader {
   padding: 0.75rem 0.5rem;
   text-align: center;
-  border-right: 1px solid #e2e8f0;
-  background: #f8fafc;
+  border-right: 1px solid #facc15;
+  background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  cursor: default;
 }
 
 .dayHeader:last-child {
@@ -192,31 +209,36 @@
 }
 
 .dayHeader.selectedDay {
-  background: #eff6ff;
+  background: #fde68a;
+  border-bottom: 2px solid #f59e0b;
 }
 
 .dayName {
-  font-weight: 500;
-  color: #1e293b;
+  font-weight: 600;
+  color: #92400e;
   font-size: 0.85rem;
   text-transform: lowercase;
   margin-bottom: 2px;
 }
 
 .dayDate {
-  color: #64748b;
+  color: #92400e;
   font-size: 0.85rem;
+  font-weight: 500;
 }
 
+/* Corps du tableau */
 .tableBody {
-  max-height: 300px;
-  overflow-y: auto;
+  display: block;
+  width: 100%;
 }
 
 .timeRow {
   display: grid;
   grid-template-columns: 80px repeat(7, 1fr);
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e9ecef;
+  min-height: 40px;
+  width: 100%;
 }
 
 .timeRow:last-child {
@@ -226,11 +248,11 @@
 .timeLabel {
   padding: 0.5rem;
   font-size: 0.85rem;
-  color: #475569;
+  color: #92400e;
   text-align: center;
-  border-right: 1px solid #e2e8f0;
-  background: #f8fafc;
-  font-weight: 500;
+  border-right: 1px solid #facc15;
+  background: #fef3c7;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -238,7 +260,7 @@
 
 .timeCell {
   padding: 0.5rem;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid #e9ecef;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -249,28 +271,50 @@
   border-right: none;
 }
 
+/* Boutons de créneau - IMPORTANT: Les nouveaux styles */
 .slotButton {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  border: 1px solid #3b82f6;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #facc15;
   background: white;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.8rem;
-  color: #3b82f6;
+  font-size: 0.9rem;
+  color: #92400e;
   transition: all 0.2s;
+  font-weight: 500;
 }
 
-.slotButton:hover {
-  background: #eff6ff;
+.slotButton:hover:not(:disabled) {
+  background: #fef3c7;
+  transform: scale(1.05);
+}
+
+.slotButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .slotButton.selected {
-  background: #3b82f6;
+  background: linear-gradient(120deg, #facc15 0%, #fb923c 100%);
   color: white;
+  border-color: #fb923c;
+  box-shadow: 0 2px 4px rgba(251, 191, 36, 0.3);
+}
+
+.slotButton.inRange {
+  border: 1px solid #d1d5db;
+  background: #c2c2c2;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.slotButton.inRange:hover {
+  background: #f3f4f6;
+  transform: none;
 }
 
 .unavailableSlot {
@@ -278,23 +322,384 @@
   font-size: 0.9rem;
 }
 
-/* Affichage de la sélection */
-.selectionDisplay {
-  background: #eff6ff;
-  border: 1px solid #3b82f6;
-  border-radius: 4px;
-  padding: 0.75rem 1rem;
+.showMoreContainer,
+.showLessContainer {
+  text-align: center;
+  padding-bottom: 1rem;
+}
+
+.showMoreBtn,
+.showLessBtn {
+  padding: 0.6rem 1.5rem;
+  border: 1px solid #facc15;
+  background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
+  border-radius: 20px;
   font-size: 0.9rem;
+  font-weight: 600;
+  color: #92400e;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 4px rgba(251, 191, 36, 0.1);
+}
+
+.showMoreBtn:hover,
+.showLessBtn:hover {
+  background: linear-gradient(120deg, #fde68a 0%, #fcd34d 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(251, 191, 36, 0.2);
+}
+
+.showMoreBtn::after {
+  content: '▼';
+  font-size: 0.7rem;
+}
+
+.showLessBtn::after {
+  content: '▲';
+  font-size: 0.7rem;
+}
+
+.selectionDisplay {
+  background: #fffec8;
+  border: 1px solid #fb923c;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.selectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #ffb483;
 }
 
 .selectionLabel {
-  color: #475569;
-  margin-right: 0.5rem;
+  color: #ff7b00;
+  font-weight: 600;
+  font-size: 0.95rem;
 }
 
-.selectionValue {
+.clearAllBtn {
+  padding: 0.3rem 0.8rem;
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #dc2626;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clearAllBtn:hover {
+  background: #fee2e2;
+}
+
+.selectionList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.selectionItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #d6d6d6;
+}
+
+.slotInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.slotTime {
   font-weight: 600;
-  color: #1e40af;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.durationSelectorSmall {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.durationBtnSmall {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #e9ecef;
+  background: white;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.durationBtnSmall:hover:not(:disabled) {
+  border-color: #facc15;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.durationBtnSmall.active {
+  background: linear-gradient(120deg, #facc15 0%, #fb923c 100%);
+  border-color: #fb923c;
+  color: white;
+  font-weight: 600;
+}
+
+.durationBtnSmall:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+  border-color: #e5e7eb;
+}
+
+.slotTimeRange {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.slotDate {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.timeRange {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.startTime,
+.endTime {
+  font-weight: 600;
+  color: #fd9904;
+  font-size: 0.9rem;
+  padding: 0.25rem 0.5rem;
+  background: #fffede;
+  border-radius: 4px;
+  min-width: 45px;
+  text-align: center;
+}
+
+.timeSeparator {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.durationBadge {
+  padding: 0.2rem 0.6rem;
+  background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid #fcd34d;
+  margin-left: 1rem;
+}
+
+.durationBtnSmall {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #e9ecef;
+  background: white;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.durationBtnSmall:hover:not(:disabled) {
+  border-color: #facc15;
+  background: #fef3c7;
+  color: #92400e;
+  transform: translateY(-1px);
+}
+
+.durationBtnSmall.active {
+  background: linear-gradient(120deg, #facc15 0%, #fb923c 100%);
+  border-color: #fb923c;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(251, 191, 36, 0.2);
+}
+
+.durationBtnSmall:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+  border-color: #e5e7eb;
+  opacity: 0.7;
+}
+
+.durationBtnSmall::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #374151;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  z-index: 10;
+  margin-bottom: 5px;
+  display: none;
+  pointer-events: none;
+}
+
+.durationBtnSmall:hover::after {
+  display: block;
+}
+
+.durationBtnSmall::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: #374151 transparent transparent transparent;
+  display: none;
+}
+
+.durationBtnSmall:hover::before {
+  display: block;
+}
+
+/* Amélioration de la liste des sélections */
+.selectionList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.selectionItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #dbeafe;
+  transition: all 0.2s;
+}
+
+.selectionItem:hover {
+  border-color: #ffa048;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+.slotPrice {
+  font-weight: 700;
+  color: #535353;
+  font-size: 1.2rem;
+  white-space: nowrap;
+}
+
+.removeSlotBtn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  border-radius: 50%;
+  color: #dc2626;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  transition: all 0.2s;
+}
+
+.removeSlotBtn:hover {
+  background: #fee2e2;
+  transform: scale(1.1);
+}
+
+/* Responsive pour l'affichage amélioré */
+@media (max-width: 768px) {
+  .selectionItem {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  
+  .timeRange {
+    justify-content: center;
+  }
+  
+  .slotActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .durationSelectorSmall {
+    justify-content: center;
+  }
+  
+  .durationBtnSmall::after,
+  .durationBtnSmall::before {
+    display: none !important;
+  }
+}
+
+.slotActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.removeSlotBtn {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  border-radius: 50%;
+  color: #dc2626;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  transition: all 0.2s;
+}
+
+.removeSlotBtn:hover {
+  background: #fee2e2;
 }
 
 /* Duration selector */
@@ -306,24 +711,25 @@
 
 .durationBtn {
   padding: 0.5rem 1rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e9ecef;
   background: white;
   border-radius: 4px;
   font-size: 0.9rem;
   font-weight: 500;
   color: #475569;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
 }
 
 .durationBtn:hover {
-  border-color: #3b82f6;
-  background: #eff6ff;
+  border-color: #facc15;
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .durationBtn.active {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: linear-gradient(120deg, #facc15 0%, #fb923c 100%);
+  border-color: #fb923c;
   color: white;
 }
 
@@ -331,7 +737,7 @@
 .textarea {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e9ecef;
   border-radius: 4px;
   font-size: 0.9rem;
   color: #1e293b;
@@ -344,8 +750,8 @@
 
 .textarea:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 1px #3b82f6;
+  border-color: #facc15;
+  box-shadow: 0 0 0 1px #facc15;
 }
 
 /* Section droite - Récapitulatif */
@@ -357,7 +763,7 @@
 
 .summarySection {
   background: white;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e9ecef;
   border-radius: 6px;
   padding: 1.5rem;
 }
@@ -365,7 +771,7 @@
 .summaryTitle {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #1e293b;
+  color: #333;
   margin: 0 0 1rem 0;
 }
 
@@ -389,12 +795,12 @@
 
 .summaryLabel {
   font-size: 0.9rem;
-  color: #64748b;
+  color: #666;
 }
 
 .summaryValue {
   font-weight: 500;
-  color: #1e293b;
+  color: #333;
   font-size: 0.9rem;
 }
 
@@ -404,25 +810,25 @@
   align-items: center;
   padding-top: 1rem;
   margin-top: 1rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #e9ecef;
 }
 
 .totalLabel {
   font-weight: 600;
-  color: #1e293b;
+  color: #333;
   font-size: 1rem;
 }
 
 .totalAmount {
   font-weight: 600;
-  color: #3b82f6;
+  color: #f59e0b;
   font-size: 1.1rem;
 }
 
 /* Balance */
 .balanceCard {
   background: white;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e9ecef;
   border-radius: 6px;
   padding: 1.5rem;
 }
@@ -430,7 +836,7 @@
 .balanceTitle {
   font-size: 1rem;
   font-weight: 600;
-  color: #1e293b;
+  color: #333;
   margin: 0 0 1rem 0;
 }
 
@@ -443,12 +849,12 @@
 
 .balanceLabel {
   font-size: 0.9rem;
-  color: #64748b;
+  color: #666;
 }
 
 .balanceValue {
   font-weight: 500;
-  color: #1e293b;
+  color: #333;
   font-size: 0.9rem;
 }
 
@@ -458,12 +864,12 @@
   align-items: center;
   padding-top: 0.75rem;
   margin-top: 0.75rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #e9ecef;
 }
 
 .balanceAfterLabel {
   font-weight: 600;
-  color: #1e293b;
+  color: #333;
   font-size: 0.9rem;
 }
 
@@ -530,27 +936,30 @@
   gap: 1rem;
   margin-top: 2rem;
   padding-top: 1.5rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #e9ecef;
 }
 
 .cancelBtn {
   padding: 0.75rem 1.5rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e9ecef;
   background: white;
   border-radius: 4px;
   font-size: 0.9rem;
   font-weight: 500;
   color: #475569;
   cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .cancelBtn:hover:not(:disabled) {
-  background: #f8fafc;
+  background: #f8f9fa;
+  border-color: #facc15;
+  color: #92400e;
 }
 
 .confirmBtn {
   padding: 0.75rem 2rem;
-  background: #3b82f6;
+  background: linear-gradient(120deg, #facc15 0%, #fb923c 100%);
   color: white;
   border: none;
   border-radius: 4px;
@@ -559,11 +968,17 @@
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(251, 191, 36, 0.2);
+  min-width: 220px;
 }
 
 .confirmBtn:hover:not(:disabled) {
-  background: #2563eb;
+  background: linear-gradient(120deg, #e0b514 0%, #ea8535 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(251, 191, 36, 0.3);
 }
 
 .confirmBtn:disabled {
@@ -613,13 +1028,13 @@
   height: 40px;
   border: 3px solid #f1f5f9;
   border-radius: 50%;
-  border-top-color: #3b82f6;
+  border-top-color: #facc15;
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
 }
 
 .loadingContainer p {
-  color: #64748b;
+  color: #666;
   margin: 0;
 }
 
@@ -639,7 +1054,7 @@
   
   .tableHeader,
   .timeRow {
-    grid-template-columns: 70px repeat(7, 1fr);
+    grid-template-columns: 60px repeat(7, 1fr);
   }
   
   .timeColumn,
@@ -653,9 +1068,35 @@
     padding: 0.5rem 0.25rem;
   }
   
+  .dayHeader {
+    min-height: 50px;
+  }
+  
+  .timeCell {
+    min-height: 40px;
+  }
+  
   .slotButton {
     width: 24px;
     height: 24px;
+    font-size: 0.8rem;
+  }
+  
+  .showMoreBtn,
+  .showLessBtn {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
+  
+  .selectionItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .slotActions {
+    width: 100%;
+    justify-content: space-between;
   }
   
   .actions {
@@ -667,5 +1108,44 @@
     width: 100%;
     text-align: center;
     justify-content: center;
+  }
+  
+  .confirmBtn {
+    min-width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .tableHeader,
+  .timeRow {
+    grid-template-columns: 50px repeat(7, 1fr);
+  }
+  
+  .dayHeader {
+    min-height: 45px;
+  }
+  
+  .dayName {
+    font-size: 0.7rem;
+  }
+  
+  .dayDate {
+    font-size: 0.65rem;
+  }
+  
+  .showMoreBtn,
+  .showLessBtn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+  
+  .durationSelector {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .durationBtn {
+    width: 100%;
+    text-align: center;
   }
 }

@@ -35,25 +35,32 @@ class AnnonceService {
 
   async getAnnonceById(annonceId) {
     try {
-      const annonce = await Annonce.findByPk(annonceId, {
-        include: [{
-          model: ProfileTutor,
-          as: 'tutor',
-          include: [{
-            model: User,
-            as: 'user',
-            attributes: ['id', 'firstName', 'lastName', 'email']
-          }]
-        }]
+      console.log(`🔍 Recherche annonce ID: ${annonceId}`);
+      
+      const annonce = await Annonce.findOne({
+        where: { id: annonceId },
+        include: [
+          {
+            model: ProfileTutor,
+            as: 'tutor',
+            include: [{
+              model: User,
+              as: 'user',
+              attributes: ['id', 'firstName', 'lastName', 'email']
+            }]
+          }
+        ]
       });
-
+      
       if (!annonce) {
         throw new Error('Annonce non trouvée');
       }
-
+      
+      console.log(`✅ Annonce trouvée: ${annonce.title}`);
       return annonce;
     } catch (error) {
-      throw new Error(`Erreur lors de la récupération de l'annonce: ${error.message}`);
+      console.error(`❌ Erreur récupération annonce ${annonceId}:`, error);
+      throw error;
     }
   }
 
@@ -276,7 +283,6 @@ class AnnonceService {
         }
       };
       
-      console.log('📦 Données annonce préparées:', annonceData);
       
       const annonce = await Annonce.create(annonceData);
       return await this.getAnnonceById(annonce.id);

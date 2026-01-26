@@ -24,6 +24,11 @@ const Reservation = sequelize.define('Reservation', {
     allowNull: false,
     field: 'annonce_id'
   },
+  annonceTitle: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: 'annonce_title'
+  },
   date: {
     type: DataTypes.DATEONLY,
     allowNull: false,
@@ -67,7 +72,7 @@ const Reservation = sequelize.define('Reservation', {
   },
   transactionHash: {
     type: DataTypes.STRING,
-    allowNull: true, // allow null while pending (important)
+    allowNull: true,
     field: 'transaction_hash'
   },
   blockchainStatus: {
@@ -99,16 +104,13 @@ const Reservation = sequelize.define('Reservation', {
   }
 }, {
   tableName: 'reservations',
-  underscored: true, // ensure snake_case columns by default
+  underscored: true,
   timestamps: true,
   indexes: [
-    // Indexes on foreign keys and status
     { fields: ['tutor_id'] },
     { fields: ['student_id'] },
     { fields: ['annonce_id'] },
     { fields: ['status'] },
-    // Partial unique index on transaction_hash to avoid conflicts when null
-    // Note: Sequelize supports 'where' for indexes; Postgres will enforce unique only when not null
     {
       unique: true,
       fields: ['transaction_hash'],
@@ -120,10 +122,8 @@ const Reservation = sequelize.define('Reservation', {
   ]
 });
 
-// Associations can be defined in index file / after all models are initialized
 Reservation.associate = (models) => {
-  // ...existing associations...
-  // e.g. Reservation.belongsTo(models.User, { as: 'tutor', foreignKey: 'tutorId' });
+  // Associations
 };
 
 module.exports = Reservation;

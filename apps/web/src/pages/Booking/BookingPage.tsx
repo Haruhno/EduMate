@@ -16,9 +16,13 @@ const BookingPage: React.FC = () => {
   const [tutor, setTutor] = useState<TutorFromDB | null>(null);
   const [selectedAnnonce, setSelectedAnnonce] = useState<AnnonceFromDB | null>(null);
   const [tutorSchedule, setTutorSchedule] = useState<any[]>([]);
-  const [date, setDate] = useState<string>('');
-  const [time, setTime] = useState<string>('');
-  const [duration, setDuration] = useState<number>(60);
+  const [selectedSlots, setSelectedSlots] = useState<Array<{
+    date: string, 
+    time: string, 
+    duration: number,
+    id: string
+  }>>([]);
+  const [defaultDuration, setDefaultDuration] = useState<number>(60);
   const [amount, setAmount] = useState<number>(0);
   const [studentNotes, setStudentNotes] = useState<string>('');
   const [balance, setBalance] = useState<number>(0);
@@ -27,14 +31,29 @@ const BookingPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [weekDays, setWeekDays] = useState<any[]>([]);
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(new Date());
+  const [showAllSlots, setShowAllSlots] = useState<boolean>(false);
 
   const annonceIdFromState = location.state?.annonceId;
 
-  // Fonction pour générer la semaine à partir d'une date
+  // Fonction pour générer un ID unique
+  const generateId = () => Math.random().toString(36).substr(2, 9);
+
+  // Convertir une heure en minutes
+  const timeToMinutes = (time: string): number => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  // Convertir des minutes en heure
+  const minutesToTime = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  };
+
+  // Fonction pour générer la semaine
   const generateWeekDays = (startDate: Date) => {
     const days = [];
-    
-    // Ajuster pour commencer à lundi
     const dayOfWeek = startDate.getDay();
     const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     const monday = new Date(startDate);
@@ -69,7 +88,6 @@ const BookingPage: React.FC = () => {
     setWeekDays(initialWeek);
   }, [currentWeekStart]);
 
-  // Navigation entre les semaines
   const goToPreviousWeek = () => {
     const newDate = new Date(currentWeekStart);
     newDate.setDate(newDate.getDate() - 7);
@@ -82,13 +100,10 @@ const BookingPage: React.FC = () => {
     setCurrentWeekStart(newDate);
   };
 
-  // Formater la période de la semaine (ex: "Du 16 au 22 décembre")
   const formatWeekPeriod = () => {
     const monday = weekDays[0];
     const sunday = weekDays[6];
-    
     if (!monday || !sunday) return '';
-    
     return `Du ${monday.dayNumber} au ${sunday.dayNumber} ${sunday.month}`;
   };
 
@@ -103,12 +118,9 @@ const BookingPage: React.FC = () => {
           return;
         }
 
-        // Charger le tuteur
         const tutorResp = await tutorService.getTutorById(tutorId);
         if (tutorResp.success && tutorResp.data) {
           setTutor(tutorResp.data);
-          
-          // Charger les disponibilités du tuteur
           try {
             const profileResp = await tutorService.getTutorProfile(tutorResp.data.id);
             if (profileResp.success && profileResp.data?.schedule) {
@@ -120,40 +132,31 @@ const BookingPage: React.FC = () => {
         }
 
         let selectedAnnonceToSet = null;
-        let amountToSet = 0;
-
-        // 1. D'abord essayer de charger l'annonce spécifique
         if (annonceIdFromState) {
           try {
             const annonceResp = await annonceService.getAnnonce(annonceIdFromState);
             if (annonceResp.success && annonceResp.data) {
               selectedAnnonceToSet = annonceResp.data;
-              amountToSet = annonceResp.data.hourlyRate;
             }
           } catch (annonceError) {
             console.error('Erreur chargement annonce spécifique:', annonceError);
           }
         }
 
-        // 2. Si aucune annonce spécifique, charger toutes les annonces et prendre la première
         if (!selectedAnnonceToSet) {
           const annoncesResp = await tutorService.getAnnoncesByTutor(tutorId);
           if (annoncesResp.success && annoncesResp.data) {
             const annoncesList = annoncesResp.data.annonces || annoncesResp.data;
             if (annoncesList.length > 0) {
               selectedAnnonceToSet = annoncesList[0];
-              amountToSet = annoncesList[0].hourlyRate;
             }
           }
         }
 
-        // 3. Mettre à jour l'état
         if (selectedAnnonceToSet) {
           setSelectedAnnonce(selectedAnnonceToSet);
-          setAmount(amountToSet);
         }
 
-        // Charger le solde
         const currentUser = authService.getCurrentUser();
         if (currentUser?.id) {
           try {
@@ -182,128 +185,147 @@ const BookingPage: React.FC = () => {
     loadData();
   }, [tutorId, navigate, annonceIdFromState]);
 
-  // Mettre à jour le montant quand l'annonce ou la durée change
+  // Calcul du montant total
   useEffect(() => {
     if (selectedAnnonce) {
       const hourlyRate = selectedAnnonce.hourlyRate || 30;
-      const calculatedAmount = (hourlyRate * duration) / 60;
-      setAmount(parseFloat(calculatedAmount.toFixed(2)));
+      let totalAmount = 0;
+      selectedSlots.forEach(slot => {
+        totalAmount += (hourlyRate * slot.duration) / 60;
+      });
+      setAmount(parseFloat(totalAmount.toFixed(2)));
     }
-  }, [selectedAnnonce, duration]);
+  }, [selectedAnnonce, selectedSlots]);
 
-  // Obtenir les créneaux disponibles pour un jour donné avec vérification de la durée
-  const getAvailableSlotsForDay = (dateString: string): string[] => {
-    if (!tutorSchedule || tutorSchedule.length === 0) {
-      return [];
-    }
+  // Vérifier si un créneau est disponible
+  const isSlotAvailable = (dayDate: string, timeSlot: string, durationMinutes: number): boolean => {
+    if (!tutorSchedule || tutorSchedule.length === 0) return false;
     
-    const daySchedule = tutorSchedule.find(
-      (day: any) => day.date === dateString
-    );
+    const daySchedule = tutorSchedule.find((day: any) => day.date === dayDate);
+    if (!daySchedule || !daySchedule.timeSlots || daySchedule.timeSlots.length === 0) return false;
     
-    if (!daySchedule || !daySchedule.timeSlots || daySchedule.timeSlots.length === 0) {
-      return [];
-    }
-    
-    const availableSlots: string[] = [];
     const timeSlots = daySchedule.timeSlots;
+    for (const slot of timeSlots) {
+      if (canFitDuration(timeSlot, durationMinutes, slot)) {
+        return true;
+      }
+    }
     
-    timeSlots.forEach((slot: any) => {
-      if (slot.allDay) {
-        // Si disponible toute la journée, ajouter toutes les heures où la durée tient
-        for (let hour = 8; hour <= 20; hour++) {
-          for (let minute = 0; minute < 60; minute += 30) {
-            const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-            
-            // Vérifier si le créneau tient avec la durée choisie
-            if (canFitDuration(timeString, duration, slot)) {
-              availableSlots.push(timeString);
-            }
-          }
+    return false;
+  };
+
+  const canFitDuration = (startTime: string, durationMinutes: number, slot: any): boolean => {
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const startTotalMinutes = startHour * 60 + startMinute;
+    const endTotalMinutes = startTotalMinutes + durationMinutes;
+    
+    if (slot.allDay) {
+      return endTotalMinutes <= 21 * 60;
+    } else {
+      const [slotStartHour, slotStartMinute] = slot.startTime.split(':').map(Number);
+      const [slotEndHour, slotEndMinute] = slot.endTime.split(':').map(Number);
+      const slotStartTotalMinutes = slotStartHour * 60 + slotStartMinute;
+      const slotEndTotalMinutes = slotEndHour * 60 + slotEndMinute;
+      
+      return startTotalMinutes >= slotStartTotalMinutes && 
+             endTotalMinutes <= slotEndTotalMinutes;
+    }
+  };
+
+  // Vérifier si un créneau est exactement sélectionné
+  const isSlotSelected = (dayDate: string, timeSlot: string): boolean => {
+    return selectedSlots.some(slot => slot.date === dayDate && slot.time === timeSlot);
+  };
+
+  // Obtenir la durée d'un créneau sélectionné
+  const getSlotDuration = (dayDate: string, timeSlot: string): number => {
+    const slot = selectedSlots.find(s => s.date === dayDate && s.time === timeSlot);
+    return slot ? slot.duration : defaultDuration;
+  };
+
+  // NOUVELLE FONCTION: Vérifier si un créneau est dans la plage d'un créneau sélectionné
+  const isSlotInSelectedRange = (dayDate: string, timeSlot: string): boolean => {
+    const slotStart = timeToMinutes(timeSlot);
+    
+    for (const selectedSlot of selectedSlots) {
+      if (selectedSlot.date === dayDate) {
+        const selectedStart = timeToMinutes(selectedSlot.time);
+        const selectedEnd = selectedStart + selectedSlot.duration;
+        
+        // Vérifier si le créneau est DANS la plage du créneau sélectionné
+        if (slotStart >= selectedStart && slotStart < selectedEnd) {
+          return true;
         }
-      } else {
-        // Ajouter les heures spécifiques du créneau où la durée tient
-        const startTime = slot.startTime;
-        const endTime = slot.endTime;
+      }
+    }
+    
+    return false;
+  };
+
+  // NOUVELLE FONCTION: Obtenir tous les créneaux dans la plage
+  const getAllSlotsInSelectedRanges = (dayDate: string): string[] => {
+    const allSlotsInRanges: string[] = [];
+    
+    selectedSlots.forEach(selectedSlot => {
+      if (selectedSlot.date === dayDate) {
+        const selectedStart = timeToMinutes(selectedSlot.time);
+        const selectedEnd = selectedStart + selectedSlot.duration;
         
-        // Convertir en minutes pour la comparaison
-        const [startHour, startMinute] = startTime.split(':').map(Number);
-        const [endHour, endMinute] = endTime.split(':').map(Number);
-        const startTotalMinutes = startHour * 60 + startMinute;
-        const endTotalMinutes = endHour * 60 + endMinute;
-        
-        // Générer les créneaux de 30 minutes dans l'intervalle
-        for (let minutes = startTotalMinutes; minutes < endTotalMinutes; minutes += 30) {
-          const hour = Math.floor(minutes / 60);
-          const minute = minutes % 60;
-          const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-          
-          // Vérifier si le créneau tient avec la durée choisie
-          if (canFitDuration(timeString, duration, slot)) {
-            availableSlots.push(timeString);
-          }
+        // Ajouter tous les créneaux de 30 minutes dans la plage
+        for (let minutes = selectedStart; minutes < selectedEnd; minutes += 30) {
+          allSlotsInRanges.push(minutesToTime(minutes));
         }
       }
     });
     
-    return [...new Set(availableSlots)].sort();
+    return [...new Set(allSlotsInRanges)].sort();
   };
 
-  // Vérifier si un créneau peut contenir la durée choisie
-  const canFitDuration = (startTime: string, durationMinutes: number, slot: any): boolean => {
-    if (slot.allDay) {
-      // Pour allDay, vérifier que le cours termine avant 21h
-      const [startHour, startMinute] = startTime.split(':').map(Number);
-      const startTotalMinutes = startHour * 60 + startMinute;
-      const endTotalMinutes = startTotalMinutes + durationMinutes;
-      
-      // Vérifier que le cours ne dépasse pas 21h (dernière heure possible)
-      return endTotalMinutes <= 21 * 60; // 21h = 21 * 60 minutes
-    } else {
-      // Pour un créneau spécifique, vérifier que le cours tient dans le créneau
-      const [startHour, startMinute] = startTime.split(':').map(Number);
-      const startTotalMinutes = startHour * 60 + startMinute;
-      
-      const slotStartTime = slot.startTime;
-      const slotEndTime = slot.endTime;
-      const [slotStartHour, slotStartMinute] = slotStartTime.split(':').map(Number);
-      const [slotEndHour, slotEndMinute] = slotEndTime.split(':').map(Number);
-      const slotStartTotalMinutes = slotStartHour * 60 + slotStartMinute;
-      const slotEndTotalMinutes = slotEndHour * 60 + slotEndMinute;
-      
-      const courseEndTotalMinutes = startTotalMinutes + durationMinutes;
-      
-      // Le créneau doit commencer après le début du slot et finir avant la fin du slot
-      return startTotalMinutes >= slotStartTotalMinutes && 
-             courseEndTotalMinutes <= slotEndTotalMinutes;
+  // Vérifier si un créneau est disponible (tenant compte des plages sélectionnées)
+  const isSlotAvailableWithSelection = (dayDate: string, timeSlot: string, durationMinutes: number): boolean => {
+    // Vérifier d'abord avec le tuteur
+    if (!isSlotAvailable(dayDate, timeSlot, durationMinutes)) {
+      return false;
     }
+    
+    // Vérifier si le créneau est dans une plage déjà sélectionnée
+    if (isSlotInSelectedRange(dayDate, timeSlot)) {
+      return false;
+    }
+    
+    // Vérifier si le créneau chevauche une plage sélectionnée
+    const slotStart = timeToMinutes(timeSlot);
+    const slotEnd = slotStart + durationMinutes;
+    
+    for (const selectedSlot of selectedSlots) {
+      if (selectedSlot.date === dayDate) {
+        const selectedStart = timeToMinutes(selectedSlot.time);
+        const selectedEnd = selectedStart + selectedSlot.duration;
+        
+        if (slotStart < selectedEnd && slotEnd > selectedStart) {
+          return false;
+        }
+      }
+    }
+    
+    return true;
   };
 
-  // Vérifier si un créneau est disponible pour un jour donné (en tenant compte de la durée)
-  const isSlotAvailable = (dayDate: string, timeSlot: string): boolean => {
-    const availableSlots = getAvailableSlotsForDay(dayDate);
-    return availableSlots.includes(timeSlot);
-  };
-
-  // Obtenir tous les créneaux uniques disponibles dans la semaine
   const getAllAvailableTimeSlots = () => {
     const allSlots = new Set<string>();
     
     weekDays.forEach(day => {
-      const slots = getAvailableSlotsForDay(day.date);
+      const slots = getAvailableSlotsForDay(day.date, defaultDuration);
       slots.forEach(slot => allSlots.add(slot));
     });
     
-    // Si aucun créneau n'est disponible, afficher une plage horaire standard
     if (allSlots.size === 0) {
-      // Créneaux horaires standards de 8h à 20h
       for (let hour = 8; hour <= 20; hour++) {
         for (let minute = 0; minute < 60; minute += 30) {
           const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-          // Vérifier que le créneau tient avec la durée choisie (jusqu'à 21h max)
           const [startHour, startMinute] = timeString.split(':').map(Number);
           const startTotalMinutes = startHour * 60 + startMinute;
-          const endTotalMinutes = startTotalMinutes + duration;
+          const endTotalMinutes = startTotalMinutes + defaultDuration;
           if (endTotalMinutes <= 21 * 60) {
             allSlots.add(timeString);
           }
@@ -314,28 +336,117 @@ const BookingPage: React.FC = () => {
     return Array.from(allSlots).sort();
   };
 
-  // Gérer la sélection d'un créneau
+  const getAvailableSlotsForDay = (dateString: string, durationMinutes: number): string[] => {
+    if (!tutorSchedule || tutorSchedule.length === 0) return [];
+    
+    const daySchedule = tutorSchedule.find((day: any) => day.date === dateString);
+    if (!daySchedule || !daySchedule.timeSlots || daySchedule.timeSlots.length === 0) return [];
+    
+    const availableSlots: string[] = [];
+    const timeSlots = daySchedule.timeSlots;
+    
+    timeSlots.forEach((slot: any) => {
+      if (slot.allDay) {
+        for (let hour = 8; hour <= 20; hour++) {
+          for (let minute = 0; minute < 60; minute += 30) {
+            const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+            if (canFitDuration(timeString, durationMinutes, slot)) {
+              availableSlots.push(timeString);
+            }
+          }
+        }
+      } else {
+        const startTime = slot.startTime;
+        const endTime = slot.endTime;
+        const [startHour, startMinute] = startTime.split(':').map(Number);
+        const [endHour, endMinute] = endTime.split(':').map(Number);
+        const startTotalMinutes = startHour * 60 + startMinute;
+        const endTotalMinutes = endHour * 60 + endMinute;
+        
+        for (let minutes = startTotalMinutes; minutes < endTotalMinutes; minutes += 30) {
+          const hour = Math.floor(minutes / 60);
+          const minute = minutes % 60;
+          const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          if (canFitDuration(timeString, durationMinutes, slot)) {
+            availableSlots.push(timeString);
+          }
+        }
+      }
+    });
+    
+    return [...new Set(availableSlots)].sort();
+  };
+
+  const getInitialSlotsCount = () => {
+    const allSlots = getAllAvailableTimeSlots();
+    return Math.max(5, Math.ceil(allSlots.length / 2));
+  };
+
+  const getVisibleTimeSlots = () => {
+    const allSlots = getAllAvailableTimeSlots();
+    if (showAllSlots) return allSlots;
+    return allSlots.slice(0, getInitialSlotsCount());
+  };
+
+  const handleShowMore = () => setShowAllSlots(true);
+  const handleShowLess = () => setShowAllSlots(false);
+
+  // Gestion de la sélection d'un créneau
   const handleSlotSelection = (dayDate: string, timeSlot: string) => {
-    if (isSlotAvailable(dayDate, timeSlot)) {
-      setDate(dayDate);
-      setTime(timeSlot);
-    }
-  };
-
-  // Vérifier si un créneau est actuellement sélectionné
-  const isSlotSelected = (dayDate: string, timeSlot: string): boolean => {
-    return date === dayDate && time === timeSlot;
-  };
-
-  // Lorsque la durée change, réinitialiser la sélection si le créneau n'est plus valide
-  useEffect(() => {
-    if (date && time) {
-      if (!isSlotAvailable(date, time)) {
-        setDate('');
-        setTime('');
+    const existingSlotIndex = selectedSlots.findIndex(
+      slot => slot.date === dayDate && slot.time === timeSlot
+    );
+    
+    if (existingSlotIndex > -1) {
+      setSelectedSlots(prev => prev.filter((_, index) => index !== existingSlotIndex));
+    } else {
+      if (isSlotAvailableWithSelection(dayDate, timeSlot, defaultDuration)) {
+        setSelectedSlots(prev => [...prev, { 
+          date: dayDate, 
+          time: timeSlot, 
+          duration: defaultDuration,
+          id: generateId()
+        }]);
       }
     }
-  }, [duration]);
+  };
+
+  // Obtenir les durées disponibles pour un créneau (tenant compte des plages)
+  const getAvailableDurationsForSlot = (dayDate: string, timeSlot: string): number[] => {
+    const availableDurations: number[] = [];
+    const possibleDurations = [30, 60, 90, 120];
+    
+    possibleDurations.forEach(duration => {
+      if (isSlotAvailableWithSelection(dayDate, timeSlot, duration)) {
+        availableDurations.push(duration);
+      }
+    });
+    
+    return availableDurations;
+  };
+
+  // Changer la durée d'un créneau sélectionné
+  const handleSlotDurationChange = (slotId: string, newDuration: number) => {
+    const slot = selectedSlots.find(s => s.id === slotId);
+    if (!slot) return;
+    
+    // Vérifier si la nouvelle durée est disponible
+    if (isSlotAvailableWithSelection(slot.date, slot.time, newDuration)) {
+      setSelectedSlots(prev => 
+        prev.map(s => 
+          s.id === slotId ? { ...s, duration: newDuration } : s
+        )
+      );
+    }
+  };
+
+  const calculateEndTime = (startTime: string, durationMinutes: number): string => {
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const totalMinutes = startHour * 60 + startMinute + durationMinutes;
+    const endHour = Math.floor(totalMinutes / 60);
+    const endMinute = totalMinutes % 60;
+    return `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+  };
 
   const formatAmount = (value: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -344,26 +455,18 @@ const BookingPage: React.FC = () => {
     }).format(value || 0);
   };
 
-  const calculateBalanceAfter = () => {
-    return balance - amount;
-  };
+  const calculateBalanceAfter = () => balance - amount;
 
   const handleConfirm = async () => {
     setError(null);
     
-    if (!date || !time) {
-      setError('Veuillez sélectionner une date et une heure');
+    if (selectedSlots.length === 0) {
+      setError('Veuillez sélectionner au moins un créneau');
       return;
     }
     
     if (!selectedAnnonce) {
       setError('Aucune annonce sélectionnée');
-      return;
-    }
-    
-    // Vérifier que l'heure sélectionnée est disponible
-    if (!isSlotAvailable(date, time)) {
-      setError('Ce créneau horaire n\'est plus disponible. Veuillez en choisir un autre.');
       return;
     }
     
@@ -374,29 +477,38 @@ const BookingPage: React.FC = () => {
     }
     
     if (balance < amount) {
-      setError('Crédits insuffisants pour cette réservation');
+      setError('Crédits insuffisants pour ces réservations');
       return;
     }
     
     setSubmitting(true);
     
     try {
-      const bookingData = {
-        tutorId: tutorId as string,
-        annonceId: selectedAnnonce.id,
-        date,
-        time,
-        amount: amount,
-        duration,
-        description: selectedAnnonce.description || '',
-        studentNotes
-      };
+      const hourlyRate = selectedAnnonce.hourlyRate || 30;
+      const bookingPromises = selectedSlots.map(slot => {
+        const slotAmount = (hourlyRate * slot.duration) / 60;
+        
+        const bookingData = {
+          tutorId: tutorId as string,
+          annonceId: selectedAnnonce.id,
+          annonceTitle: selectedAnnonce.title,
+          date: slot.date,
+          time: slot.time,
+          amount: parseFloat(slotAmount.toFixed(2)),
+          duration: slot.duration,
+          description: selectedAnnonce.description || '',
+          studentNotes
+        };
+        
+        return bookingService.createBooking(bookingData);
+      });
       
-      const resp = await bookingService.createBooking(bookingData);
+      const results = await Promise.all(bookingPromises);
+      const allSuccess = results.every(resp => resp?.success);
       
-      if (resp?.success) {
+      if (allSuccess) {
         const messageState = {
-          message: 'Réservation créée avec succès ! En attente de confirmation du tuteur.',
+          message: `${selectedSlots.length} réservation(s) créée(s) avec succès !`,
           bookingStatus: 'PENDING'
         };
         
@@ -406,19 +518,17 @@ const BookingPage: React.FC = () => {
           navigate('/blockchain', { state: messageState });
         }
       } else {
-        setError(resp?.message || 'Erreur lors de la création de la réservation');
+        setError('Erreur lors de la création de certaines réservations');
       }
     } catch (err: any) {
       console.error('Erreur réservation:', err);
-      if (err?.code === 'ERR_NETWORK' || !err?.response) {
-        setError('Service temporairement indisponible. Veuillez réessayer.');
-      } else {
-        setError(err?.response?.data?.message || err?.message || 'Erreur lors de la réservation');
-      }
+      setError(err?.response?.data?.message || err?.message || 'Erreur lors de la réservation');
     } finally {
       setSubmitting(false);
     }
   };
+
+  const clearAllSelections = () => setSelectedSlots([]);
 
   if (loading) {
     return (
@@ -433,13 +543,11 @@ const BookingPage: React.FC = () => {
     );
   }
 
-  // Récupérer tous les créneaux horaires disponibles
   const allTimeSlots = getAllAvailableTimeSlots();
 
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        {/* Header */}
         <div className={styles.header}>
           <h1 className={styles.title}>
             Réserver un cours avec{' '}
@@ -459,9 +567,7 @@ const BookingPage: React.FC = () => {
         </div>
 
         <div className={styles.content}>
-          {/* Colonne gauche - Formulaire */}
           <div className={styles.leftColumn}>
-            {/* Annonce sélectionnée */}
             {selectedAnnonce && (
               <div className={styles.formSection}>
                 <h3 className={styles.sectionTitle}>Annonce sélectionnée</h3>
@@ -477,66 +583,75 @@ const BookingPage: React.FC = () => {
               </div>
             )}
 
-            {/* Disponibilités du tuteur - Style exact comme l'image */}
             <div className={styles.formSection}>
               <div className={styles.availabilityHeader}>
                 <div className={styles.weekNavigation}>
-                  <button 
-                    className={styles.navButton}
-                    onClick={goToPreviousWeek}
-                  >
-                    &lt;
-                  </button>
-                  <div className={styles.weekPeriod}>
-                    {formatWeekPeriod()}
-                  </div>
-                  <button 
-                    className={styles.navButton}
-                    onClick={goToNextWeek}
-                  >
-                    &gt;
-                  </button>
+                  <button className={styles.navButton} onClick={goToPreviousWeek}>&lt;</button>
+                  <div className={styles.weekPeriod}>{formatWeekPeriod()}</div>
+                  <button className={styles.navButton} onClick={goToNextWeek}>&gt;</button>
                 </div>
               </div>
 
-              {/* Tableau des disponibilités */}
               <div className={styles.availabilityTable}>
-                {/* En-tête avec jours de la semaine */}
                 <div className={styles.tableHeader}>
                   <div className={styles.timeColumn}></div>
-                  {weekDays.map((day) => (
-                    <div 
-                      key={day.date} 
-                      className={`${styles.dayHeader} ${date === day.date ? styles.selectedDay : ''}`}
-                    >
-                      <div className={styles.dayName}>{day.dayName}</div>
-                      <div className={styles.dayDate}>{day.dayNumber} {day.month}</div>
-                    </div>
-                  ))}
+                  {weekDays.map((day) => {
+                    const hasSelectedSlots = selectedSlots.some(s => s.date === day.date);
+                    const allSlotsInRanges = getAllSlotsInSelectedRanges(day.date);
+                    
+                    return (
+                      <div 
+                        key={day.date} 
+                        className={`${styles.dayHeader} ${hasSelectedSlots ? styles.selectedDay : ''}`}
+                        title={hasSelectedSlots ? `Plages sélectionnées: ${allSlotsInRanges.join(', ')}` : ''}
+                      >
+                        <div className={styles.dayName}>{day.dayName}</div>
+                        <div className={styles.dayDate}>{day.dayNumber} {day.month}</div>
+                      </div>
+                    );
+                  })}
                 </div>
                 
-                {/* Lignes de créneaux horaires */}
                 <div className={styles.tableBody}>
-                  {allTimeSlots.map((timeSlot) => (
+                  {getVisibleTimeSlots().map((timeSlot) => (
                     <div key={timeSlot} className={styles.timeRow}>
                       <div className={styles.timeLabel}>{timeSlot}</div>
                       {weekDays.map((day) => {
-                        const isAvailable = isSlotAvailable(day.date, timeSlot);
                         const isSelected = isSlotSelected(day.date, timeSlot);
+                        const isInSelectedRange = isSlotInSelectedRange(day.date, timeSlot);
+                        const isAvailable = isSlotAvailableWithSelection(day.date, timeSlot, defaultDuration);
+                        
+                        let displaySymbol = '+';
+                        let buttonClass = styles.slotButton;
+                        let isDisabled = false;
+                        
+                        if (isSelected) {
+                          displaySymbol = '✓';
+                          buttonClass += ` ${styles.selected}`;
+                        } else if (isInSelectedRange) {
+                          displaySymbol = '';
+                          buttonClass += ` ${styles.inRange}`;
+                          isDisabled = true;
+                        } else if (!isAvailable) {
+                          displaySymbol = '—';
+                          isDisabled = true;
+                        }
                         
                         return (
-                          <div 
-                            key={`${day.date}-${timeSlot}`} 
-                            className={styles.timeCell}
-                          >
-                            {isAvailable ? (
+                          <div key={`${day.date}-${timeSlot}`} className={styles.timeCell}>
+                            {displaySymbol !== '—' ? (
                               <button
                                 type="button"
-                                className={`${styles.slotButton} ${isSelected ? styles.selected : ''}`}
-                                onClick={() => handleSlotSelection(day.date, timeSlot)}
-                                title={`Réserver le ${day.displayName} à ${timeSlot} (${duration}min)`}
+                                className={buttonClass}
+                                onClick={() => !isDisabled && handleSlotSelection(day.date, timeSlot)}
+                                disabled={isDisabled}
+                                title={
+                                  isSelected ? `Sélectionné: ${day.displayName} à ${timeSlot}` :
+                                  isInSelectedRange ? `Dans une plage sélectionnée` :
+                                  `Sélectionner ${day.displayName} à ${timeSlot}`
+                                }
                               >
-                                {isSelected && '✓'}
+                                {displaySymbol}
                               </button>
                             ) : (
                               <span className={styles.unavailableSlot}>—</span>
@@ -548,30 +663,96 @@ const BookingPage: React.FC = () => {
                   ))}
                 </div>
               </div>
+
+                 {!showAllSlots && allTimeSlots.length > getInitialSlotsCount() && (
+                  <div className={styles.showMoreContainer}>
+                    <button className={styles.showMoreBtn} onClick={handleShowMore}>
+                      Voir tous les créneaux ({allTimeSlots.length - getInitialSlotsCount()} autres)
+                    </button>
+                  </div>
+                )}
+
+                {showAllSlots && (
+                  <div className={styles.showLessContainer}>
+                    <button className={styles.showLessBtn} onClick={handleShowLess}>
+                      Voir moins
+                    </button>
+                  </div>
+                )}
               
-              {/* Affichage de la sélection actuelle */}
-              {date && time && (
+              {selectedSlots.length > 0 && (
                 <div className={styles.selectionDisplay}>
-                  <span className={styles.selectionLabel}>Sélectionné :</span>
-                  <span className={styles.selectionValue}>
-                    {weekDays.find(d => d.date === date)?.displayName} à {time} ({duration}min)
-                  </span>
+                  <div className={styles.selectionHeader}>
+                    <span className={styles.selectionLabel}>Créneaux sélectionnés ({selectedSlots.length}) :</span>
+                    <button className={styles.clearAllBtn} onClick={clearAllSelections}>
+                      Tout effacer
+                    </button>
+                  </div>
+                  <div className={styles.selectionList}>
+                    {selectedSlots.map((slot) => {
+                      const day = weekDays.find(d => d.date === slot.date);
+                      const availableDurations = getAvailableDurationsForSlot(slot.date, slot.time);
+                      const endTime = calculateEndTime(slot.time, slot.duration); // Calcul de l'heure de fin
+                      
+                      return (
+                        <div key={slot.id} className={styles.selectionItem}>
+                          <div className={styles.slotInfo}>
+                            <div className={styles.slotTimeRange}>
+                              <span className={styles.slotDate}>{day?.displayName}</span>
+                              <div className={styles.timeRange}>
+                                <span className={styles.startTime}>{slot.time}</span>
+                                <span className={styles.timeSeparator}>→</span>
+                                <span className={styles.endTime}>{endTime}</span>
+                                <span className={styles.durationBadge}>{slot.duration}min</span>
+                              </div>
+                            </div>
+                            <div className={styles.durationSelectorSmall}>
+                              {availableDurations.map((dur) => {
+                                const durEndTime = calculateEndTime(slot.time, dur);
+                                return (
+                                  <button
+                                    key={dur}
+                                    type="button"
+                                    className={`${styles.durationBtnSmall} ${slot.duration === dur ? styles.active : ''}`}
+                                    onClick={() => handleSlotDurationChange(slot.id, dur)}
+                                    disabled={slot.duration === dur}
+                                    title={`${dur} minutes (${slot.time} → ${durEndTime})`}
+                                  >
+                                    {dur}min
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <div className={styles.slotActions}>
+                            <span className={styles.slotPrice}>
+                              {formatAmount((selectedAnnonce?.hourlyRate || 30) * slot.duration / 60)}🪙
+                            </span>
+                            <button 
+                              className={styles.removeSlotBtn}
+                              onClick={() => handleSlotSelection(slot.date, slot.time)}
+                              title="Supprimer ce créneau"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Durée du cours */}
             <div className={styles.formSection}>
-              <h3 className={styles.sectionTitle}>Durée du cours</h3>
+              <h3 className={styles.sectionTitle}>Durée par défaut pour les nouveaux créneaux</h3>
               <div className={styles.durationSelector}>
                 {[30, 60, 90, 120].map((dur) => (
                   <button
                     key={dur}
                     type="button"
-                    className={`${styles.durationBtn} ${
-                      duration === dur ? styles.active : ''
-                    }`}
-                    onClick={() => setDuration(dur)}
+                    className={`${styles.durationBtn} ${defaultDuration === dur ? styles.active : ''}`}
+                    onClick={() => setDefaultDuration(dur)}
                   >
                     {dur} min
                   </button>
@@ -579,7 +760,6 @@ const BookingPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Notes */}
             <div className={styles.formSection}>
               <h3 className={styles.sectionTitle}>Notes pour le tuteur (optionnel)</h3>
               <textarea
@@ -592,7 +772,6 @@ const BookingPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Colonne droite - Récapitulatif */}
           <div className={styles.rightColumn}>
             <div className={styles.summarySection}>
               <h3 className={styles.summaryTitle}>Récapitulatif</h3>
@@ -611,17 +790,14 @@ const BookingPage: React.FC = () => {
                     <span className={styles.summaryValue}>{selectedAnnonce.teachingMode}</span>
                   </div>
                   <div className={styles.summaryRow}>
-                    <span className={styles.summaryLabel}>Date & Heure</span>
-                    <span className={styles.summaryValue}>
-                      {date && time ? 
-                        `${weekDays.find(d => d.date === date)?.displayName} à ${time}` : 
-                        'Non sélectionné'
-                      }
-                    </span>
+                    <span className={styles.summaryLabel}>Nombre de cours</span>
+                    <span className={styles.summaryValue}>{selectedSlots.length}</span>
                   </div>
                   <div className={styles.summaryRow}>
-                    <span className={styles.summaryLabel}>Durée</span>
-                    <span className={styles.summaryValue}>{duration} minutes</span>
+                    <span className={styles.summaryLabel}>Durée totale</span>
+                    <span className={styles.summaryValue}>
+                      {selectedSlots.reduce((total, slot) => total + slot.duration, 0)} minutes
+                    </span>
                   </div>
                 </div>
               )}
@@ -631,7 +807,6 @@ const BookingPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Solde */}
             <div className={styles.balanceCard}>
               <h4 className={styles.balanceTitle}>Votre solde</h4>
               <div className={styles.balanceRow}>
@@ -639,14 +814,12 @@ const BookingPage: React.FC = () => {
                 <span className={styles.balanceValue}>{formatAmount(balance)}🪙</span>
               </div>
               <div className={styles.balanceRow}>
-                <span className={styles.balanceLabel}>Coût de la réservation</span>
+                <span className={styles.balanceLabel}>Coût total</span>
                 <span className={styles.balanceValue}>- {formatAmount(amount)}🪙</span>
               </div>
               <div className={styles.balanceAfter}>
-                <span className={styles.balanceAfterLabel}>Solde après réservation</span>
-                <span className={`${styles.balanceAfterValue} ${
-                  calculateBalanceAfter() < 0 ? styles.negative : styles.positive
-                }`}>
+                <span className={styles.balanceAfterLabel}>Solde après</span>
+                <span className={`${styles.balanceAfterValue} ${calculateBalanceAfter() < 0 ? styles.negative : styles.positive}`}>
                   {formatAmount(calculateBalanceAfter())}🪙
                 </span>
               </div>
@@ -654,53 +827,37 @@ const BookingPage: React.FC = () => {
                 <div className={styles.alert}>
                   <div className={styles.alertIcon}>⚠️</div>
                   <div className={styles.alertText}>
-                    <p>
-                      <strong>Solde insuffisant</strong><br />
-                      Veuillez recharger votre portefeuille avant de réserver.
-                    </p>
+                    <p><strong>Solde insuffisant</strong><br />Veuillez recharger votre portefeuille avant de réserver.</p>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Note */}
             <div className={styles.note}>
               <p>
                 <strong>Comment ça marche ?</strong><br />
-                Le montant est réservé immédiatement. Le tuteur a 24h pour confirmer la réservation. 
-                En cas de refus ou d'absence de réponse, les crédits vous seront automatiquement rendus.
+                Sélectionnez plusieurs créneaux. Chaque créneau grise toute sa plage horaire. 
+                Le montant total sera réservé immédiatement.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Actions */}
         <div className={styles.actions}>
-          <button
-            className={styles.cancelBtn}
-            onClick={() => navigate(-1)}
-            disabled={submitting}
-          >
+          <button className={styles.cancelBtn} onClick={() => navigate(-1)} disabled={submitting}>
             Annuler
           </button>
           <button
             className={styles.confirmBtn}
             onClick={handleConfirm}
-            disabled={
-              submitting || 
-              !date || 
-              !time || 
-              !selectedAnnonce || 
-              calculateBalanceAfter() < 0
-            }
+            disabled={submitting || selectedSlots.length === 0 || !selectedAnnonce || calculateBalanceAfter() < 0}
           >
             {submitting ? (
               <>
-                <span className={styles.spinner}></span>
-                Création en cours...
+                <span className={styles.spinner}></span> Création en cours...
               </>
             ) : (
-              'Confirmer la réservation'
+              `Confirmer ${selectedSlots.length} réservation(s)`
             )}
           </button>
         </div>

@@ -245,20 +245,6 @@ const retryWithFallback = async (skills: string[], rawText?: string): Promise<{t
   throw new Error('Tous les essais ont échoué');
 };
 
-const generateDynamicTitle = (skills: string[]) => {
-  if (skills.length === 0) return 'Formation personnalisée';
-  
-  const mainSkill = skills[0];
-  const otherSkills = skills.slice(1);
-  
-  if (skills.length === 1) {
-    return `Formation : ${mainSkill}`;
-  } else if (skills.length === 2) {
-    return `Formation : ${mainSkill} et ${otherSkills[0]}`;
-  } else {
-    return `Formation complète : ${mainSkill} et autres`;
-  }
-};
 
 interface ExistingAnnonce {
   id: string;
@@ -1031,16 +1017,6 @@ const SkillsInputWithAutocomplete: React.FC<SkillsInputWithAutocompleteProps> = 
     const assignment = competenceAssignments.find(a => a.skill === skill);
     return assignment ? assignment.offerIds : [];
   }, [competenceAssignments]);
-
-  const getUnassignedSkills = useCallback(() => {
-    const allSkills = [...localManualSkills, ...profileSkills];
-    return allSkills.filter(skill => {
-      const assignedOffers = getAssignedOffersForSkill(skill);
-      return assignedOffers.length === 0;
-    });
-  }, [localManualSkills, profileSkills, getAssignedOffersForSkill]);
-
-  const unassignedSkills = getUnassignedSkills();
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (!showSuggestions || suggestions.length === 0) return;
@@ -2370,8 +2346,6 @@ const TransformSkillToAnnonceModal: React.FC<TransformSkillToAnnonceModalProps> 
           if (!saveResponse.ok) {
             throw new Error(`Erreur sauvegarde HTTP ${saveResponse.status}`);
           }
-          
-          const saveResult = await saveResponse.json();
         }
       } catch (error) {
         console.error('❌ Erreur suppression compétence de skillsToTeach:', error);
@@ -2480,9 +2454,7 @@ const TransformSkillToAnnonceModal: React.FC<TransformSkillToAnnonceModalProps> 
         })
       });
       
-      if (response.ok) {
-        const result = await response.json();
-        
+      if (response.ok) {        
         const updatedProfileSkills = [...new Set([...profileSkills, ...skillsToSave])];
         setProfileSkills(updatedProfileSkills);
         

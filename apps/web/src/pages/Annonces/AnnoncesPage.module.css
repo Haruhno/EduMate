@@ -87,6 +87,7 @@
 }
 
 /* Content Header */
+/* Content Header - Layout amélioré */
 .contentHeader {
   display: flex;
   justify-content: space-between;
@@ -100,6 +101,73 @@
 .headerLeft {
   flex: 1;
   min-width: 300px;
+  display: flex;
+  align-items: center;
+}
+
+/* Header Actions - Positionné à droite */
+.headerActions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+/* Bouton Créer une autre annonce */
+#create-another-annonce-btn {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
+  background: linear-gradient(120deg, #facc15 0%, #fb923c 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.2);
+  white-space: nowrap;
+}
+
+#create-another-annonce-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(251, 191, 36, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .contentHeader {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.5rem;
+  }
+  
+  .headerLeft {
+    min-width: auto;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .headerActions {
+    width: 100%;
+    justify-content: center !important;
+  }
+  
+  #create-another-annonce-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  #create-another-annonce-btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
 }
 
 .contentTitle {
@@ -355,6 +423,74 @@
 
 .detailSection {
   margin-bottom: 1.5rem;
+}
+
+.detailLabel {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Skills Row Layout */
+.skillsRow {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+
+.skillsColumn {
+  flex: 1;
+  min-width: 0; /* Pour éviter le débordement */
+}
+
+/* Si pas de compétences recherchées, la colonne gauche prend toute la largeur */
+.skillsRow:has(.skillsColumn:only-child) .skillsColumn {
+  flex: 0 0 100%;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .skillsRow {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .skillsColumn {
+    width: 100%;
+  }
+}
+
+.detailSection {
+  margin-bottom: 1.5rem;
+}
+
+.skillsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.skillTag {
+  background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: 1px solid #fcd34d;
+  white-space: nowrap;
+}
+
+.learningSkill {
+  background: linear-gradient(120deg, #e0f2fe 0%, #bae6fd 100%);
+  color: #0369a1;
+  border: 1px solid #7dd3fc;
 }
 
 .detailLabel {

@@ -374,6 +374,19 @@ const AnnoncesPage: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Bouton Créer une autre annonce - À DROITE */}
+          {annonces.length > 0 && (
+            <div className={styles.headerActions}>
+              <button 
+                onClick={handleCreateAnnonce} 
+                className={styles.btnPrimary}
+              >
+                <span className={styles.buttonPlus}>+</span>
+                Créer une autre annonce
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Liste des annonces ou état vide */}
@@ -419,16 +432,33 @@ const AnnoncesPage: React.FC = () => {
 
                   {/* Détails de l'annonce */}
                   <div className={styles.annonceDetails}>
-                    {/* Compétences */}
-                    <div className={styles.detailSection}>
-                      <label className={styles.detailLabel}>Compétences</label>
-                      <div className={styles.skillsContainer}>
-                        {annonce.subjects?.map((subject, index) => (
-                          <span key={index} className={styles.skillTag}>
-                            {subject}
-                          </span>
-                        )) || 'Non spécifié'}
+                    {/* Compétences sur la même ligne */}
+                    <div className={styles.skillsRow}>
+                      {/* Compétences enseignées - Gauche */}
+                      <div className={styles.skillsColumn}>
+                        <label className={styles.detailLabel}>Compétences enseignées</label>
+                        <div className={styles.skillsContainer}>
+                          {annonce.subjects?.map((subject: string, index: number) => (
+                            <span key={index} className={styles.skillTag}>
+                              {subject}
+                            </span>
+                          )) || 'Non spécifié'}
+                        </div>
                       </div>
+
+                      {/* Compétences à acquérir - Droite */}
+                      {userProfile?.skillsToLearn && userProfile.skillsToLearn.length > 0 && (
+                        <div className={styles.skillsColumn}>
+                          <label className={styles.detailLabel}>Compétences recherchées</label>
+                          <div className={styles.skillsContainer}>
+                            {userProfile.skillsToLearn.map((skill: string, index: number) => (
+                              <span key={index} className={`${styles.skillTag} ${styles.learningSkill}`}>
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Grille d'informations */}

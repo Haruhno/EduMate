@@ -7,224 +7,279 @@ const axios = require('axios');
 class BookingService {
   
   // Créer une réservation avec transaction PENDING
-  // Dans bookingService.js, remplacez la méthode createReservation :
-  async createReservation({ tutorId, studentId, annonceId, date, time, amount, duration, description, studentNotes }) {
-    const transaction = await sequelize.transaction();
-    
+ async createReservation({ tutorId, studentId, annonceId, annonceTitle, date, time, amount, duration, description, studentNotes }) {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    // Récupérer l'userId du tuteur à partir de profile_tutors
+    let tutorUserId;
     try {
-      console.log('🎯 Création réservation avec annonceId:', annonceId);
-      console.log('🎯 tutorId (profile_tutors):', tutorId, 'studentId (user):', studentId);
-      
-      // AJOUTER : Récupérer l'userId du tuteur à partir de profile_tutors
-      let tutorUserId;
-      try {
-        // CORRECTION : Utiliser "userId" avec majuscule, pas "userid"
-        const [tutorProfile] = await sequelize.query(`
-          SELECT "userId" FROM profile_tutors WHERE id = :tutorId
-        `, {
-          replacements: { tutorId },
-          type: sequelize.QueryTypes.SELECT,
-          transaction
-        });
-        
-        if (!tutorProfile) {
-          throw new Error('Profil tuteur non trouvé');
-        }
-        
-        tutorUserId = tutorProfile.userId; // Note: userId avec majuscule
-        console.log('✅ userId du tuteur trouvé:', tutorUserId);
-      } catch (error) {
-        console.error('❌ Erreur récupération userId tuteur:', error);
-        throw new Error('Impossible de récupérer les informations du tuteur');
-      }
-      
-      // Vérifier si une réservation similaire existe déjà
-      const existingReservation = await Reservation.findOne({
-        where: {
-          tutorId: tutorUserId, // Utiliser le userId, pas le profileId
-          studentId,
-          annonceId,
-          date,
-          time,
-          status: ['PENDING', 'CONFIRMED']
-        },
+      const [tutorProfile] = await sequelize.query(`
+        SELECT "userId" FROM profile_tutors WHERE id = :tutorId
+      `, {
+        replacements: { tutorId },
+        type: sequelize.QueryTypes.SELECT,
         transaction
       });
-
-      if (existingReservation) {
-        throw new Error('Une réservation pour cette session existe déjà');
+      
+      if (!tutorProfile) {
+        throw new Error('Profil tuteur non trouvé');
       }
+      tutorUserId = tutorProfile.userId;
+      console.log(`✅ Tutor userId trouvé: ${tutorUserId} pour tutorId: ${tutorId}`);
+    } catch (error) {
+      console.error('❌ Erreur récupération userId tuteur:', error);
+      throw new Error('Impossible de récupérer les informations du tuteur');
+    }
 
-      // Créer la réservation en base avec le userId du tuteur
-      const reservation = await Reservation.create({
-        tutorId: tutorUserId, // Stocker le userId du tuteur
+    // RÉCUPÉRER LE TITRE DE L'ANNONCE
+    let finalAnnonceTitle = annonceTitle || `Annonce #${annonceId.substring(0, 8)}`;
+    
+    if (!annonceTitle) {
+      try {
+        console.log(`📚 Récupération titre annonce ${annonceId} depuis marketplace-service...`);
+        const annonceResponse = await axios.get(
+          `http://localhost:3002/api/annonces/${annonceId}`,
+          { 
+            timeout: 5000,
+            headers: {
+              'Accept': 'application/json'
+            }
+          }
+        );
+        
+        if (annonceResponse.data?.success && annonceResponse.data?.data?.title) {
+          finalAnnonceTitle = annonceResponse.data.data.title;
+          console.log(`✅ Titre récupéré: "${finalAnnonceTitle}"`);
+        } else {
+          console.warn(`⚠️ Réponse annonce sans titre:`, annonceResponse.data);
+        }
+      } catch (error) {
+        console.warn(`⚠️ Impossible de récupérer l'annonce ${annonceId}:`, error.message);
+        // On garde le titre par défaut "Annonce #..."
+      }
+    } else {
+      console.log(`📝 Titre fourni directement: "${annonceTitle}"`);
+    }
+
+    // Vérifier si une réservation similaire existe déjà
+    const existingReservation = await Reservation.findOne({
+      where: {
+        tutorId: tutorUserId,
         studentId,
         annonceId,
         date,
         time,
-        duration: duration || 60,
-        amount,
-        description: description || 'Session de tutorat',
-        studentNotes,
-        status: 'PENDING',
-        blockchainStatus: 'PENDING'
-      }, { transaction });
+        status: ['PENDING', 'CONFIRMED']
+      },
+      transaction
+    });
 
-      console.log('✅ Réservation créée en base:', reservation.id);
+    if (existingReservation) {
+      throw new Error('Une réservation pour cette session existe déjà');
+    }
 
-      // Créer une transaction blockchain PENDING avec le bon userId
-      try {
-        const blockchainResponse = await blockchainClient.post('/transfer/booking-pending', {
-          fromUserId: studentId, // userId de l'étudiant (déjà correct)
-          toUserId: tutorUserId, // userId du tuteur
-          amount: amount,
-          description: `Réservation #${reservation.id} - Session du ${date} à ${time} (En attente)`,
+    console.log(`📝 Création réservation avec titre: "${finalAnnonceTitle}"`);
+
+    // Créer la réservation en base avec le titre
+    const reservation = await Reservation.create({
+      tutorId: tutorUserId, // Stocker le userId du tuteur
+      studentId,
+      annonceId,
+      annonceTitle: finalAnnonceTitle, // ← TITRE STOCKÉ ICI
+      date,
+      time,
+      duration: duration || 60,
+      amount,
+      description: description || 'Session de tutorat',
+      studentNotes,
+      status: 'PENDING',
+      blockchainStatus: 'PENDING',
+      blockchainFailed: false,
+      blockchainCancelled: false
+    }, { transaction });
+
+    console.log(`✅ Réservation créée avec ID: ${reservation.id}, titre: "${reservation.annonceTitle}"`);
+
+    // Créer une transaction blockchain PENDING avec le bon userId
+    try {
+      const blockchainResponse = await blockchainClient.post('/transfer/booking-pending', {
+        fromUserId: studentId,
+        toUserId: tutorUserId,
+        amount: amount,
+        description: `Réservation #${reservation.id} - ${finalAnnonceTitle} - Session du ${date} à ${time} (En attente)`,
+        metadata: {
+          bookingId: reservation.id,
+          annonceId: annonceId,
+          annonceTitle: finalAnnonceTitle,
+          tutorId: tutorUserId,
+          tutorProfileId: tutorId,
+          studentId: studentId,
+          date: date,
+          time: time,
+          duration: duration || 60,
+          type: 'TUTOR_SESSION_PENDING',
+          status: 'PENDING'
+        }
+      });
+
+      if (blockchainResponse.data.success) {
+        // Mettre à jour la réservation avec les infos blockchain
+        reservation.blockchainTransactionId = blockchainResponse.data.data.transaction?.id;
+        reservation.transactionHash = blockchainResponse.data.data.ledgerBlock?.hash;
+        reservation.blockchainStatus = 'PENDING';
+        await reservation.save({ transaction });
+        
+        console.log(`✅ Transaction blockchain créée pour réservation ${reservation.id}`);
+      } else {
+        reservation.blockchainFailed = true;
+        await reservation.save({ transaction });
+        console.warn(`⚠️ Réponse blockchain non réussie:`, blockchainResponse.data);
+      }
+    } catch (blockchainError) {
+      console.error('❌ Erreur blockchain lors de la création:', blockchainError.message);
+      reservation.blockchainFailed = true;
+      await reservation.save({ transaction });
+      console.warn('⚠️ Réservation créée mais blockchain échouée, transaction rollback?');
+    }
+
+    await transaction.commit();
+    
+    // Retourner la réservation avec le titre
+    const reservationWithTitle = reservation.toJSON();
+    reservationWithTitle.annonceTitle = reservation.annonceTitle;
+    reservationWithTitle.annonce = {
+      title: reservation.annonceTitle,
+      subject: 'Matière non spécifiée',
+      description: reservation.description || 'Description non disponible'
+    };
+    
+    console.log(`🎉 Réservation ${reservation.id} créée avec succès. Titre: "${reservation.annonceTitle}"`);
+    
+    return reservationWithTitle;
+    
+  } catch (error) {
+    await transaction.rollback();
+    console.error('💥 Erreur création réservation:', error);
+    console.error('📋 Stack trace:', error.stack);
+    throw error;
+  }
+}
+  // Confirmer une réservation (par le tuteur)
+  // Confirmer une réservation (par le tuteur)
+async confirmReservation(reservationId, tutorId, tutorNotes = null) {
+  const transaction = await sequelize.transaction();
+  
+  try {      
+    // Récupérer et vérifier la réservation
+    const reservation = await Reservation.findByPk(reservationId, { transaction });
+    if (!reservation) {
+      throw new Error('Réservation non trouvée');
+    }
+
+    if (String(reservation.tutorId) !== String(tutorId)) {
+      throw new Error('Seul le tuteur concerné peut confirmer cette réservation');
+    }
+
+    if (reservation.status !== 'PENDING') {
+      throw new Error(`La réservation ne peut pas être confirmée. Statut actuel: ${reservation.status}`);
+    }
+
+    // Finaliser la transaction blockchain
+    let blockchainResponse;
+    try {
+      if (reservation.blockchainTransactionId) {
+        blockchainResponse = await blockchainClient.post('/transfer/booking-confirm', {
+          transactionId: reservation.blockchainTransactionId,
+          bookingId: reservation.id,
+          confirmedBy: tutorId,
           metadata: {
             bookingId: reservation.id,
-            annonceId: annonceId,
-            tutorId: tutorUserId, // userId du tuteur
-            tutorProfileId: tutorId, // Conserver aussi l'ID du profil pour référence
-            studentId: studentId,
-            date: date,
-            time: time,
-            duration: duration || 60,
-            type: 'TUTOR_SESSION_PENDING',
-            status: 'PENDING'
+            confirmedAt: new Date().toISOString(),
+            tutorNotes: tutorNotes
           }
         });
 
-        if (blockchainResponse.data.success) {
-          // Mettre à jour la réservation avec les infos blockchain
-          reservation.blockchainTransactionId = blockchainResponse.data.data.transaction?.id;
-          reservation.transactionHash = blockchainResponse.data.data.ledgerBlock?.hash;
-          reservation.blockchainStatus = 'PENDING';
-          await reservation.save({ transaction });
-          
-          console.log('✅ Transaction blockchain PENDING créée:', reservation.blockchainTransactionId);
-        } else {
-          console.warn('⚠️ Échec création transaction blockchain:', blockchainResponse.data.message);
-          reservation.blockchainFailed = true;
-          await reservation.save({ transaction });
-        }
-      } catch (blockchainError) {
-        console.error('❌ Erreur blockchain lors de la création:', blockchainError.message);
-        reservation.blockchainFailed = true;
-        await reservation.save({ transaction });
-      }
-
-      await transaction.commit();
-      return reservation;
-      
-    } catch (error) {
-      await transaction.rollback();
-      console.error('💥 Erreur création réservation:', error);
-      throw error;
-    }
-  }
-
-  // Confirmer une réservation (par le tuteur)
-  async confirmReservation(reservationId, tutorId, tutorNotes = null) {
-    const transaction = await sequelize.transaction();
-    
-    try {
-      console.log(`🎯 Confirmation réservation ${reservationId} par tuteur ${tutorId}`);
-      
-      // Récupérer et vérifier la réservation
-      const reservation = await Reservation.findByPk(reservationId, { transaction });
-      if (!reservation) {
-        throw new Error('Réservation non trouvée');
-      }
-
-      if (String(reservation.tutorId) !== String(tutorId)) {
-        throw new Error('Seul le tuteur concerné peut confirmer cette réservation');
-      }
-
-      if (reservation.status !== 'PENDING') {
-        throw new Error(`La réservation ne peut pas être confirmée. Statut actuel: ${reservation.status}`);
-      }
-
-      // Finaliser la transaction blockchain
-      let blockchainResponse;
-      try {
-        if (reservation.blockchainTransactionId) {
-          blockchainResponse = await blockchainClient.post('/transfer/booking-confirm', {
-            transactionId: reservation.blockchainTransactionId,
-            bookingId: reservation.id,
-            confirmedBy: tutorId,
-            metadata: {
-              bookingId: reservation.id,
-              confirmedAt: new Date().toISOString(),
-              tutorNotes: tutorNotes
-            }
-          });
-
-          if (!blockchainResponse.data.success) {
-            throw new Error('Échec confirmation blockchain: ' + blockchainResponse.data.message);
-          }
-
-          console.log('✅ Transaction blockchain confirmée');
-        } else {
-          // Si pas de transaction PENDING, en créer une nouvelle directement
-          blockchainResponse = await blockchainClient.post('/transfer', {
-            fromUserId: reservation.studentId,
-            toWalletAddress: await this.getTutorWalletAddress(tutorId),
-            amount: reservation.amount,
-            description: `Réservation #${reservation.id} - Session du ${reservation.date} à ${reservation.time}`,
-            metadata: {
-              bookingId: reservation.id,
-              type: 'TUTOR_SESSION',
-              status: 'CONFIRMED'
-            }
-          });
-
-          if (!blockchainResponse.data.success) {
-            throw new Error('Échec transfert blockchain: ' + blockchainResponse.data.message);
-          }
+        if (!blockchainResponse.data.success) {
+          throw new Error('Échec confirmation blockchain: ' + blockchainResponse.data.message);
         }
 
-        // Mettre à jour la réservation
-        reservation.status = 'CONFIRMED';
-        reservation.blockchainStatus = 'CONFIRMED';
-        reservation.transactionHash = blockchainResponse.data.data.ledgerBlock?.hash;
-        reservation.blockchainTransactionId = blockchainResponse.data.data.transaction?.id;
-        
-        if (tutorNotes) {
-          reservation.tutorNotes = tutorNotes;
-        }
-        
-        await reservation.save({ transaction });
-
-        await transaction.commit();
-        
-        // Retourner les données enrichies
-        const enrichedReservation = reservation.toJSON();
-        enrichedReservation.blockchain = {
-          transactionId: reservation.blockchainTransactionId,
-          transactionHash: reservation.transactionHash,
+      } else {
+        // Si pas de transaction PENDING, en créer une nouvelle directement
+        blockchainResponse = await blockchainClient.post('/transfer', {
+          fromUserId: reservation.studentId,
+          toWalletAddress: await this.getTutorWalletAddress(tutorId),
           amount: reservation.amount,
-          confirmedAt: new Date().toISOString()
-        };
+          description: `Réservation #${reservation.id} - Session du ${reservation.date} à ${reservation.time}`,
+          metadata: {
+            bookingId: reservation.id,
+            type: 'TUTOR_SESSION',
+            status: 'CONFIRMED'
+          }
+        });
 
-        return enrichedReservation;
-        
-      } catch (blockchainError) {
-        await transaction.rollback();
-        console.error('❌ Erreur blockchain lors de la confirmation:', blockchainError);
-        
-        // Vérifier si c'est une erreur de solde insuffisant
-        if (blockchainError.message.includes('solde') || blockchainError.message.includes('insufficient')) {
-          throw new Error('Solde insuffisant dans le wallet de l\'étudiant');
+        if (!blockchainResponse.data.success) {
+          throw new Error('Échec transfert blockchain: ' + blockchainResponse.data.message);
         }
-        
-        throw new Error(`Erreur confirmation blockchain: ${blockchainError.message}`);
+      }
+
+      // Mettre à jour la réservation
+      reservation.status = 'CONFIRMED';
+      reservation.blockchainStatus = 'CONFIRMED';
+      reservation.transactionHash = blockchainResponse.data.data.ledgerBlock?.hash;
+      reservation.blockchainTransactionId = blockchainResponse.data.data.transaction?.id;
+      
+      if (tutorNotes) {
+        reservation.tutorNotes = tutorNotes;
       }
       
-    } catch (error) {
+      await reservation.save({ transaction });
+
+      // COMMIT DE LA TRANSACTION ICI - IMPORTANT !
+      await transaction.commit();
+      
+    } catch (blockchainError) {
+      // Rollback en cas d'erreur blockchain (avant le commit)
       await transaction.rollback();
-      console.error('💥 Erreur confirmation réservation:', error);
-      throw error;
+      console.error('Erreur blockchain lors de la confirmation:', blockchainError);
+      
+      // Vérifier si c'est une erreur de solde insuffisant
+      if (blockchainError.message.includes('solde') || blockchainError.message.includes('insufficient')) {
+        throw new Error('Solde insuffisant dans le wallet de l\'étudiant');
+      }
+      
+      throw new Error(`Erreur confirmation blockchain: ${blockchainError.message}`);
     }
+    
+    // Code APRÈS le commit (hors transaction)
+    // Charger la réservation fraîchement depuis la base
+    const confirmedReservation = await Reservation.findByPk(reservationId);
+    
+    // Préparer l'objet de retour
+    const reservationObj = confirmedReservation.toJSON();
+    
+    // Ajouter les données enrichies
+    reservationObj.annonceTitle = confirmedReservation.annonceTitle;
+    reservationObj.annonce = {
+      title: confirmedReservation.annonceTitle || `Annonce #${confirmedReservation.annonceId.substring(0, 8)}`,
+      subject: 'Matière non spécifiée',
+      description: confirmedReservation.description || 'Description non disponible'
+    };
+    
+    console.log(`✅ Réservation ${reservationId} confirmée avec succès`);
+    
+    return reservationObj;
+    
+  } catch (error) {
+    // Gestion d'erreurs générales
+    // Vérifier si la transaction est toujours active avant de rollback
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
+    console.error('Erreur confirmation réservation:', error);
+    throw error;
   }
+}
 
   // Annuler une réservation
   async cancelReservation(reservationId, userId, reason = null) {
@@ -324,154 +379,136 @@ class BookingService {
         whereClause.status = filters.status;
       }
       
-      if (filters.startDate) {
-        whereClause.date = {
-          [Op.gte]: filters.startDate
-        };
-      }
-      
-      if (filters.endDate) {
-        whereClause.date = {
-          ...whereClause.date,
-          [Op.lte]: filters.endDate
-        };
-      }
-
       const reservations = await Reservation.findAll({
         where: whereClause,
         order: [['createdAt', 'DESC']]
       });
 
-      console.log(`📊 Récupération réservations pour userId=${userId}: ${reservations.length} résultats`);
-      
-      return reservations;
-      
+      // Enrichir avec annonceTitle
+      const enrichedReservations = reservations.map(reservation => {
+        const reservationObj = reservation.toJSON();
+        
+        // Créer l'objet annonce
+        reservationObj.annonce = {
+          title: reservation.annonceTitle || `Annonce #${reservation.annonceId}`,
+          subject: 'Matière non spécifiée',
+          description: reservation.description || 'Description non disponible'
+        };
+        
+        return reservationObj;
+      });
+
+      return enrichedReservations;
     } catch (error) {
       console.error('Erreur récupération réservations:', error);
       throw error;
     }
   }
-
   // Obtenir les réservations d'un tuteur (basé sur userId)
-  // Dans bookingService.js, remplacez la méthode getReservationsByTutor :
-
-  async getReservationsByTutor(tutorUserId, filters = {}) {
+  async getReservationsByTutor(tutorUserId, filters = {}, authToken = null) {
     try {
       console.log(`📊 Récupération réservations pour tuteur userId=${tutorUserId}`);
       
-      const whereClause = { tutorId: tutorUserId }; // Utilise directement userId du tuteur
+      const whereClause = { tutorId: tutorUserId };
+      if (filters.status) whereClause.status = filters.status;
       
-      if (filters.status) {
-        whereClause.status = filters.status;
-      }
-      
-      if (filters.startDate) {
-        whereClause.date = {
-          [Op.gte]: filters.startDate
-        };
-      }
-      
-      if (filters.endDate) {
-        whereClause.date = {
-          ...whereClause.date,
-          [Op.lte]: filters.endDate
-        };
-      }
-
       const reservations = await Reservation.findAll({
         where: whereClause,
         order: [['createdAt', 'DESC']]
       });
 
-      console.log(`✅ Réservations trouvées: ${reservations.length} résultats`);
-      
-      // Récupérer les informations des étudiants et des annonces
+      console.log(`✅ ${reservations.length} réservations trouvées`);
+
+      // Enrichir les réservations
       const enrichedReservations = await Promise.all(
         reservations.map(async (reservation) => {
           const reservationObj = reservation.toJSON();
           
+          // 1. RÉCUPÉRER LES INFOS DE L'ÉTUDIANT
           try {
-            // Option 1: Utiliser la route publique /all pour récupérer tous les utilisateurs
-            // (si elle retourne les infos complètes)
-            const allUsersResponse = await axios.get('http://localhost:3001/api/auth/all');
-            
-            if (allUsersResponse.data.success && Array.isArray(allUsersResponse.data.data)) {
-              const student = allUsersResponse.data.data.find(user => user.id === reservation.studentId);
-              if (student) {
-                reservationObj.student = {
-                  firstName: student.firstName,
-                  lastName: student.lastName,
-                  email: student.email
-                };
-              }
-            }
-          } catch (authError) {
-            console.warn(`⚠️ Route /all non disponible, tentative alternative:`, authError.message);
-            
-            try {
-              // Option 2: Tenter la route publique GET /api/users/:id
-              // Celle-ci semble disponible d'après tes routes
-              const studentResponse = await axios.get(
-                `http://localhost:3001/api/users/${reservation.studentId}`
-              );
-              
-              if (studentResponse.data.success) {
-                reservationObj.student = {
-                  firstName: studentResponse.data.data.firstName,
-                  lastName: studentResponse.data.data.lastName,
-                  email: studentResponse.data.data.email
-                };
-              }
-            } catch (userError) {
-              console.warn(`⚠️ Impossible de récupérer l'étudiant ${reservation.studentId}:`, userError.message);
-            }
-          }
-          
-          try {
-            // Récupérer les infos de l'annonce depuis le service marketplace
-            // Note: Vérifie si cette route est publique ou nécessite un token
-            const annonceResponse = await axios.get(
-              `http://localhost:3002/api/annonces/${reservation.annonceId}`,
+            console.log(`👤 Récupération étudiant ${reservation.studentId}...`);
+            // Utiliser le service auth (port 3001) pour récupérer l'utilisateur
+            const studentResponse = await axios.get(
+              `http://localhost:3001/api/users/${reservation.studentId}`,
               {
-                // Si le service marketplace nécessite un token, utilise celui du context
-                headers: {
-                  Authorization: req?.headers?.authorization || ''
-                }
+                timeout: 3000,
+                headers: authToken ? { Authorization: authToken } : {}
               }
             );
             
-            if (annonceResponse.data.success) {
-              reservationObj.annonce = {
-                title: annonceResponse.data.data.title,
-                subject: annonceResponse.data.data.subject,
-                description: annonceResponse.data.data.description
+            if (studentResponse.data?.success) {
+              reservationObj.student = {
+                firstName: studentResponse.data.data.firstName,
+                lastName: studentResponse.data.data.lastName,
+                email: studentResponse.data.data.email
               };
-            }
-          } catch (annonceError) {
-            console.warn(`⚠️ Impossible de récupérer l'annonce ${reservation.annonceId}:`, annonceError.message);
-            
-            // Fallback: chercher dans la réponse d'erreur ou utiliser des valeurs par défaut
-            if (annonceError.response?.data?.annonce) {
-              reservationObj.annonce = annonceError.response.data.annonce;
+              console.log(`✅ Étudiant trouvé: ${reservationObj.student.firstName} ${reservationObj.student.lastName}`);
             } else {
-              // Valeurs par défaut pour éviter les erreurs frontend
-              reservationObj.annonce = {
-                title: `Annonce #${reservation.annonceId}`,
-                subject: 'Matière non spécifiée',
-                description: 'Description non disponible'
+              console.warn(`⚠️ Réponse API étudiant sans succès:`, studentResponse.data);
+              reservationObj.student = {
+                firstName: 'Étudiant',
+                lastName: '',
+                email: 'email@inconnu.com'
               };
             }
+          } catch (error) {
+            console.error(`❌ Erreur récupération étudiant ${reservation.studentId}:`, error.message);
+            // Valeurs par défaut
+            reservationObj.student = {
+              firstName: 'Étudiant',
+              lastName: '',
+              email: 'email@inconnu.com'
+            };
           }
+          
+          // 2. RÉCUPÉRER LES INFOS DE L'ANNONCE
+          console.log(`📚 Récupération annonce ${reservation.annonceId}...`);
+          try {
+            const annonceResponse = await axios.get(
+              `http://localhost:3002/api/annonces/${reservation.annonceId}`,
+              {
+                timeout: 3000,
+                headers: authToken ? { Authorization: authToken } : {}
+              }
+            );
+            
+            if (annonceResponse.data?.success) {
+              const annonceData = annonceResponse.data.data;
+              reservationObj.annonce = {
+                title: annonceData.title || reservation.annonceTitle,
+                subject: annonceData.subject || 'Matière non spécifiée',
+                description: annonceData.description || reservation.description || 'Description non disponible'
+              };
+              console.log(`✅ Annonce trouvée: "${reservationObj.annonce.title}"`);
+            } else {
+              console.warn(`⚠️ Réponse annonce sans succès`);
+              reservationObj.annonce = {
+                title: reservation.annonceTitle || `Annonce #${reservation.annonceId}`,
+                subject: 'Matière non spécifiée',
+                description: reservation.description || 'Description non disponible'
+              };
+            }
+          } catch (error) {
+            console.warn(`⚠️ Impossible de récupérer annonce ${reservation.annonceId}:`, error.message);
+            reservationObj.annonce = {
+              title: reservation.annonceTitle || `Annonce #${reservation.annonceId}`,
+              subject: 'Matière non spécifiée',
+              description: reservation.description || 'Description non disponible'
+            };
+          }
+          
+          // 3. Inclure le titre dans l'objet racine aussi
+          reservationObj.annonceTitle = reservation.annonceTitle;
           
           return reservationObj;
         })
       );
-      
+
       return enrichedReservations;
-      
     } catch (error) {
       console.error('💥 Erreur récupération réservations tuteur:', error);
-      // Retourner les réservations sans enrichissement plutôt que de planter
+      
+      // Fallback: retourner au moins les réservations sans enrichissement
       try {
         const whereClause = { tutorId: tutorUserId };
         if (filters.status) whereClause.status = filters.status;
@@ -481,11 +518,25 @@ class BookingService {
           order: [['createdAt', 'DESC']]
         });
         
-        console.log(`⚠️ Retour des réservations sans enrichissement: ${plainReservations.length} résultats`);
-        return plainReservations.map(r => r.toJSON());
+        return plainReservations.map(r => {
+          const obj = r.toJSON();
+          // Valeurs par défaut pour l'étudiant
+          obj.student = {
+            firstName: 'Étudiant',
+            lastName: '',
+            email: 'email@inconnu.com'
+          };
+          obj.annonceTitle = r.annonceTitle;
+          obj.annonce = {
+            title: r.annonceTitle || `Annonce #${r.annonceId}`,
+            subject: 'Matière non spécifiée',
+            description: r.description || 'Description non disponible'
+          };
+          return obj;
+        });
       } catch (fallbackError) {
-        console.error('💥 Erreur même en fallback:', fallbackError);
-        throw error; // Propager l'erreur originale
+        console.error('💥 Même en fallback:', fallbackError);
+        throw error;
       }
     }
   }

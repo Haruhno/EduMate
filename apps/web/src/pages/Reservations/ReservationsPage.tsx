@@ -5,11 +5,12 @@ import blockchainService from '../../services/blockchainService';
 import authService from '../../services/authService';
 import styles from './ReservationsPage.module.css';
 
-interface Booking {
+export interface Booking {
   id: string;
   tutorId: string;
   studentId: string;
   annonceId: string;
+  annonceTitle?: string;
   annonce?: {
     title: string;
     subject: string;
@@ -43,6 +44,99 @@ interface WalletStats {
   kycStatus: string;
 }
 
+// Modal pour confirmer sans message
+const ConfirmWithoutMessageModal: React.FC<{
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ onConfirm, onCancel }) => {
+  return (
+    <div className={styles.modalOverlay}>
+      <div className={styles.modalContent}>
+        <div className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>Confirmer la réservation</h3>
+          <button className={styles.modalClose} onClick={onCancel}>×</button>
+        </div>
+        <div className={styles.modalBody}>
+          <p>Souhaitez-vous confirmer cette réservation sans ajouter de message pour l'étudiant ?</p>
+        </div>
+        <div className={styles.modalFooter}>
+          <button className={styles.modalButtonSecondary} onClick={onCancel}>
+            Retour
+          </button>
+          <button className={styles.modalButtonPrimary} onClick={onConfirm}>
+            Confirmer sans message
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Modal pour annuler avec raison
+const CancelModal: React.FC<{
+  onConfirm: (reason?: string) => void;
+  onCancel: () => void;
+}> = ({ onConfirm, onCancel }) => {
+  const [reason, setReason] = useState('');
+
+  return (
+    <div className={styles.modalOverlay}>
+      <div className={styles.modalContent}>
+        <div className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>Annuler la réservation</h3>
+          <button className={styles.modalClose} onClick={onCancel}>×</button>
+        </div>
+        <div className={styles.modalBody}>
+          <p>Veuillez indiquer la raison de l'annulation (optionnel) :</p>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Raison de l'annulation..."
+            rows={3}
+            className={styles.modalTextarea}
+          />
+        </div>
+        <div className={styles.modalFooter}>
+          <button className={styles.modalButtonSecondary} onClick={onCancel}>
+            Retour
+          </button>
+          <button className={styles.modalButtonDanger} onClick={() => onConfirm(reason || undefined)}>
+            Confirmer l'annulation
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Modal pour compléter la session
+const CompleteSessionModal: React.FC<{
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ onConfirm, onCancel }) => {
+  return (
+    <div className={styles.modalOverlay}>
+      <div className={styles.modalContent}>
+        <div className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>Marquer comme terminée</h3>
+          <button className={styles.modalClose} onClick={onCancel}>×</button>
+        </div>
+        <div className={styles.modalBody}>
+          <p>Souhaitez-vous marquer cette session comme terminée ?</p>
+        </div>
+        <div className={styles.modalFooter}>
+          <button className={styles.modalButtonSecondary} onClick={onCancel}>
+            Non
+          </button>
+          <button className={styles.modalButtonPrimary} onClick={onConfirm}>
+            Oui, terminer la session
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ReservationsPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -58,16 +152,20 @@ const ReservationsPage: React.FC = () => {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [tutorNotes, setTutorNotes] = useState<string>('');
   const [showWalletCard, setShowWalletCard] = useState<boolean>(false);
+  
+  // États pour les modales
+  const [showConfirmWithoutMessage, setShowConfirmWithoutMessage] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
 
   const currentUser = authService.getCurrentUser();
-  const currentUserId = currentUser?.id; // <-- stable primitive for deps
+  const currentUserId = currentUser?.id;
   const isTutor = currentUser?.role === 'tutor';
 
-  // Vérifier les messages de succès
   useEffect(() => {
     if (location.state?.message) {
       setSuccessMessage(location.state.message);
-      // Nettoyer l'état après affichage
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
@@ -101,9 +199,6 @@ const ReservationsPage: React.FC = () => {
     });
   };
 
-  // Load functions use currentUserId inside instead of relying on object identity
-  // Dans ReservationsPage.tsx, remplacez la fonction loadReservations :
-
   const loadReservations = async (userId?: string) => {
     try {
       setLoading(true);
@@ -114,14 +209,12 @@ const ReservationsPage: React.FC = () => {
         return;
       }
 
-      console.log(`🔍 Chargement réservations pour userId: ${userId}, rôle: ${currentUser?.role}`);
+      console.log(`Chargement réservations pour userId: ${userId}, rôle: ${currentUser?.role}`);
       
       let fetched: any[] = [];
       let fetchedStats: any = null;
 
-      // Charger selon le rôle
       if (currentUser?.role === 'tutor') {
-        // Pour les tuteurs, utiliser getBookingsByTutor avec le userId
         const filters = filter !== 'all' ? { status: filter.toUpperCase() } : undefined;
         const resp = await bookingService.getBookingsByTutor(userId, filters);
         
@@ -130,7 +223,6 @@ const ReservationsPage: React.FC = () => {
           fetchedStats = resp.data?.stats || resp.stats || null;
         }
       } else {
-        // Pour les étudiants, utiliser getBookingsByUser
         const filters = filter !== 'all' ? { status: filter.toUpperCase() } : undefined;
         const resp = await bookingService.getBookingsByUser(userId, filters);
         
@@ -140,11 +232,18 @@ const ReservationsPage: React.FC = () => {
         }
       }
 
-      console.log(`✅ ${fetched.length} réservations chargées`);
+      console.log(`${fetched.length} réservations chargées`);
+      
+      if (fetched.length > 0) {
+        console.log('Première réservation:', fetched[0]);
+        console.log('Est-ce que annonce existe?', 'annonce' in fetched[0]);
+        console.log('Valeur de annonce:', fetched[0].annonce);
+      }
+      
       setReservations(fetched || []);
       setStats(fetchedStats || null);
     } catch (err: any) {
-      console.error('❌ Erreur chargement réservations:', err);
+      console.error('Erreur chargement réservations:', err);
       setError(err.message || 'Erreur lors du chargement des réservations');
     } finally {
       setLoading(false);
@@ -153,7 +252,6 @@ const ReservationsPage: React.FC = () => {
 
   const loadWalletStats = async (userId?: string) => {
     try {
-      // only try when userId present
       if (!userId) return;
       const balanceData = await blockchainService.getBalance();
       setWalletStats(balanceData.wallet);
@@ -162,15 +260,15 @@ const ReservationsPage: React.FC = () => {
     }
   };
 
-  // useEffect now depends on currentUserId (primitive) and filter
   useEffect(() => {
     loadReservations(currentUserId);
     loadWalletStats(currentUserId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId, filter]);
 
   const handleConfirm = async (reservationId: string) => {
-    if (!tutorNotes.trim() && !window.confirm('Confirmer sans message pour l\'étudiant ?')) {
+    if (!tutorNotes.trim()) {
+      setSelectedBookingId(reservationId);
+      setShowConfirmWithoutMessage(true);
       return;
     }
 
@@ -178,7 +276,7 @@ const ReservationsPage: React.FC = () => {
     try {
       const resp = await bookingService.confirmBooking(reservationId, tutorNotes);
       if (resp?.success) {
-        setSuccessMessage('✅ Réservation confirmée ! Les crédits ont été transférés vers votre portefeuille.');
+        setSuccessMessage('Réservation confirmée ! Les crédits ont été transférés vers votre portefeuille.');
         setTutorNotes('');
         await Promise.all([loadReservations(currentUserId), loadWalletStats(currentUserId)]);
       } else {
@@ -191,14 +289,33 @@ const ReservationsPage: React.FC = () => {
     }
   };
 
-  const handleCancel = async (reservationId: string) => {
-    const reason = prompt('Raison de l\'annulation (optionnel):');
-    if (reason === null) return;
+  const confirmWithoutMessage = async () => {
+    if (!selectedBookingId) return;
+    
+    setConfirmingId(selectedBookingId);
+    try {
+      const resp = await bookingService.confirmBooking(selectedBookingId, '');
+      if (resp?.success) {
+        setSuccessMessage('Réservation confirmée ! Les crédits ont été transférés vers votre portefeuille.');
+        setTutorNotes('');
+        await Promise.all([loadReservations(currentUserId), loadWalletStats(currentUserId)]);
+      } else {
+        setError(resp?.message || 'Erreur lors de la confirmation');
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Erreur lors de la confirmation');
+    } finally {
+      setConfirmingId(null);
+      setShowConfirmWithoutMessage(false);
+      setSelectedBookingId(null);
+    }
+  };
 
+  const handleCancel = async (reservationId: string, reason?: string) => {
     try {
       const resp = await bookingService.cancelBooking(reservationId, reason);
       if (resp?.success) {
-        setSuccessMessage('✅ Réservation annulée avec succès');
+        setSuccessMessage('Réservation annulée avec succès');
         await loadReservations(currentUserId);
       } else {
         setError(resp?.message || 'Erreur lors de l\'annulation');
@@ -206,15 +323,15 @@ const ReservationsPage: React.FC = () => {
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Erreur lors de l\'annulation');
     }
+    setShowCancelModal(false);
+    setSelectedBookingId(null);
   };
 
   const handleComplete = async (reservationId: string) => {
-    if (!window.confirm('Marquer cette session comme terminée ?')) return;
-
     try {
       const resp = await bookingService.completeBooking(reservationId);
       if (resp?.success) {
-        setSuccessMessage('✅ Session marquée comme terminée');
+        setSuccessMessage('Session marquée comme terminée');
         await loadReservations(currentUserId);
       } else {
         setError(resp?.message || 'Erreur lors de la finalisation');
@@ -222,35 +339,37 @@ const ReservationsPage: React.FC = () => {
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Erreur lors de la finalisation');
     }
+    setShowCompleteModal(false);
+    setSelectedBookingId(null);
   };
 
   const getStatusConfig = (status: string) => {
     switch (status) {
       case 'PENDING':
-        return { color: '#f59e0b', bg: '#fef3c7', icon: '⏳', label: 'En attente' };
+        return { color: '#FB923C', bg: '#fef3c7', label: 'En attente' };
       case 'CONFIRMED':
-        return { color: '#10b981', bg: '#d1fae5', icon: '✅', label: 'Confirmé' };
+        return { color: '#10b981', bg: '#d1fae5', label: 'Confirmé' };
       case 'CANCELLED':
-        return { color: '#ef4444', bg: '#fee2e2', icon: '❌', label: 'Annulé' };
+        return { color: '#ef4444', bg: '#fee2e2', label: 'Annulé' };
       case 'COMPLETED':
-        return { color: '#3b82f6', bg: '#dbeafe', icon: '🎓', label: 'Terminé' };
+        return { color: '#3b82f6', bg: '#dbeafe', label: 'Terminé' };
       default:
-        return { color: '#6b7280', bg: '#f3f4f6', icon: '📝', label: status };
+        return { color: '#6b7280', bg: '#f3f4f6', label: status };
     }
   };
 
   const getBlockchainStatusConfig = (status: string) => {
     switch (status) {
       case 'PENDING':
-        return { color: '#f59e0b', icon: '⛓️⏳' };
+        return { color: '#FB923C' };
       case 'CONFIRMED':
-        return { color: '#10b981', icon: '⛓️✅' };
+        return { color: '#10b981' };
       case 'FAILED':
-        return { color: '#ef4444', icon: '⛓️❌' };
+        return { color: '#ef4444' };
       case 'CANCELLED':
-        return { color: '#6b7280', icon: '⛓️🚫' };
+        return { color: '#6b7280' };
       default:
-        return { color: '#6b7280', icon: '⛓️' };
+        return { color: '#6b7280' };
     }
   };
 
@@ -270,26 +389,20 @@ const ReservationsPage: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        {/* Header avec titre et bouton portefeuille */}
         <div className={styles.header}>
           <div className={styles.headerContent}>
-            <h1 className={styles.title}>
-              <span className={styles.titleIcon}>🗓️</span>
-              Réservations des étudiants
-            </h1>
-            <p className={styles.subtitle}>
-              Gérez les demandes de cours de vos étudiants
-            </p>
+            <div className={styles.headerText}>
+              <h1 className={styles.title}>Réservations des étudiants</h1>
+              <p className={styles.subtitle}>Gérez les demandes de cours de vos étudiants</p>
+            </div>
           </div>
           
-          {/* Bouton portefeuille */}
           <div className={styles.walletSection}>
             <button 
               className={styles.walletBtn}
               onClick={() => setShowWalletCard(!showWalletCard)}
             >
-              <span className={styles.walletIcon}>💰</span>
-              <span>Mon Portefeuille</span>
+              Mon Portefeuille
             </button>
             
             {showWalletCard && walletStats && (
@@ -306,7 +419,6 @@ const ReservationsPage: React.FC = () => {
                 
                 <div className={styles.walletBalance}>
                   <div className={styles.balanceAmount}>
-                    <span className={styles.balanceIcon}>🪙</span>
                     <span className={styles.balanceValue}>
                       {formatAmount(walletStats.available)} <span className={styles.currency}>EduCoins</span>
                     </span>
@@ -347,10 +459,8 @@ const ReservationsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Messages d'alerte */}
         {successMessage && (
           <div className={styles.successAlert}>
-            <div className={styles.successIcon}>✅</div>
             <span>{successMessage}</span>
             <button 
               onClick={() => setSuccessMessage(null)}
@@ -363,7 +473,6 @@ const ReservationsPage: React.FC = () => {
 
         {error && (
           <div className={styles.errorAlert}>
-            <div className={styles.errorIcon}>❌</div>
             <span>{error}</span>
             <button 
               onClick={() => setError(null)}
@@ -374,7 +483,6 @@ const ReservationsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Filtres */}
         <div className={styles.filters}>
           <div className={styles.filterGroup}>
             {['pending', 'confirmed', 'completed', 'cancelled', 'all'].map((f) => (
@@ -383,84 +491,55 @@ const ReservationsPage: React.FC = () => {
                 className={`${styles.filterBtn} ${filter === f ? styles.active : ''}`}
                 onClick={() => setFilter(f)}
               >
-                {f === 'pending' && '⏳ '}
-                {f === 'confirmed' && '✅ '}
-                {f === 'completed' && '🎓 '}
-                {f === 'cancelled' && '❌ '}
-                {f === 'all' && '📋 '}
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Statistiques */}
         {stats && (
-          <div className={styles.statsGrid}>
-            <div className={styles.statCard}>
-              <div className={styles.statIcon}>📋</div>
-              <div className={styles.statContent}>
-                <div className={styles.statNumber}>{stats.total || 0}</div>
-                <div className={styles.statLabel}>Total</div>
-              </div>
+          <div className={styles.statsOverview}>
+            <div className={styles.statItem}>
+              <div className={styles.statNumber}>{stats.total || 0}</div>
+              <div className={styles.statLabel}>Total</div>
             </div>
-            <div className={styles.statCard}>
-              <div className={styles.statIcon}>⏳</div>
-              <div className={styles.statContent}>
-                <div className={styles.statNumber} style={{ color: '#f59e0b' }}>
-                  {stats.pending || 0}
-                </div>
-                <div className={styles.statLabel}>En attente</div>
-              </div>
+            <div className={styles.statItem}>
+              <div className={styles.statNumber}>{stats.pending || 0}</div>
+              <div className={styles.statLabel}>En attente</div>
             </div>
-            <div className={styles.statCard}>
-              <div className={styles.statIcon}>✅</div>
-              <div className={styles.statContent}>
-                <div className={styles.statNumber} style={{ color: '#10b981' }}>
-                  {stats.confirmed || 0}
-                </div>
-                <div className={styles.statLabel}>Confirmées</div>
-              </div>
+            <div className={styles.statItem}>
+              <div className={styles.statNumber}>{stats.confirmed || 0}</div>
+              <div className={styles.statLabel}>Confirmées</div>
             </div>
-            <div className={styles.statCard}>
-              <div className={styles.statIcon}>🎓</div>
-              <div className={styles.statContent}>
-                <div className={styles.statNumber} style={{ color: '#3b82f6' }}>
-                  {stats.completed || 0}
-                </div>
-                <div className={styles.statLabel}>Terminées</div>
-              </div>
+            <div className={styles.statItem}>
+              <div className={styles.statNumber}>{stats.completed || 0}</div>
+              <div className={styles.statLabel}>Terminées</div>
             </div>
-            <div className={styles.statCard}>
-              <div className={styles.statIcon}>💰</div>
-              <div className={styles.statContent}>
-                <div className={styles.statNumber} style={{ color: '#8b5cf6' }}>
-                  🪙 {formatAmount(stats.totalAmount || 0)}
-                </div>
-                <div className={styles.statLabel}>Total gagné</div>
-              </div>
+            <div className={styles.statItem}>
+              <div className={styles.statNumber}>🪙 {formatAmount(stats.totalAmount || 0)}</div>
+              <div className={styles.statLabel}>Total gagné</div>
             </div>
           </div>
         )}
 
-        {/* Liste des réservations */}
         {reservations.length === 0 ? (
           <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}>📭</div>
-            <h3>Aucune réservation</h3>
-            <p>
-              {filter === 'all'
-                ? 'Aucune réservation pour le moment.'
-                : `Aucune réservation avec le statut "${filter}".`}
-            </p>
-            {filter !== 'all' && (
-              <button 
-                className={styles.viewAllBtn}
-                onClick={() => setFilter('all')}
-              >
-                Voir toutes les réservations
-              </button>
-            )}
+            <div className={styles.emptyStateContent}>
+              <h4>Aucune réservation</h4>
+              <p>
+                {filter === 'all'
+                  ? 'Aucune réservation pour le moment.'
+                  : `Aucune réservation avec le statut "${filter}".`}
+              </p>
+              {filter !== 'all' && (
+                <button 
+                  className={styles.viewAllBtn}
+                  onClick={() => setFilter('all')}
+                >
+                  Voir toutes les réservations
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <div className={styles.reservationsList}>
@@ -470,7 +549,6 @@ const ReservationsPage: React.FC = () => {
 
               return (
                 <div key={reservation.id} className={styles.reservationCard}>
-                  {/* Header de la carte */}
                   <div className={styles.reservationHeader}>
                     <div className={styles.studentInfo}>
                       <div className={styles.studentAvatar}>
@@ -494,32 +572,32 @@ const ReservationsPage: React.FC = () => {
                         backgroundColor: statusConfig.bg,
                         color: statusConfig.color
                       }}>
-                        <span className={styles.statusIcon}>{statusConfig.icon}</span>
                         {statusConfig.label}
                       </div>
                       {reservation.blockchainStatus && (
                         <div className={styles.blockchainBadge} style={{ color: blockchainConfig.color }}>
-                          {blockchainConfig.icon} {reservation.blockchainStatus}
+                          {reservation.blockchainStatus}
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Détails du cours */}
                   {reservation.annonce && (
                     <div className={styles.courseDetails}>
                       <div className={styles.courseHeader}>
-                        <h5 className={styles.courseTitle}>{reservation.annonce.title}</h5>
+                        <h5 className={styles.courseTitle}>
+                          {reservation.annonce.title || reservation.annonceTitle || `Annonce #${reservation.annonceId}`}
+                        </h5>
                         <div className={styles.courseAmount}>
                           🪙 {formatAmount(reservation.amount)} EduCoins
                         </div>
                       </div>
                       <div className={styles.courseMeta}>
                         <span className={styles.courseSubject}>
-                          📚 {reservation.annonce.subject}
+                          {reservation.annonce.subject}
                         </span>
                         <span className={styles.courseDuration}>
-                          ⏱️ {reservation.duration} minutes
+                          {reservation.duration} minutes
                         </span>
                       </div>
                       <p className={styles.courseDescription}>
@@ -528,13 +606,35 @@ const ReservationsPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Notes */}
+                  {/* Si l'annonce n'est pas récupérée mais qu'on a le titre */}
+                  {!reservation.annonce && reservation.annonceTitle && (
+                    <div className={styles.courseDetails}>
+                      <div className={styles.courseHeader}>
+                        <h5 className={styles.courseTitle}>
+                          {reservation.annonceTitle}
+                        </h5>
+                        <div className={styles.courseAmount}>
+                          🪙 {formatAmount(reservation.amount)} EduCoins
+                        </div>
+                      </div>
+                      <div className={styles.courseMeta}>
+                        <span className={styles.courseDuration}>
+                          {reservation.duration} minutes
+                        </span>
+                      </div>
+                      {reservation.description && (
+                        <p className={styles.courseDescription}>
+                          {reservation.description}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {(reservation.studentNotes || reservation.tutorNotes) && (
                     <div className={styles.notesSection}>
                       {reservation.studentNotes && (
                         <div className={styles.note}>
                           <div className={styles.noteHeader}>
-                            <span className={styles.noteIcon}>💬</span>
                             <strong>Note de l'étudiant:</strong>
                           </div>
                           <p className={styles.noteText}>{reservation.studentNotes}</p>
@@ -543,7 +643,6 @@ const ReservationsPage: React.FC = () => {
                       {reservation.tutorNotes && (
                         <div className={styles.note}>
                           <div className={styles.noteHeader}>
-                            <span className={styles.noteIcon}>✏️</span>
                             <strong>Votre note:</strong>
                           </div>
                           <p className={styles.noteText}>{reservation.tutorNotes}</p>
@@ -552,7 +651,6 @@ const ReservationsPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Actions (uniquement pour les tuteurs) */}
                   {isTutor && (
                     <div className={styles.actions}>
                       {reservation.status === 'PENDING' && (
@@ -576,33 +674,36 @@ const ReservationsPage: React.FC = () => {
                                   Confirmation...
                                 </>
                               ) : (
-                                '✅ Confirmer la réservation'
+                                'Confirmer la réservation'
                               )}
                             </button>
                           </div>
                           <button
-                            onClick={() => handleCancel(reservation.id)}
+                            onClick={() => {
+                              setSelectedBookingId(reservation.id);
+                              setShowCancelModal(true);
+                            }}
                             className={styles.cancelBtn}
                           >
-                            ❌ Refuser
+                            Refuser
                           </button>
                         </>
                       )}
 
                       {reservation.status === 'CONFIRMED' && (
                         <button
-                          onClick={() => handleComplete(reservation.id)}
+                          onClick={() => {
+                            setSelectedBookingId(reservation.id);
+                            setShowCompleteModal(true);
+                          }}
                           className={styles.completeBtn}
                         >
-                          🎓 Marquer comme terminé
+                          Marquer comme terminé
                         </button>
                       )}
 
                       {(reservation.status === 'COMPLETED' || reservation.status === 'CANCELLED') && (
                         <div className={styles.finalStatus}>
-                          <span className={styles.finalStatusIcon}>
-                            {reservation.status === 'COMPLETED' ? '🎓' : '❌'}
-                          </span>
                           <span>
                             Réservation {reservation.status.toLowerCase()}
                             {reservation.cancelledBy && ` par ${reservation.cancelledBy}`}
@@ -617,6 +718,37 @@ const ReservationsPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Modales */}
+      {showConfirmWithoutMessage && (
+        <ConfirmWithoutMessageModal
+          onConfirm={confirmWithoutMessage}
+          onCancel={() => {
+            setShowConfirmWithoutMessage(false);
+            setSelectedBookingId(null);
+          }}
+        />
+      )}
+
+      {showCancelModal && selectedBookingId && (
+        <CancelModal
+          onConfirm={(reason) => handleCancel(selectedBookingId, reason)}
+          onCancel={() => {
+            setShowCancelModal(false);
+            setSelectedBookingId(null);
+          }}
+        />
+      )}
+
+      {showCompleteModal && selectedBookingId && (
+        <CompleteSessionModal
+          onConfirm={() => handleComplete(selectedBookingId)}
+          onCancel={() => {
+            setShowCompleteModal(false);
+            setSelectedBookingId(null);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -151,18 +151,26 @@ class AnnonceController {
   async getAnnonce(req, res) {
     try {
       const { id } = req.params;
+      console.log(`🔍 Récupération annonce ID: ${id}`);
+      
       const annonce = await annonceService.getAnnonceById(id);
-
+      
+      console.log(`✅ Annonce trouvée:`, { 
+        id: annonce.id, 
+        title: annonce.title,
+        tutorId: annonce.tutorId 
+      });
+      
       res.json({
         success: true,
         message: 'Annonce récupérée avec succès',
         data: annonce
       });
     } catch (error) {
-      console.error('Erreur récupération annonce:', error);
+      console.error('❌ Erreur récupération annonce:', error);
       res.status(400).json({
         success: false,
-        message: error.message
+        message: error.message || 'Erreur lors de la récupération de l\'annonce'
       });
     }
   }

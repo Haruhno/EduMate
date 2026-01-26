@@ -3,7 +3,7 @@ require('dotenv').config();
 
 class AITextProcessor {
   constructor() {
-    this.apiKey = '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';
+    this.apiKey = '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';
   }
 
   // MÉTHODE EXISTANTE : Générer une offre COMPLÈTE
@@ -44,7 +44,7 @@ RÉPONSE EN JSON :
       const response = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
         {
-          model: 'qwen/qwen-2.5-7b-instruct',
+          model: 'liquid/lfm-2.5-1.2b-instruct:free',
           messages: [
             {
               role: 'system',
@@ -95,9 +95,7 @@ RÉPONSE EN JSON :
   }
 
   async analyzeTextWithAI(text) {
-    try {
-      console.log('🔍 Analyse IA de texte:', text.substring(0, 100) + '...');
-      
+    try {      
       // Échapper les guillemets dans le texte
       const escapedText = text.replace(/"/g, '\\"').replace(/\n/g, '\\n');
       
@@ -130,7 +128,7 @@ FORMAT DE RÉPONSE OBLIGATOIRE :
       const response = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
         {
-          model: 'qwen/qwen-2.5-7b-instruct',
+          model: 'liquid/lfm-2.5-1.2b-instruct:free',
           messages: [
             {
               role: 'system',
@@ -220,7 +218,7 @@ Réponds uniquement avec le titre.`;
       const response = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
         {
-          model: 'qwen/qwen-2.5-7b-instruct',
+          model: 'liquid/lfm-2.5-1.2b-instruct:free',
           messages: [
             {
               role: 'system',
@@ -284,7 +282,7 @@ Réponds uniquement avec la description, sans titre ni JSON.`;
       const response = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
         {
-          model: 'qwen/qwen-2.5-7b-instruct',
+          model: 'liquid/lfm-2.5-1.2b-instruct:free',
           messages: [
             {
               role: 'system',

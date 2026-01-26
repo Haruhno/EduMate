@@ -364,6 +364,8 @@ router.get('/', authMiddleware, async (req, res) => {
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
+    
+    console.log(`🔍 Recherche du tuteur ID: ${id}`);
 
     const tutor = await ProfileTutor.findOne({
       where: { 
@@ -379,62 +381,98 @@ router.get('/:id', authMiddleware, async (req, res) => {
     });
 
     if (!tutor) {
+      console.log('❌ Tuteur non trouvé');
       return res.status(404).json({
         success: false,
         message: 'Tuteur non trouvé'
       });
     }
 
+    console.log(`✅ Tuteur trouvé, userId: ${tutor.userId}`);
+    
+    // IMPORTANT: Importez les modèles ici
+    const { Diploma, Experience } = require('../models/associations');
+    
+    // Récupérer les diplômes
+    const diplomas = await Diploma.findAll({
+      where: { 
+        userId: tutor.userId,
+        profileType: 'tutor'
+      },
+      order: [
+        ['isCurrent', 'DESC'],
+        ['startYear', 'DESC']
+      ]
+    });
+
+    console.log(`📜 Diplômes trouvés: ${diplomas.length}`);
+
+    // Récupérer les expériences
+    const experiences = await Experience.findAll({
+      where: { 
+        userId: tutor.userId,
+        profileType: 'tutor'
+      },
+      order: [
+        ['isCurrent', 'DESC'],
+        ['startYear', 'DESC'],
+        ['startMonth', 'DESC']
+      ]
+    });
+
+    console.log(`💼 Expériences trouvées: ${experiences.length}`);
+
+    const tutorData = tutor.toJSON();
+    
+    tutorData.diplomas = diplomas.map(diploma => {
+      const diplomaObj = {
+        id: diploma.id,
+        educationLevel: diploma.educationLevel,
+        field: diploma.field,
+        school: diploma.school,
+        country: diploma.country,
+        startYear: diploma.startYear,
+        endYear: diploma.endYear,
+        isCurrent: diploma.isCurrent
+      };
+      
+      if (diploma.fileName) {
+        diplomaObj.diplomaFile = {
+          name: diploma.fileName,
+          path: diploma.filePath,
+          size: diploma.fileSize
+        };
+      }
+      
+      return diplomaObj;
+    });
+
+    tutorData.experiences = experiences.map(experience => ({
+      id: experience.id,
+      jobTitle: experience.jobTitle,
+      employmentType: experience.employmentType,
+      company: experience.company,
+      location: experience.location,
+      startMonth: experience.startMonth,
+      startYear: experience.startYear,
+      endMonth: experience.endMonth,
+      endYear: experience.endYear,
+      isCurrent: experience.isCurrent,
+      description: experience.description
+    }));
+
+    console.log('✅ Tuteur récupéré avec succès');
+    
     res.json({
       success: true,
       message: 'Tuteur récupéré avec succès',
-      data: tutor
+      data: tutorData
     });
   } catch (error) {
-    console.error('Erreur lors de la récupération du tuteur:', error);
+    console.error('❌ Erreur lors de la récupération du tuteur:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération du tuteur',
-      error: error.message
-    });
-  }
-});
-
-router.get('/profile/:tutorId', authMiddleware, async (req, res) => {
-  try {
-    const { tutorId } = req.params;
-
-    const tutor = await ProfileTutor.findOne({
-      where: { 
-        id: tutorId
-      },
-      include: [{
-        model: User,
-        as: 'user',
-        attributes: ['id', 'firstName', 'lastName', 'email']
-      }]
-    });
-
-    if (!tutor) {
-      return res.status(404).json({
-        success: false,
-        message: 'Tuteur non trouvé'
-      });
-    }
-
-    // Retourner spécifiquement le schedule et availability
-    res.json({
-      success: true,
-      data: {
-        schedule: tutor.schedule || [],
-        availability: tutor.availability || { online: false, inPerson: false }
-      }
-    });
-  } catch (error) {
-    console.error('Erreur récupération profil tuteur:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la récupération du profil',
       error: error.message
     });
   }

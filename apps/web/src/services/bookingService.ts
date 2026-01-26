@@ -23,6 +23,7 @@ client.interceptors.request.use((config) => {
 export interface CreateBookingData {
   tutorId: string;
   annonceId: string;
+  annonceTitle?: string;
   date: string;
   time: string;
   amount: number;
