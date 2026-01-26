@@ -49,7 +49,10 @@ export interface WalletBalance {
     role: string;
   };
   wallet: {
+    availableCredits?: number;
     available: number;
+    balance?: number;
+    balanceCredits?: number;
     locked: number;
     total: number;
     walletAddress: string;

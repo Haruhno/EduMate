@@ -2,6 +2,9 @@ const profileService = require('../services/profileService');
 const authService = require('../services/authService');
 const multer = require('multer');
 const path = require('path');
+const axios = require('axios');
+const FormData = require('form-data');
+
 
 class ProfileController {
   constructor() {
@@ -73,6 +76,19 @@ class ProfileController {
       const user = req.user;
       const profile = await profileService.getProfile(user.id, user.role);
 
+      // Récupérer les informations de disponibilité depuis le profil tuteur
+      let availability = { online: false, inPerson: false };
+      if (profile && profile.availability) {
+        availability = profile.availability;
+      } else if (user.role === 'tutor') {
+        // Si pas de profil créé, essayer de récupérer depuis la table ProfileTutor
+        const { ProfileTutor } = require('../models/associations');
+        const tutorProfile = await ProfileTutor.findOne({ where: { userId: user.id } });
+        if (tutorProfile && tutorProfile.availability) {
+          availability = tutorProfile.availability;
+        }
+      }
+
       res.json({
         success: true,
         message: 'Profil récupéré avec succès',
@@ -84,7 +100,10 @@ class ProfileController {
             firstName: user.firstName,
             lastName: user.lastName,
             role: user.role,
-            isVerified: user.isVerified
+            isVerified: user.isVerified,
+            skillsToTeach: user.skillsToTeach || [],
+            skillsToLearn: user.skillsToLearn || [],
+            availability: availability 
           }
         }
       });
@@ -383,6 +402,60 @@ class ProfileController {
       res.status(500).json({
         success: false,
         message: error.message
+      });
+    }
+  }
+
+  async addSkills(req, res) {
+    try {
+      const user = req.user;
+      const { skills } = req.body;
+
+      if (!skills || !Array.isArray(skills) || skills.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Veuillez fournir un tableau de compétences valide'
+        });
+      }
+
+      console.log(`📚 Ajout de compétences pour l'utilisateur ${user.id}:`, skills);
+
+      // Récupérer l'utilisateur actuel
+      const { User } = require('../models/associations');
+      const userRecord = await User.findByPk(user.id);
+
+      if (!userRecord) {
+        return res.status(404).json({
+          success: false,
+          message: 'Utilisateur non trouvé'
+        });
+      }
+
+      // Récupérer les compétences existantes
+      const existingSkills = userRecord.skills || [];
+      
+      // Fusionner les compétences (sans doublons)
+      const mergedSkills = [...new Set([...existingSkills, ...skills])];
+
+      // Mettre à jour l'utilisateur
+      await userRecord.update({ skills: mergedSkills });
+
+      console.log(`✅ Compétences ajoutées avec succès. Total: ${mergedSkills.length}`);
+
+      res.json({
+        success: true,
+        message: `${skills.length} compétence(s) ajoutée(s) avec succès`,
+        data: {
+          newSkills: skills,
+          allSkills: mergedSkills,
+          totalSkills: mergedSkills.length
+        }
+      });
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'ajout des compétences:', error);
+      res.status(500).json({
+        success: false,
+        message: `Erreur lors de l'ajout des compétences: ${error.message}`
       });
     }
   }

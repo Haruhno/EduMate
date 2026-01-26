@@ -31,7 +31,6 @@ const DeleteAnnonceModal: React.FC<DeleteAnnonceModalProps> = ({
         </div>
 
         <div className={styles.content}>
-          <div className={styles.warningIcon}>⚠️</div>
           <p>
             Êtes-vous sûr de vouloir supprimer l'annonce <strong>"{annonceTitle}"</strong> ?
           </p>

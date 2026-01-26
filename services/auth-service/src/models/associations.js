@@ -4,6 +4,7 @@ const ProfileStudent = require('./ProfileStudent');
 const Diploma = require('./Diploma');
 const Experience = require('./Experience');
 const Annonce = require('./Annonce');
+const AnnonceEmbedding = require('./AnnonceEmbedding');
 
 // Associations User - Profil
 User.hasOne(ProfileTutor, { 
@@ -64,11 +65,16 @@ Annonce.belongsTo(ProfileTutor, {
   as: 'tutor'
 });
 
-// Association Annonce - User via ProfileTutor
-Annonce.belongsTo(User, {
-  through: ProfileTutor,
-  foreignKey: 'tutorId',
-  as: 'user'
+// Association Annonce - AnnonceEmbedding
+Annonce.hasOne(AnnonceEmbedding, {
+  foreignKey: 'annonceId',
+  as: 'embedding',
+  onDelete: 'CASCADE'
+});
+
+AnnonceEmbedding.belongsTo(Annonce, {
+  foreignKey: 'annonceId',
+  as: 'annonce'
 });
 
 module.exports = {
@@ -77,5 +83,6 @@ module.exports = {
   ProfileStudent,
   Diploma,
   Experience,
-  Annonce
+  Annonce,
+  AnnonceEmbedding
 };

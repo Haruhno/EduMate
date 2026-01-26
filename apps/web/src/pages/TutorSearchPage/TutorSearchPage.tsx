@@ -104,11 +104,12 @@ const TutorSearchPage: React.FC = () => {
       id: annonce.tutor?.id || annonce.tutorId,
       tutorId: annonce.tutorId,
       name: `${annonce.tutor?.user?.firstName || ''} ${annonce.tutor?.user?.lastName || ''}`.trim() || 'Tuteur Expert',
+      annonceId: annonce.id,
       subject: primarySubject, // Sujet principal pour l'affichage
       subjects: specialties, // Tableau complet des matières
       rating: annonce.tutor?.rating || 4,
       reviews: annonce.tutor?.reviewsCount || 0,
-      price: `€${annonce.hourlyRate || 30}`,
+      price: `🪙${annonce.hourlyRate || 30}`,
       emoji: "👨‍🏫",
       status: "Disponible",
       badge: getBadgeFromRating(annonce.tutor?.rating || 4),

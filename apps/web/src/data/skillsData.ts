@@ -23,7 +23,7 @@ export const skillsData = {
   // Mathématiques & Sciences
   sciences: [
     "Algèbre", "Analyse", "Géométrie", "Probabilités", "Statistiques", "Topologie",
-    "Théorie des nombres", "Équations différentielles", "Calcul intégral", "Calcul différentiel", "Mathématiques discrètes", "Logique mathématique", "Mathématiques appliquées", "Modélisation mathématique", "Mathématiques computationnelles", "Mathématiques",
+    "Théorie des nombres", "Équations différentielles", "Calcul intégral", "Calcul différentiel", "Mathématiques discrètes", "Logique", "Logique mathématique", "Logique de programmation", "Mathématiques appliquées", "Modélisation mathématique", "Mathématiques computationnelles", "Mathématiques",
     "Mathématiques financières", "Recherche opérationnelle", "Optimisation", "Théorie des jeux",
     "Physique quantique", "Mécanique classique", "Thermodynamique", "Électromagnétisme",
     "Astrophysique", "Cosmologie", "Chimie organique", "Chimie inorganique", "Biochimie",
@@ -210,7 +210,7 @@ export const skillsData = {
     "Théorie musicale", "Orchestration", "Arrangement", "Direction",
     "Ingénierie sonore", "Acoustique", "Installation de studio",
     "Business musical", "Marketing musical", "Droits d'auteur",
-    "Fabrication d'instruments", "Lutherie", "Accord de piano",
+    "Fabrication d'instruments", "Lutherie", "Piano",
   ],
 
   // Compétences linguistiques avancées

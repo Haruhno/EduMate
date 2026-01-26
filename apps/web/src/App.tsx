@@ -15,19 +15,14 @@ import BookingPage from "./pages/Booking/BookingPage";
 import AnnoncesPage from "./pages/Annonces/AnnoncesPage";
 import DevenirTuteur from "./pages/DevenirTuteur/DevenirTuteur";
 
-// Pages privées
 import ProfilePage from "./pages/Profile/ProfilePage";
 import DashboardPage from "./pages/Dashboard/DashboardPage";
-import CreerAnnoncePage from "./pages/CreerAnnonce/CreerAnnoncePage";
 import MessageTestPage from "./pages/Messages/MessagePage";
 import Blockchain from "./pages/Blockchain/Blockchain";
 import MesCours from "./pages/HistoriqueCours/HistoriqueCours";
 import ReservationsPage from "./pages/Reservations/ReservationsPage";
 import ProfileCompletion from "./components/ProfileCompletion/ProfileCompletion";
-
-// ======================
-// ROUTES
-// ======================
+import AvailabilityPage from "./pages/AvailabilityPage/AvailabilityPage";
 
 // Routes accessibles UNIQUEMENT si NON connecté
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -44,126 +39,113 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 const App: React.FC = () => {
   return (
     <Router>
-      <Navbar />
-
-      <Routes>
-        {/* ======================
-            ROUTES PUBLIQUES
-        ====================== */}
-        <Route path="/" element={<HomePage />} />
-        <Route path="/annonces" element={<AnnoncesPage />} />
-        <Route path="/recherche-tuteur" element={<TutorSearchPage />} />
-        <Route path="/tuteur/:id" element={<TutorProfilePage />} />
-        <Route path="/booking/:tutorId" element={<BookingPage />} />
-        <Route path="/devenir-tuteur" element={<DevenirTuteur />} />
-
-        <Route
-          path="/connexion"
-          element={
-            <PublicRoute>
-              <LoginPage />
-            </PublicRoute>
-          }
-        />
-
-        <Route
-          path="/inscription"
-          element={
-            <PublicRoute>
-              <SignupPage />
-            </PublicRoute>
-          }
-        />
-
-        <Route
-          path="/choix-role"
-          element={
-            <PublicRoute>
-              <RoleSelectionPage />
-            </PublicRoute>
-          }
-        />
-
-        {/* ======================
-            ROUTES PRIVÉES
-        ====================== */}
-        <Route
-          path="/dashboard"
-          element={
-            <PrivateRoute>
-              <DashboardPage />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/mon-profil"
-          element={
-            <PrivateRoute>
-              <ProfilePage />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/completer-profil"
-          element={
-            <PrivateRoute>
-              <ProfileCompletion />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/creer-annonce"
-          element={
-            <PrivateRoute>
-              <CreerAnnoncePage />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/messages"
-          element={
-            <PrivateRoute>
-              <MessageTestPage />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/blockchain"
-          element={
-            <PrivateRoute>
-              <Blockchain />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/cours"
-          element={
-            <PrivateRoute>
-              <MesCours />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/reservations"
-          element={
-            <PrivateRoute>
-              <ReservationsPage />
-            </PrivateRoute>
-          }
-        />
-
-        {/* ======================
-            FALLBACK
-        ====================== */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <div className="App">
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route 
+            path="/choix-role" 
+            element={
+              <PublicRoute>
+                <RoleSelectionPage />
+              </PublicRoute>
+            } 
+          />
+          <Route 
+            path="/connexion" 
+            element={
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            } 
+          />
+          <Route 
+            path="/inscription" 
+            element={
+              <PublicRoute>
+                <SignupPage />
+              </PublicRoute>
+            } 
+          />
+          <Route path="/recherche-tuteur" element={<TutorSearchPage />} />
+          <Route 
+            path="/completer-profil" 
+            element={
+              <PrivateRoute>
+                <ProfileCompletion />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/mon-profil" 
+            element={
+              <PrivateRoute>
+                <ProfilePage />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/dashboard" 
+            element={
+              <PrivateRoute>
+                <DashboardPage />
+              </PrivateRoute>
+            } 
+          />
+          <Route path="/tuteur/:id" element={<TutorProfilePage />} />
+          <Route path="/devenir-tuteur" element={<DevenirTuteur />} />
+          <Route 
+            path="/annonces" 
+            element={
+              <PrivateRoute>
+                <AnnoncesPage />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/mes-disponibilites" 
+            element={AvailabilityPage ? (
+              <PrivateRoute>
+                <AvailabilityPage />
+              </PrivateRoute>
+            ) : null}
+          />
+          <Route 
+            path="/messages" 
+            element={
+              <PrivateRoute>
+                <MessageTestPage />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/blockchain" 
+            element={
+              <PrivateRoute>
+                <Blockchain />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/booking/:tutorId" 
+            element={<BookingPage />} 
+          />
+          <Route 
+            path="/reservations" 
+            element={<ReservationsPage />} 
+          />
+          <Route 
+            path="/cours" 
+            element={
+              <PrivateRoute>
+                <MesCours />
+              </PrivateRoute>
+            } 
+          />
+          {/* Fallback route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
     </Router>
   );
 };

@@ -6,6 +6,7 @@ interface TimeSlot {
   startTime: string;
   endTime: string;
   allDay: boolean;
+  types: ('online' | 'inPerson')[];
 }
 
 interface DayAvailability {
@@ -30,10 +31,11 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedDateForModal, setSelectedDateForModal] = useState<Date | null>(null);
   const [dateToDelete, setDateToDelete] = useState<Date | null>(null);
-  const [newAvailability, setNewAvailability] = useState({ 
+  const [newAvailability, setNewAvailability] = useState<TimeSlot>({ 
     startTime: '06:00', 
     endTime: '07:00', 
-    allDay: false 
+    allDay: false,
+    types: ['online', 'inPerson']
   });
   const [clickedHour, setClickedHour] = useState<number | null>(null);
   const [isModifying, setIsModifying] = useState(false);
@@ -83,6 +85,54 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     return timeOptions[timeOptions.length - 1];
   };
 
+  const toggleSlotType = (type: 'online' | 'inPerson') => {
+    setNewAvailability(prev => {
+      const currentTypes = [...prev.types];
+      if (currentTypes.includes(type)) {
+        if (currentTypes.length > 1) {
+          return {
+            ...prev,
+            types: currentTypes.filter(t => t !== type)
+          };
+        }
+        return prev;
+      } else {
+        return {
+          ...prev,
+          types: [...currentTypes, type]
+        };
+      }
+    });
+  };
+
+  // Retour aux couleurs originales
+  const getSlotColor = (types: ('online' | 'inPerson')[]) => {
+    if (types.includes('online') && types.includes('inPerson')) {
+      return '#eff6ff'; 
+    }
+    if (types.includes('online')) {
+      return '#d6f5dfff'; 
+    }
+    if (types.includes('inPerson')) {
+      return '#fffbc0ff'; 
+    }
+    return '#d6f5dfff'; 
+  };
+
+
+  const getSlotLabel = (types: ('online' | 'inPerson')[]) => {
+    if (types.includes('online') && types.includes('inPerson')) {
+      return 'En ligne & Présentiel';
+    }
+    if (types.includes('online')) {
+      return 'En ligne';
+    }
+    if (types.includes('inPerson')) {
+      return 'Présentiel';
+    }
+    return 'Disponibilité';
+  };
+
   useEffect(() => {
     const loadProfileData = async () => {
       if (hasLoadedFromDB.current) {
@@ -118,7 +168,8 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
                 timeSlots: day.timeSlots.map(slot => ({
                   startTime: slot.startTime || '06:00',
                   endTime: slot.endTime || '07:00',
-                  allDay: !!slot.allDay
+                  allDay: !!slot.allDay,
+                  types: slot.types || ['online', 'inPerson']
                 }))
               };
             }
@@ -172,7 +223,8 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
             timeSlots: day.timeSlots.map(slot => ({
               startTime: slot.startTime || '06:00',
               endTime: slot.endTime || '07:00',
-              allDay: !!slot.allDay
+              allDay: !!slot.allDay,
+              types: slot.types || ['online', 'inPerson']
             }))
           };
         }
@@ -229,47 +281,9 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     });
   };
 
-  const handleAvailabilityTypeChange = (type: 'online' | 'inPerson') => {
-    const currentAvailability = currentProfileData?.availability || { online: false, inPerson: false };
-    const newValue = !currentAvailability[type];
-    const newAvailabilityData = { ...currentAvailability, [type]: newValue };
-
-    const updateProfile = async () => {
-      try {
-        await profileService.saveProfile({
-          ...currentProfileData,
-          availability: newAvailabilityData
-        });
-        const response = await profileService.getProfile();
-        if (response.success && response.data.profile) {
-          setCurrentProfileData(response.data.profile);
-          updateParentProfileData({ availability: newAvailabilityData });
-        }
-      } catch (error) {
-        console.error('Erreur sauvegarde:', error);
-      }
-    };
-
-    updateProfile();
-  };
-
   const getAvailabilityForDate = (date: Date): DayAvailability | undefined => {
     const dateString = formatDateToLocalString(date);
     return dayAvailabilities[dateString];
-  };
-
-  const getAvailabilityColor = () => {
-    const availability = currentProfileData?.availability || {};
-    if (availability.online && availability.inPerson) {
-      return '#eff6ff';
-    }
-    if (availability.online) {
-      return '#d6f5dfff';
-    }
-    if (availability.inPerson) {
-      return '#fffbc0ff';
-    }
-    return '#6b7280';
   };
 
   const formatWeekRange = () => {
@@ -300,46 +314,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     });
 
     return blocks;
-  };
-
-  // Fonction pour trouver quel créneau contient une heure spécifique
-  const findSlotIndexForHour = (date: Date, hour: number): number | null => {
-    const availability = getAvailabilityForDate(date);
-    if (!availability || !availability.timeSlots) return null;
-    
-    const hourMinutes = hour * 60;
-    
-    for (let i = 0; i < availability.timeSlots.length; i++) {
-      const slot = availability.timeSlots[i];
-      if (slot.allDay) {
-        if (hourMinutes >= 360 && hourMinutes < 1380) {
-          return i;
-        }
-      } else {
-        const startMinutes = timeToMinutes(slot.startTime);
-        const endMinutes = timeToMinutes(slot.endTime);
-        if (hourMinutes >= startMinutes && hourMinutes < endMinutes) {
-          return i;
-        }
-      }
-    }
-    
-    return null;
-  };
-
-  // Fonction pour trouver quel créneau est à une heure de début spécifique
-  const findSlotIndexForStartTime = (date: Date, startTime: string): number | null => {
-    const availability = getAvailabilityForDate(date);
-    if (!availability || !availability.timeSlots) return null;
-    
-    for (let i = 0; i < availability.timeSlots.length; i++) {
-      const slot = availability.timeSlots[i];
-      if (!slot.allDay && slot.startTime === startTime) {
-        return i;
-      }
-    }
-    
-    return null;
   };
 
   const getFilteredTimeOptions = (field: 'startTime' | 'endTime') => {
@@ -413,7 +387,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     dropdownRefs.current[field] = el;
   };
 
-  // Fonction pour ouvrir le modal en mode MODIFICATION (clic sur un créneau existant)
   const openModifyModal = (date: Date, slotIndex: number) => {
     if (isDateInPast(date)) {
       alert("Cette date est déjà passée. Veuillez choisir une autre disponibilité.");
@@ -429,14 +402,14 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     setNewAvailability({
       startTime: existingSlot.startTime,
       endTime: existingSlot.endTime,
-      allDay: existingSlot.allDay
+      allDay: existingSlot.allDay,
+      types: existingSlot.types
     });
     setClickedHour(null);
     setSelectedDateForModal(date);
     setShowAddModal(true);
   };
 
-  // Fonction pour ouvrir le modal en mode AJOUT (clic sur une cellule vide)
   const openAddModal = (date: Date, hour: number) => {
     if (isDateInPast(date)) {
       alert("Cette date est déjà passée. Veuillez choisir une autre disponibilité.");
@@ -451,7 +424,8 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     setNewAvailability({
       startTime: startTime,
       endTime: endTime,
-      allDay: false
+      allDay: false,
+      types: ['online', 'inPerson']
     });
     setClickedHour(hour);
     setSelectedDateForModal(date);
@@ -466,21 +440,20 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     setShowDeleteModal(true);
   };
 
-  // Fonction pour ajouter ou mettre à jour un créneau
   const addOrUpdateAvailability = () => {
-    if (!selectedDateForModal) return;
+    if (!selectedDateForModal || newAvailability.types.length === 0) return;
 
     const dateString = formatDateToLocalString(selectedDateForModal);
-    const newSlot = {
+    const newSlot: TimeSlot = {
       startTime: newAvailability.allDay ? '00:00' : newAvailability.startTime,
       endTime: newAvailability.allDay ? '23:59' : newAvailability.endTime,
-      allDay: newAvailability.allDay
+      allDay: newAvailability.allDay,
+      types: newAvailability.types
     };
 
     setDayAvailabilities(prev => {
       const existing = prev[dateString];
       
-      // Si on modifie un créneau existant
       if (isModifying && modifyingSlotIndex !== null && existing) {
         const updatedTimeSlots = [...existing.timeSlots];
         updatedTimeSlots[modifyingSlotIndex] = newSlot;
@@ -493,7 +466,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
           }
         };
       } 
-      // Si on ajoute un nouveau créneau
       else if (existing) {
         return {
           ...prev,
@@ -503,7 +475,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
           }
         };
       } 
-      // Si c'est le premier créneau pour cette date
       else {
         return {
           ...prev,
@@ -528,10 +499,8 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
           let updatedTimeSlots = [...existingDay.timeSlots];
           
           if (isModifying && modifyingSlotIndex !== null) {
-            // Modifier un créneau existant
             updatedTimeSlots[modifyingSlotIndex] = newSlot;
           } else {
-            // Ajouter un nouveau créneau
             updatedTimeSlots.push(newSlot);
           }
           
@@ -540,7 +509,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
             timeSlots: updatedTimeSlots
           };
         } else {
-          // Nouvelle date
           updatedSchedule.push({
             date: dateString,
             timeSlots: [newSlot]
@@ -571,7 +539,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
     setModifyingSlotIndex(null);
   };
 
-  // Fonction pour supprimer un créneau spécifique
   const removeAvailability = () => {
     if (!dateToDelete) return;
     
@@ -581,11 +548,9 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
       const existing = prev[dateString];
       if (!existing) return prev;
       
-      // Si on supprime un créneau spécifique
       if (modifyingSlotIndex !== null) {
         const updatedTimeSlots = existing.timeSlots.filter((_: TimeSlot, index: number) => index !== modifyingSlotIndex);
         
-        // Si plus de créneaux, supprimer la date
         if (updatedTimeSlots.length === 0) {
           const newAvail = { ...prev };
           delete newAvail[dateString];
@@ -606,7 +571,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
         };
       }
       
-      // Sinon, supprimer toute la date
       const newAvail = { ...prev };
       delete newAvail[dateString];
       setSelectedDates(prevDates => {
@@ -630,17 +594,14 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
           const updatedTimeSlots = existingDay.timeSlots.filter((_: TimeSlot, index: number) => index !== modifyingSlotIndex);
           
           if (updatedTimeSlots.length === 0) {
-            // Supprimer la date si plus de créneaux
             updatedSchedule = updatedSchedule.filter((d: any) => d.date !== dateString);
           } else {
-            // Garder la date avec les créneaux restants
             updatedSchedule[existingIndex] = {
               ...existingDay,
               timeSlots: updatedTimeSlots
             };
           }
         } else {
-          // Supprimer toute la date
           updatedSchedule = updatedSchedule.filter((d: any) => d.date !== dateString);
         }
 
@@ -672,7 +633,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
   };
 
   const hours = Array.from({ length: 18 }, (_, i) => 6 + i);
-  const currentAvailability = currentProfileData?.availability || { online: false, inPerson: false };
 
   if (isLoading) {
     return (
@@ -690,30 +650,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
         <div className={styles.headerContent}>
           <h1>Planifier vos disponibilités</h1>
           <p>Définissez vos créneaux disponibles pour les cours</p>
-        </div>
-        <div className={styles.availabilityTypes}>
-          <div className={styles.typeSection}>
-            <div className={styles.checkboxGroup}>
-              <label className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={currentAvailability.online}
-                  onChange={() => handleAvailabilityTypeChange('online')}
-                  className={styles.checkbox}
-                />
-                <span className={styles.checkboxText}>En ligne</span>
-              </label>
-              <label className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={currentAvailability.inPerson}
-                  onChange={() => handleAvailabilityTypeChange('inPerson')}
-                  className={styles.checkbox}
-                />
-                <span className={styles.checkboxText}>En présentiel</span>
-              </label>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -734,7 +670,8 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
             setNewAvailability({ 
               startTime: '06:00', 
               endTime: '07:00', 
-              allDay: false 
+              allDay: false,
+              types: ['online', 'inPerson']
             });
             setSelectedDateForModal(new Date());
             setShowAddModal(true);
@@ -759,12 +696,6 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
                   <div className={styles.date}>
                     {date.getDate()}
                   </div>
-                  {hasAvailability && (
-                    <div 
-                      className={styles.availabilityDot} 
-                      style={{ background: getAvailabilityColor() }}
-                    />
-                  )}
                 </div>
               );
             })}
@@ -804,44 +735,50 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
                           'Date passée'
                         }
                       >
-                        {availabilityBlocks.map((block, blockIndex) => {
-                          if (hourMinutes === block.start) {
-                            const duration = block.end - block.start;
-                            const height = (duration / 60) * 60;
-                            const isShortSlot = duration <= 60;
-                            
-                            return (
-                              <div
-                                key={blockIndex}
-                                className={styles.availabilityBlock}
-                                style={{
-                                  height: `${height}px`,
-                                  background: getAvailabilityColor(),
-                                  zIndex: 2
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openModifyModal(date, block.slotIndex); 
-                                }}
-                              >
-                                <div className={styles.availabilityContent}>
-                                 <div className={styles.availabilityLabel}>
-                                    Disponibilité
-                                    {!isShortSlot && (
-                                      <div className={styles.availabilityTime}>
-                                        {block.slot.allDay 
-                                          ? 'Toute la journée' 
-                                          : `${block.slot.startTime} - ${block.slot.endTime}`
-                                        }
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
+                      {availabilityBlocks.map((block, blockIndex) => {
+                      if (hourMinutes === block.start) {
+                        const duration = block.end - block.start;
+                        const height = (duration / 60) * 60;
+                        const isShortSlot = duration <= 60;
+                        const slotColor = getSlotColor(block.slot.types);
+                        
+                        return (
+                          <div
+                            key={blockIndex}
+                            className={styles.availabilityBlock}
+                            style={{
+                              height: `${height}px`,
+                              background: slotColor,
+                              zIndex: 2
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openModifyModal(date, block.slotIndex); 
+                            }}
+                          >
+                            <div className={styles.availabilityContent}>
+                              <div className={styles.availabilityLabel}>
+                                Disponibilité
+                                {!isShortSlot && (
+                                  <>
+                                    <div className={styles.availabilityTime}>
+                                      {block.slot.allDay 
+                                        ? 'Toute la journée' 
+                                        : `${block.slot.startTime} - ${block.slot.endTime}`
+                                      }
+                                    </div>
+                                    <div className={styles.availabilityType}>
+                                      ({getSlotLabel(block.slot.types)})
+                                    </div>
+                                  </>
+                                )}
                               </div>
-                            );
-                          }
-                          return null;
-                        })}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })}
                       </div>
                     );
                   })}
@@ -852,173 +789,201 @@ const AvailabilityPage: React.FC<AvailabilityPageProps> = ({
         </div>
       </div>
 
-      {/* Modal d'ajout/modification */}
       {showAddModal && (
-      <div className={styles.modalOverlay}>
-        <div className={styles.modal}>
-          <div className={styles.modalHeader}>
-            <h3>
-              {isModifying ? 'Modifier la disponibilité' : 'Ajouter une disponibilité'}
-              {modifyingSlotIndex !== null}            
-            </h3>
-            <button
-              className={styles.closeButton}
-              onClick={() => {
-                setShowAddModal(false);
-                setSelectedDateForModal(null);
-                setClickedHour(null);
-                setIsModifying(false);
-                setModifyingSlotIndex(null);
-              }}
-            >
-              ×
-            </button>
-          </div>
-          <div className={styles.modalContent}>
-            <div className={styles.selectedDate}>
-              {selectedDateForModal?.toLocaleDateString('fr-FR', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric'
-              })}
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal}>
+            <div className={styles.modalHeader}>
+              <h3>
+                {isModifying ? 'Modifier la disponibilité' : 'Ajouter une disponibilité'}
+              </h3>
+              <button
+                className={styles.closeButton}
+                onClick={() => {
+                  setShowAddModal(false);
+                  setSelectedDateForModal(null);
+                  setClickedHour(null);
+                  setIsModifying(false);
+                  setModifyingSlotIndex(null);
+                }}
+              >
+                ×
+              </button>
             </div>
+            <div className={styles.modalContentWrapper}>
+              <div className={styles.modalContent}>
+                <div className={styles.selectedDate}>
+                  {selectedDateForModal?.toLocaleDateString('fr-FR', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  })}
+                </div>
 
-            <div className={styles.timeSlotConfig}>
-              {!newAvailability.allDay && (
-                <div className={styles.timeInputs}>
-                  <div className={styles.timeInputGroup}>
-                    <label>De</label>
-                    <div className={styles.customDropdown} ref={setDropdownRef('startTime')}>
-                      <button
-                        type="button"
-                        className={styles.dropdownButton}
-                        onClick={() => toggleDropdown('startTime')}
-                      >
-                        <span className={styles.dropdownText}>
-                          {newAvailability.startTime}
-                        </span>
-                        <span className={styles.dropdownArrow}>▼</span>
-                      </button>
-                      {dropdownOpen.startTime && (
-                        <div className={`${styles.dropdownMenu} ${styles.dropdownMenuUp}`}>
-                          {getFilteredTimeOptions('startTime').map(time => (
-                            <div
-                              key={time}
-                              className={`${styles.dropdownItem} ${newAvailability.startTime === time ? styles.selected : ''}`}
-                              onClick={() => handleSelectOption('startTime', time)}
-                            >
-                              {time}
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                <div className={styles.typeSelection}>
+                  <label className={styles.typeLabel}>Type de cours :</label>
+                  <div className={styles.typeOptions}>
+                    <label className={`${styles.typeOption} ${newAvailability.types.includes('online') ? styles.selected : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={newAvailability.types.includes('online')}
+                        onChange={() => toggleSlotType('online')}
+                        className={styles.typeCheckbox}
+                      />
+                      <span className={styles.typeText}>En ligne</span>
+                    </label>
+                    <label className={`${styles.typeOption} ${newAvailability.types.includes('inPerson') ? styles.selected : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={newAvailability.types.includes('inPerson')}
+                        onChange={() => toggleSlotType('inPerson')}
+                        className={styles.typeCheckbox}
+                      />
+                      <span className={styles.typeText}>En présentiel</span>
+                    </label>
+                  </div>
+                  {newAvailability.types.length === 0 && (
+                    <div className={styles.typeError}>
+                      Veuillez sélectionner au moins un type de cours
                     </div>
+                  )}
+                </div>
+
+                <div className={styles.timeSlotConfig}>
+                  {!newAvailability.allDay && (
+                    <div className={styles.timeInputs}>
+                      <div className={styles.timeInputGroup}>
+                        <label>De</label>
+                        <div className={styles.customDropdown} ref={setDropdownRef('startTime')}>
+                          <button
+                            type="button"
+                            className={styles.dropdownButton}
+                            onClick={() => toggleDropdown('startTime')}
+                          >
+                            <span className={styles.dropdownText}>
+                              {newAvailability.startTime}
+                            </span>
+                            <span className={styles.dropdownArrow}>▼</span>
+                          </button>
+                          {dropdownOpen.startTime && (
+                            <div className={`${styles.dropdownMenu} ${styles.dropdownMenuUp}`}>
+                              {getFilteredTimeOptions('startTime').map(time => (
+                                <div
+                                  key={time}
+                                  className={`${styles.dropdownItem} ${newAvailability.startTime === time ? styles.selected : ''}`}
+                                  onClick={() => handleSelectOption('startTime', time)}
+                                >
+                                  {time}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className={styles.timeSeparator}>
+                        <span>—</span>
+                      </div>
+                      
+                      <div className={styles.timeInputGroup}>
+                        <label>À</label>
+                        <div className={styles.customDropdown} ref={setDropdownRef('endTime')}>
+                          <button
+                            type="button"
+                            className={styles.dropdownButton}
+                            onClick={() => toggleDropdown('endTime')}
+                          >
+                            <span className={styles.dropdownText}>
+                              {newAvailability.endTime}
+                            </span>
+                            <span className={styles.dropdownArrow}>▼</span>
+                          </button>
+                          {dropdownOpen.endTime && (
+                            <div className={`${styles.dropdownMenu} ${styles.dropdownMenuUp}`}>
+                              {getFilteredTimeOptions('endTime').map(time => (
+                                <div
+                                  key={time}
+                                  className={`${styles.dropdownItem} ${newAvailability.endTime === time ? styles.selected : ''}`}
+                                  onClick={() => handleSelectOption('endTime', time)}
+                                >
+                                  {time}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div className={styles.timeSlotHeader}>
+                    <label className={styles.allDayLabel}>
+                      <input
+                        type="checkbox"
+                        checked={newAvailability.allDay}
+                        onChange={(e) => setNewAvailability(prev => ({
+                          ...prev,
+                          allDay: e.target.checked,
+                          startTime: e.target.checked ? '00:00' : prev.startTime,
+                          endTime: e.target.checked ? '23:59' : prev.endTime
+                        }))}
+                        className={styles.allDayCheckbox}
+                      />
+                      Toute la journée
+                    </label>
                   </div>
                   
-                  <div className={styles.timeSeparator}>
-                    <span>—</span>
-                  </div>
-                  
-                  <div className={styles.timeInputGroup}>
-                    <label>À</label>
-                    <div className={styles.customDropdown} ref={setDropdownRef('endTime')}>
-                      <button
-                        type="button"
-                        className={styles.dropdownButton}
-                        onClick={() => toggleDropdown('endTime')}
-                      >
-                        <span className={styles.dropdownText}>
-                          {newAvailability.endTime}
-                        </span>
-                        <span className={styles.dropdownArrow}>▼</span>
-                      </button>
-                      {dropdownOpen.endTime && (
-                        <div className={`${styles.dropdownMenu} ${styles.dropdownMenuUp}`}>
-                          {getFilteredTimeOptions('endTime').map(time => (
-                            <div
-                              key={time}
-                              className={`${styles.dropdownItem} ${newAvailability.endTime === time ? styles.selected : ''}`}
-                              onClick={() => handleSelectOption('endTime', time)}
-                            >
-                              {time}
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                  {newAvailability.allDay && (
+                    <div className={styles.allDayBadge}>
+                      Disponible toute la journée
                     </div>
+                  )}
+                </div>
+
+                <div className={styles.modalActions}>
+                  {isModifying && (
+                    <button
+                      className={styles.deleteButton}
+                      onClick={() => {
+                        if (selectedDateForModal) {
+                          openDeleteModal(selectedDateForModal, modifyingSlotIndex ?? undefined);
+                        }
+                        setShowAddModal(false);
+                        setClickedHour(null);
+                        setIsModifying(false);
+                        setModifyingSlotIndex(null);
+                      }}
+                    >
+                      Supprimer ce créneau
+                    </button>
+                  )}
+                  <div className={styles.modalActionGroup}>
+                    <button
+                      className={styles.cancelButton}
+                      onClick={() => {
+                        setShowAddModal(false);
+                        setSelectedDateForModal(null);
+                        setClickedHour(null);
+                        setIsModifying(false);
+                        setModifyingSlotIndex(null);
+                      }}
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      className={styles.confirmButton}
+                      onClick={addOrUpdateAvailability}
+                      disabled={!selectedDateForModal || newAvailability.types.length === 0}
+                    >
+                      {isModifying ? 'Mettre à jour' : 'Ajouter'}
+                    </button>
                   </div>
                 </div>
-              )}
-              <div className={styles.timeSlotHeader}>
-                <label className={styles.allDayLabel}>
-                  <input
-                    type="checkbox"
-                    checked={newAvailability.allDay}
-                    onChange={(e) => setNewAvailability(prev => ({
-                      ...prev,
-                      allDay: e.target.checked,
-                      startTime: e.target.checked ? '00:00' : prev.startTime,
-                      endTime: e.target.checked ? '23:59' : prev.endTime
-                    }))}
-                    className={styles.allDayCheckbox}
-                  />
-                  Toute la journée
-                </label>
-              </div>
-              
-              {newAvailability.allDay && (
-                <div className={styles.allDayBadge}>
-                  Disponible toute la journée
-                </div>
-              )}
-            </div>
-
-            <div className={styles.modalActions}>
-              {isModifying && (
-                <button
-                  className={styles.deleteButton}
-                  onClick={() => {
-                    if (selectedDateForModal) {
-                      openDeleteModal(selectedDateForModal, modifyingSlotIndex ?? undefined);
-                    }
-                    setShowAddModal(false);
-                    setClickedHour(null);
-                    setIsModifying(false);
-                    setModifyingSlotIndex(null);
-                  }}
-                >
-                  Supprimer ce créneau
-                </button>
-              )}
-              <div className={styles.modalActionGroup}>
-                <button
-                  className={styles.cancelButton}
-                  onClick={() => {
-                    setShowAddModal(false);
-                    setSelectedDateForModal(null);
-                    setClickedHour(null);
-                    setIsModifying(false);
-                    setModifyingSlotIndex(null);
-                  }}
-                >
-                  Annuler
-                </button>
-                <button
-                  className={styles.confirmButton}
-                  onClick={addOrUpdateAvailability}
-                  disabled={!selectedDateForModal}
-                >
-                  {isModifying ? 'Mettre à jour' : 'Ajouter'}
-                </button>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
 
-      {/* Modal de suppression */}
       {showDeleteModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.deleteModal}>

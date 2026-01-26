@@ -174,8 +174,6 @@ const ProfileCompletion: React.FC = () => {
 
   //Gérer le clic sur une étape
   const handleStepClick = (index: number) => {
-    // Si on est en mode édition, on peut aller partout (sauf validation si étape actuelle a des erreurs)
-    // Si on est en mode création, on ne peut aller que sur les étapes passées
     
     // Valider l'étape actuelle si on essaie de quitter
     if (index !== currentStep) {

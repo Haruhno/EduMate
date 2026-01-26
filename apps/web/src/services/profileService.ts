@@ -1,5 +1,4 @@
 import api from './api';
-
 export interface ProfileData {
   // Informations générales
   profilePicture: string;
@@ -12,8 +11,9 @@ export interface ProfileData {
   birthDate: string;
   address: string;
 
-  // NOUVEAU : Compétences
-  skills?: string[];
+  //Compétences
+  skillsToTeach?: string[]; 
+  skillsToLearn?: string[]; 
 
   // Éducation
   educationLevel: string;
@@ -104,7 +104,9 @@ class ProfileService {
 
     const sanitizedProfileData = {
       ...profileData,
-      skills: profileData.skills || [], // AJOUT: Inclure les compétences
+      skillsToTeach: profileData.skillsToTeach || [],
+      skillsToLearn: profileData.skillsToLearn || [],
+      skills: profileData.skills || [],
       specialties: profileData.specialties || [],
       schedule: cleanedSchedule,
       location: {

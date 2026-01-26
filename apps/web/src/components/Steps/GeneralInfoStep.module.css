@@ -219,7 +219,6 @@ h2 {
   margin-bottom: 1.5rem;
 }
 
-/* Modifications pour uniformiser les tailles */
 .importOptions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -233,7 +232,6 @@ h2 {
   padding: 1.25rem;
   border: 1px solid #e9ecef;
   transition: transform 0.2s, box-shadow 0.2s;
-  /* Ajout pour uniformiser la hauteur */
   min-height: 220px;
   display: flex;
   flex-direction: column;
@@ -258,7 +256,7 @@ h2 {
   font-size: 0.85rem;
   margin-bottom: 1rem;
   line-height: 1.4;
-  flex-grow: 1; /* Permet au texte de prendre l'espace disponible */
+  flex-grow: 1;
 }
 
 .importButton, .linkedInButton {
@@ -268,7 +266,6 @@ h2 {
   cursor: pointer;
   font-weight: 500;
   transition: transform 0.2s;
-  /* Uniformisation de la taille */
   width: 100%;
   text-align: center;
   box-sizing: border-box;
@@ -290,7 +287,6 @@ h2 {
   gap: 0.5rem;
 }
 
-/* Ajustement pour les écrans plus petits */
 @media (max-width: 768px) {
   .importOptions {
     grid-template-columns: 1fr;
@@ -301,19 +297,16 @@ h2 {
   }
 }
 
-/* Ajustement spécifique pour le bouton LinkedIn */
 .linkedInButton span {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Ajustement de la hauteur des blocs */
 .importOption {
   height: 100%;
 }
 
-/* Pour que les boutons aient la même hauteur */
 .importButton, .linkedInButton {
   height: 40px;
   display: flex;
@@ -377,8 +370,8 @@ h2 {
 }
 
 .importStatus.error {
-  background: #FEE2E2;
-  color: #991B1B;
+  background-color: #ffe6b0;
+  color: #fd780b;
 }
 
 /* Responsive */
@@ -785,6 +778,62 @@ h2 {
   border-color: #FB923C;
 }
 
+.transformSkillButton {
+  background: linear-gradient(135deg, #fffccb 0%, #fff8cd 100%);
+  color:#ff9100;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-right: 10px;
+  margin-bottom: 10px;
+}
+
+.learningSkillsButton {
+  background: linear-gradient(135deg, #f0f8ff 0%, #e6f2ff 100%);
+  color: #0A66C2;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.transformSkillButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(6, 95, 70, 0.2);
+}
+
+.transformSkillButton:active {
+  transform: translateY(0);
+}
+
+.transformSkillButton::after {
+  font-weight: bold;
+  transition: transform 0.2s ease;
+}
+
+.transformSkillButton:hover::after {
+  transform: translateX(3px);
+}
+
+@media (max-width: 768px) {
+  .transformSkillButton {
+    width: 100%;
+    margin-left: 0; 
+    margin-right: 0; 
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .transformSkillButton {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    width: 100%;
+  }
+}
 /* Animations */
 @keyframes fadeIn {
   from {

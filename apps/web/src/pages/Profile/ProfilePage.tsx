@@ -1,9 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { MapContainer, TileLayer, Circle, Marker, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import styles from './ProfilePage.module.css';
 import profileService from '../../services/profileService';
 import authService from '../../services/authService';
 import type { ProfileData } from '../../services/profileService';
+
+// Fix pour les icônes Leaflet dans React
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+interface MapUpdaterProps {
+  center: [number, number];
+  radius?: number;
+}
+
+// Composant pour mettre à jour la carte
+const MapUpdater: React.FC<MapUpdaterProps> = ({ center, radius = 5 }) => {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (center && center[0] !== 0 && center[1] !== 0) {
+      const zoom = radius ? Math.max(10, 13 - Math.log(radius)) : 13;
+      map.setView(center, zoom);
+    }
+  }, [center, radius, map]);
+
+  return null;
+};
 
 interface Diploma {
   id: string;
@@ -34,6 +64,122 @@ interface Experience {
   isCurrent: boolean;
   description: string;
 }
+
+// Composant de carte pour le profil
+const ProfileMap: React.FC<{ 
+  location: any; 
+  isTutor: boolean;
+}> = ({ location, isTutor }) => {
+  const [mapCenter, setMapCenter] = useState<[number, number]>([48.7769, 2.3445]); // L'Haÿ-les-Roses par défaut
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fonction pour géocoder l'adresse si les coordonnées sont invalides
+  const geocodeAddress = async (address: string): Promise<[number, number] | null> => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`
+      );
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      }
+    } catch (error) {
+      console.error('Erreur de géocodage:', error);
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    const loadMapCenter = async () => {
+      setIsLoading(true);
+      
+      // Vérifie d'abord si on a des coordonnées valides (pas 0,0)
+      if (location.coordinates?.lat !== 0 && location.coordinates?.lng !== 0) {
+        console.log('Utilisation des coordonnées stockées:', location.coordinates);
+        setMapCenter([location.coordinates.lat, location.coordinates.lng]);
+      } 
+      // Sinon, géocode l'adresse
+      else if (location.address) {
+        console.log('Géocodage de l\'adresse:', location.address);
+        const coords = await geocodeAddress(location.address);
+        if (coords) {
+          setMapCenter(coords);
+        } else {
+          // Si échec, utilise L'Haÿ-les-Roses par défaut
+          setMapCenter([48.7769, 2.3445]);
+        }
+      } 
+      // Sinon, utilise les coordonnées par défaut
+      else {
+        setMapCenter([48.7769, 2.3445]);
+      }
+      
+      setIsLoading(false);
+    };
+
+    loadMapCenter();
+  }, [location]);
+
+  if (isLoading) {
+    return (
+      <div className={styles.mapContainer} style={{ 
+        height: '300px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        backgroundColor: '#f5f5f5',
+        borderRadius: '8px'
+      }}>
+        <div className={styles.spinner} style={{
+          border: '4px solid #f3f3f3',
+          borderTop: '4px solid #FBBF24',
+          borderRadius: '50%',
+          width: '40px',
+          height: '40px',
+          animation: 'spin 1s linear infinite'
+        }}></div>
+        <span style={{ marginLeft: '10px' }}>Chargement de la carte...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.mapContainer}>
+      <MapContainer
+        center={mapCenter}
+        zoom={isTutor ? 13 : 14}
+        style={{ height: '300px', width: '100%', borderRadius: '8px' }}
+        scrollWheelZoom={false}
+        className={styles.leafletMap}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <Marker position={mapCenter} />
+        
+        {isTutor && location.radius && (
+          <Circle
+            center={mapCenter}
+            radius={(location.radius || 5) * 1000}
+            pathOptions={{
+              fillColor: '#FBBF24',
+              fillOpacity: 0.2,
+              color: '#FB923C',
+              weight: 2
+            }}
+          />
+        )}
+        
+        <MapUpdater 
+          center={mapCenter} 
+          radius={isTutor ? location.radius : undefined}
+        />
+      </MapContainer>
+    </div>
+  );
+};
   
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -57,6 +203,10 @@ const ProfilePage: React.FC = () => {
             const profile = response.data.profile;
             setProfileData(profile);
             
+            // Debug: vérifier les coordonnées
+            console.log('Profile location:', profile.location);
+            console.log('Coordinates:', profile.location?.coordinates);
+            
             if (profile.diplomas && Array.isArray(profile.diplomas)) {
               setDiplomas(profile.diplomas);
             }
@@ -65,7 +215,6 @@ const ProfilePage: React.FC = () => {
               setExperiences(profile.experiences);
             }
             
-            // Passez user ET profile à la fonction
             calculateCompletion(profile, currentUser);
           }
         }
@@ -94,9 +243,13 @@ const ProfilePage: React.FC = () => {
     checks.push({name: 'address', completed: !!(profile?.address && String(profile.address).trim())});
     checks.push({name: 'bio', completed: !!(profile?.bio && String(profile.bio).trim())});
 
-    // Compétences
-    const skillsCompleted = !!(profile?.skills && profile.skills.length > 0);
-    checks.push({name: 'skills', completed: skillsCompleted});
+    // Compétences maitrisées (pour tous)
+    const skillsToTeachCompleted = !!(profile?.skillsToTeach && profile.skillsToTeach.length > 0);
+    checks.push({name: 'skillsToTeach', completed: skillsToTeachCompleted});
+
+    // Compétences à acquérir (pour tous)
+    const skillsToLearnCompleted = !!(profile?.skillsToLearn && profile.skillsToLearn.length > 0);
+    checks.push({name: 'skillsToLearn', completed: skillsToLearnCompleted});
 
     // Photo
     const photoCompleted = !!(profile?.profilePicture && profile.profilePicture !== '/assets/images/avatar.jpg');
@@ -119,8 +272,10 @@ const ProfilePage: React.FC = () => {
       checks.push({name: 'availability', completed: availabilityCompleted});
     }
 
-    // Location
-    checks.push({name: 'location', completed: !!(profile?.location?.address && String(profile.location.address).trim())});
+    // Location - vérifie l'adresse ET des coordonnées valides (pas 0,0)
+    const locationCompleted = !!(profile?.location?.address && String(profile.location.address).trim()) && 
+      (profile.location.coordinates?.lat !== 0 || profile.location.coordinates?.lng !== 0);
+    checks.push({name: 'location', completed: locationCompleted});
 
     // Calcul
     const completedFields = checks.filter(check => check.completed).length;
@@ -158,6 +313,18 @@ const ProfilePage: React.FC = () => {
   const hasSingleDiploma = diplomas.length === 1;
   const hasMultipleExperiences = experiences.length > 1;
   const hasSingleExperience = experiences.length === 1;
+  
+  // Vérifier si l'utilisateur a au moins une expérience professionnelle valide
+  const hasValidExperiences = () => {
+    if (experiences.length === 0) return false;
+    
+    // Vérifier si au moins une expérience a des données significatives
+    return experiences.some(exp => 
+      exp.jobTitle?.trim() || 
+      exp.company?.trim() || 
+      exp.employmentType?.trim()
+    );
+  };
 
   if (isLoading) {
     return (
@@ -438,7 +605,8 @@ const ProfilePage: React.FC = () => {
           )}
 
           {/* Section Expériences professionnelles - Style multiple */}
-          {user?.role === 'tutor' && hasMultipleExperiences && (
+          {/* MODIFICATION: Afficher UNIQUEMENT s'il y a au moins une expérience valide */}
+          {user?.role === 'tutor' && hasValidExperiences() && hasMultipleExperiences && (
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>
                 <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -477,8 +645,9 @@ const ProfilePage: React.FC = () => {
             </div>
           )}
 
-          {/* Section Expérience professionnelle - Style unique */}
-          {user?.role === 'tutor' && hasSingleExperience && (
+          {/* Section Expérience professionnelle */}
+          {/* MODIFICATION: Afficher UNIQUEMENT s'il y a au moins une expérience valide */}
+          {user?.role === 'tutor' && hasValidExperiences() && hasSingleExperience && (
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>
                 <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -572,23 +741,47 @@ const ProfilePage: React.FC = () => {
         {/* Section secondaire - Droite */}
         <div className={styles.sidebar}>
           {/* Section Compétences */}
-          {profileData?.skills && profileData.skills.length > 0 && (
-            <div className={styles.section}>
-              <h3 className={styles.sectionTitle}>
-                <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                {user?.role === 'student' ? 'Compétences recherchées' : 'Compétences'}
-              </h3>
-              <div className={styles.skillsContainer}>
-                {profileData.skills.map((skill, index) => (
-                  <span key={index} className={styles.skillTag}>
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
+          {(profileData?.skillsToTeach && profileData.skillsToTeach.length > 0 || profileData?.skillsToLearn && profileData.skillsToLearn.length > 0) && (
+            <>
+              {(profileData?.skillsToTeach && profileData.skillsToTeach.length > 0) && (
+                <div className={styles.section}>
+                  <h3 className={styles.sectionTitle}>
+                    <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    Compétences maîtrisées
+                  </h3>
+                  <div className={styles.skillsContainer}>
+                    {profileData.skillsToTeach.map((skill, index) => (
+                      <span key={index} className={styles.skillTag}>
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Section Compétences à apprendre (pour tous) */}
+              {profileData?.skillsToLearn && profileData.skillsToLearn.length > 0 && (
+                <div className={styles.section}>
+                  <h3 className={styles.sectionTitle}>
+                    <svg className={styles.sectionIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    Compétences à acquérir
+                  </h3>
+                  <div className={styles.skillsContainer}>
+                    {profileData.skillsToLearn.map((skill, index) => (
+                      <span key={index} className={`${styles.skillTag} ${styles.learningSkill}`}>
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
+
           {/* Disponibilités */}
           {user?.role === 'tutor' && profileData?.availability && (
             <div className={styles.section}>
@@ -638,16 +831,11 @@ const ProfilePage: React.FC = () => {
                   )}
                 </div>
                 
-                {/* Carte Leaflet */} 
-                <div className={styles.mapContainer}>
-                  <div className={styles.mapPlaceholder}>
-                    <div className={styles.mapMarker}>
-                      <svg className={styles.markerIcon} fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
+                {/* Carte Leaflet interactive avec géocodage automatique */}
+                <ProfileMap 
+                  location={profileData.location} 
+                  isTutor={user?.role === 'tutor'} 
+                />
 
                 {user?.role === 'tutor' && profileData.location.radius && (
                   <div className={styles.infoItem}>

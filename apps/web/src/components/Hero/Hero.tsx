@@ -309,7 +309,7 @@ const Hero: React.FC = () => {
                         <div className="flex justify-between items-center">
                           <span className="font-semibold">{currentTutor?.price}</span>
                           <button 
-                            onClick={() => window.location.href = `/recherche-tuteur?tutor=${currentTutor?.tutorId || ''}`}
+                            onClick={() => window.location.href = `/booking/${currentTutor?.tutorId || ''}`}
                             className="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2 rounded-full text-sm font-semibold transition-colors duration-200"
                           >
                             Réservez maintenant

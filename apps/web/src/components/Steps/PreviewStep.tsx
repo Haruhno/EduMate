@@ -134,6 +134,33 @@ const PreviewStep: React.FC<PreviewStepProps> = ({ profileData, role }) => {
         ? sortDatesChronologically(profileData.schedule)
         : [];
 
+    // Fonction pour récupérer les compétences selon le rôle
+    const getSkillsToDisplay = () => {
+        // Compétences principales (skills générales)
+        const mainSkills = profileData.skills || [];
+        
+        // Compétences spécifiques selon le rôle
+        if (role === 'student') {
+            // Pour les étudiants: montrer les compétences à acquérir
+            const skillsToLearn = profileData.skillsToLearn || [];
+            return {
+                title: 'Compétences à acquérir',
+                skills: [...new Set([...skillsToLearn, ...mainSkills])],
+                type: 'learn'
+            };
+        } else {
+            // Pour les tuteurs: montrer les compétences à enseigner
+            const skillsToTeach = profileData.skillsToTeach || [];
+            return {
+                title: 'Compétences à enseigner',
+                skills: [...new Set([...skillsToTeach, ...mainSkills])],
+                type: 'teach'
+            };
+        }
+    };
+
+    const skillsData = getSkillsToDisplay();
+
     return (
         <div className={styles.container} ref={previewRef}>
             <div className={styles.previewHeader}>
@@ -211,22 +238,30 @@ const PreviewStep: React.FC<PreviewStepProps> = ({ profileData, role }) => {
                         </div>
                     </>
                     )}
-                    {profileData.skills && profileData.skills.length > 0 && (
+                </div>
+            </div>
+
+            {/* Section Compétences spécifiques */}
+            {skillsData.skills.length > 0 && (
+                <>
+                    <div className={styles.separator}></div>
+                    <div className={styles.section}>
+                        <h4 className={styles.sectionTitle}>{skillsData.title}</h4>
                         <div className={styles.infoItem}>
-                            <span className={styles.infoLabel}>
-                                {role === 'student' ? 'Compétences à acquérir' : 'Compétences'}
-                            </span>
                             <div className={styles.tags}>
-                                {profileData.skills.map((skill: string, index: number) => (
-                                    <span key={index} className={styles.tag}>
+                                {skillsData.skills.map((skill: string, index: number) => (
+                                    <span 
+                                        key={index} 
+                                        className={`${styles.tag} ${skillsData.type === 'learn' ? styles.learnTag : styles.teachTag}`}
+                                    >
                                         {skill}
                                     </span>
                                 ))}
                             </div>
                         </div>
-                    )}
-                </div>
-            </div>
+                    </div>
+                </>
+            )}
 
             {/* Section Diplômes style pour plusieurs diplômes */}
             {hasMultipleDiplomas && profileData.diplomas.some((diploma: Diploma) => 
