@@ -142,40 +142,57 @@ class MistralCVService:
     
     def _call_mistral_api(self, system_prompt: str, user_prompt: str) -> Dict[str, Any]:
         """Appeler l'API Mistral via OpenRouter"""
-        try:
-            client = OpenAI(
-                api_key=self.api_key,
-                base_url="https://openrouter.ai/api/v1",
-            )
-            
-            logger.debug(f"📡 Appel API Mistral ({self.model})...")
-            
-            message = client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=Config.MISTRAL_TEMPERATURE,
-                max_tokens=Config.MISTRAL_MAX_TOKENS,
-            )
-            
-            content = message.choices[0].message.content or ""
-            
-            logger.debug(f"✅ Réponse API reçue ({len(content)} caractères)")
-            
-            return {
-                "content": content,
-                "model": message.model,
-                "usage": {
-                    "prompt_tokens": message.usage.prompt_tokens,
-                    "completion_tokens": message.usage.completion_tokens
+        errors = []
+        models_to_try = [m for m in [self.model, Config.MISTRAL_FALLBACK_MODEL] if m]
+        
+        for model in models_to_try:
+            try:
+                client = OpenAI(
+                    api_key=self.api_key,
+                    base_url="https://openrouter.ai/api/v1",
+                )
+                
+                logger.debug(f"📡 Appel API Mistral ({model})...")
+                
+                # Certains modèles Google Gemma rejettent les messages système.
+                if model.startswith("google/gemma"):
+                    merged_prompt = f"{system_prompt}\n\n{user_prompt}"
+                    messages = [{"role": "user", "content": merged_prompt}]
+                else:
+                    messages = [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ]
+                
+                message = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=Config.MISTRAL_TEMPERATURE,
+                    max_tokens=Config.MISTRAL_MAX_TOKENS,
+                )
+                
+                content = message.choices[0].message.content or ""
+                logger.debug(f"✅ Réponse API reçue ({len(content)} caractères) depuis {model}")
+                
+                # Si on a utilisé le modèle de fallback, mémoriser pour les prochains appels
+                self.model = model
+                
+                return {
+                    "content": content,
+                    "model": message.model,
+                    "usage": {
+                        "prompt_tokens": message.usage.prompt_tokens,
+                        "completion_tokens": message.usage.completion_tokens
+                    }
                 }
-            }
-            
-        except Exception as e:
-            logger.error(f"❌ Erreur appel API Mistral: {type(e).__name__}: {e}")
-            raise
+                
+            except Exception as e:
+                logger.error(f"❌ Erreur appel API Mistral ({model}): {type(e).__name__}: {e}")
+                errors.append(f"{model}: {type(e).__name__}: {e}")
+                continue
+        
+        # Si tous les modèles échouent, re-raise avec le détail
+        raise Exception("Tous les modèles Mistral ont échoué: " + " | ".join(errors))
     
     def _get_system_prompt(self, language: str) -> str:
         """Générer le prompt système selon la langue"""

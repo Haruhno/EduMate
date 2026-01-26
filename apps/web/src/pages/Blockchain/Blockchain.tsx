@@ -21,6 +21,7 @@ const Blockchain: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'transfer'>('overview');
   const [transactionFilter, setTransactionFilter] = useState<'all' | 'incoming' | 'outgoing'>('all');
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
 
   // États pour les formulaires
   const [transferData, setTransferData] = useState<TransferRequest>({
@@ -40,12 +41,20 @@ const Blockchain: React.FC = () => {
   // États pour les modals
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
+  const [bookingDetailsOpen, setBookingDetailsOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
 
   // Charger les données initiales
   useEffect(() => {
     console.log('🔍 [React] Chargement des données initiales...');
     loadWalletData();
   }, []);
+
+  useEffect(() => {
+    if (!copyMessage) return;
+    const timer = setTimeout(() => setCopyMessage(null), 2000);
+    return () => clearTimeout(timer);
+  }, [copyMessage]);
 
   const loadWalletData = async () => {
     console.log('🔄 [React] Chargement des données wallet...');
@@ -183,6 +192,21 @@ const Blockchain: React.FC = () => {
   const getTransactionDetails = (transaction: Transaction) => {
     const currentUserId = balance?.user?.id;
     
+    // BOOKINGS: Afficher le nom du tuteur depuis les metadata
+    if (transaction.transactionType === 'BOOKING' && transaction.metadata?.tutorName) {
+      return {
+        type: 'booking',
+        direction: '→ Réservation',
+        description: `Cours avec ${transaction.metadata.tutorName}`,
+        userName: transaction.metadata.tutorName,
+        walletAddress: transaction.toWalletId,
+        amountColor: styles.negative,
+        amountSign: '-',
+        bookingId: transaction.metadata.bookingId,
+        tutorId: transaction.metadata.tutorId
+      };
+    }
+    
     if (transaction.fromWalletId && transaction.toWalletId) {
       const isOutgoing = transaction.fromWallet?.userId === currentUserId;
       const isIncoming = transaction.toWallet?.userId === currentUserId;
@@ -248,6 +272,17 @@ const Blockchain: React.FC = () => {
         ...prev,
         bankDetails: { ...prev.bankDetails, [field]: value }
       }));
+    }
+  };
+
+  const handleCopyWalletAddress = async (address?: string) => {
+    if (!address) return;
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopyMessage('Adresse du wallet copiée');
+    } catch (err) {
+      console.error('❌ [React] Erreur copie adresse wallet:', err);
+      setCopyMessage('Copie impossible');
     }
   };
 
@@ -356,9 +391,21 @@ const Blockchain: React.FC = () => {
                     </div>
                   </div>
                   <div className={styles.walletInfo}>
-                    <div className={styles.walletAddress} title={balance.wallet.walletAddress}>
-                      {shortenAddress(balance.wallet.walletAddress)}
+                    <div className={styles.walletAddressRow}>
+                      <div className={styles.walletAddress} title={balance.wallet.walletAddress}>
+                        {shortenAddress(balance.wallet.walletAddress)}
+                      </div>
+                      <button
+                        className={styles.copyBtn}
+                        onClick={() => handleCopyWalletAddress(balance.wallet.walletAddress)}
+                        aria-label="Copier l'adresse du wallet"
+                      >
+                        Copier
+                      </button>
                     </div>
+                    {copyMessage && (
+                      <div className={styles.copyHint}>{copyMessage}</div>
+                    )}
                     <div className={styles.statusBadge}>
                       <span className={`${styles.status} ${styles[balance.wallet.kycStatus] || styles.none}`}>
                         KYC: {balance.wallet.kycStatus}
@@ -613,6 +660,27 @@ const Blockchain: React.FC = () => {
                             {transaction.description || 
                             transaction.transactionType.replace('_', ' ').toLowerCase() || 
                             'Aucune description'}
+                            {/* Bouton pour voir le cours si c'est un booking */}
+                            {details.type === 'booking' && details.bookingId !== undefined && (
+                              <button 
+                                className={styles.viewCourseBtn}
+                                onClick={() => {
+                                  setSelectedBooking({
+                                    bookingId: details.bookingId,
+                                    tutorName: details.userName,
+                                    tutorId: details.tutorId,
+                                    amount: transaction.amount,
+                                    transactionDate: transaction.createdAt,
+                                    description: transaction.description,
+                                    metadata: transaction.metadata
+                                  });
+                                  setBookingDetailsOpen(true);
+                                }}
+                                title="Voir les détails du cours"
+                              >
+                                📚 Voir le cours
+                              </button>
+                            )}
                           </div>
                         </td>
                         <td className={styles.textCenter}>
@@ -863,6 +931,91 @@ const Blockchain: React.FC = () => {
                 ) : (
                   'Demander le retrait'
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal détails du booking */}
+      {bookingDetailsOpen && selectedBooking && (
+        <div className={styles.modalOverlay} onClick={() => setBookingDetailsOpen(false)}>
+          <div className={styles.bookingModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.bookingModalHeader}>
+              <h2>Détails de la réservation</h2>
+              <button 
+                className={styles.closeBookingBtn}
+                onClick={() => setBookingDetailsOpen(false)}
+                title="Fermer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className={styles.bookingModalContent}>
+              <div className={styles.bookingInfoRow}>
+                <span className={styles.bookingLabel}>Tuteur:</span>
+                <span className={styles.bookingValue}>{selectedBooking.tutorName}</span>
+              </div>
+              
+              <div className={styles.bookingInfoRow}>
+                <span className={styles.bookingLabel}>Cours:</span>
+                <span className={styles.bookingValue}>{selectedBooking.description || 'Session de tutorat'}</span>
+              </div>
+              
+              <div className={styles.bookingInfoRow}>
+                <span className={styles.bookingLabel}>Montant:</span>
+                <span className={`${styles.bookingValue} ${styles.bookingAmount}`}>
+                  {selectedBooking.amount.toFixed(2)} EDU
+                </span>
+              </div>
+              
+              <div className={styles.bookingInfoRow}>
+                <span className={styles.bookingLabel}>Date de réservation:</span>
+                <span className={styles.bookingValue}>
+                  {new Date(selectedBooking.transactionDate).toLocaleDateString('fr-FR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
+              </div>
+
+              {selectedBooking.metadata?.startTime && (
+                <div className={styles.bookingInfoRow}>
+                  <span className={styles.bookingLabel}>Date du cours:</span>
+                  <span className={styles.bookingValue}>
+                    {new Date(selectedBooking.metadata.startTime * 1000).toLocaleDateString('fr-FR', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
+              )}
+
+              {selectedBooking.metadata?.duration && (
+                <div className={styles.bookingInfoRow}>
+                  <span className={styles.bookingLabel}>Durée:</span>
+                  <span className={styles.bookingValue}>{selectedBooking.metadata.duration} minutes</span>
+                </div>
+              )}
+
+              <div className={styles.bookingInfoRow}>
+                <span className={styles.bookingLabel}>Réservation ID:</span>
+                <span className={styles.bookingValueSmall}>{selectedBooking.bookingId}</span>
+              </div>
+            </div>
+
+            <div className={styles.bookingModalActions}>
+              <button 
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={() => setBookingDetailsOpen(false)}
+              >
+                Fermer
               </button>
             </div>
           </div>

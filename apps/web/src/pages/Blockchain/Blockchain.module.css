@@ -233,6 +233,12 @@
   align-items: flex-end;
 }
 
+.walletAddressRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .walletAddress {
   font-family: 'Monaco', 'Consolas', monospace;
   font-size: 0.8rem;
@@ -240,6 +246,28 @@
   background: #f8f9fa;
   padding: 4px 8px;
   border-radius: 6px;
+}
+
+.copyBtn {
+  border: 1px solid #e9ecef;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #444;
+  transition: all 0.2s ease;
+}
+
+.copyBtn:hover {
+  border-color: #fbbf24;
+  color: #f59e0b;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.copyHint {
+  font-size: 0.8rem;
+  color: #16a34a;
 }
 
 /* Balance Card */
@@ -501,6 +529,28 @@
   font-weight: 600;
   color: #333;
   margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.viewCourseBtn {
+  margin-top: 6px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #facc15 0%, #fb923c 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.viewCourseBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(250, 204, 21, 0.3);
 }
 
 .transactionMeta {
@@ -916,5 +966,157 @@
   .transactionsTable th,
   .transactionsTable td {
     padding: 0.75rem 0.5rem;
+  }
+}
+
+/* Booking Details Modal */
+.bookingModalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.bookingModal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-width: 500px;
+  width: 90%;
+  animation: slideUp 0.3s ease-in-out;
+  overflow: hidden;
+}
+
+.bookingModalHeader {
+  background: linear-gradient(135deg, #facc15 0%, #fb923c 100%);
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+}
+
+.bookingModalHeader h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.closeBookingBtn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: white;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.closeBookingBtn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.bookingModalContent {
+  padding: 2rem;
+}
+
+.bookingInfoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.bookingInfoRow:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.bookingLabel {
+  font-weight: 600;
+  color: #6b7280;
+  font-size: 0.95rem;
+  min-width: 120px;
+}
+
+.bookingValue {
+  color: #1f2937;
+  font-size: 0.95rem;
+  text-align: right;
+  flex: 1;
+}
+
+.bookingValue.amount {
+  color: #facc15;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.bookingValue.small {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  font-family: 'Courier New', monospace;
+}
+
+.bookingModalActions {
+  padding: 0 2rem 2rem;
+  display: flex;
+  gap: 1rem;
+}
+
+.closeModalButton {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #facc15 0%, #fb923c 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.closeModalButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+}
+
+.closeModalButton:active {
+  transform: translateY(0);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

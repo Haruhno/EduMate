@@ -29,6 +29,16 @@ class AuthService {
     if (response.data.success) {
       this.setToken(response.data.data.token);
       this.setUser(response.data.data.user);
+      
+      // Créer automatiquement un wallet pour le nouvel utilisateur
+      try {
+        const blockchainResponse = await api.post('/api/blockchain/wallet/register', {
+          userId: response.data.data.user.id
+        });
+        console.log('Wallet créé avec 500 EDUcoins:', blockchainResponse.data);
+      } catch (error) {
+        console.warn('⚠️ Wallet non créé (le service blockchain peut être indisponible)');
+      }
     }
     
     return response.data;
@@ -67,7 +77,6 @@ class AuthService {
       return JSON.parse(user) as User;
     } catch (error) {
       console.error('Erreur lors de la récupération de l\'utilisateur:', error);
-      // Nettoyer les données corrompues
       localStorage.removeItem(this.userKey);
       return null;
     }
@@ -89,7 +98,7 @@ class AuthService {
     localStorage.setItem(this.userKey, JSON.stringify(user));
   }
 
-  // Vérifier le token pour valider côté serveur)
+  // Vérifier le token pour valider côté serveur
   async validateToken(): Promise<User | null> {
     try {
       const token = this.getToken();
@@ -115,6 +124,28 @@ class AuthService {
     } catch (error) {
       console.error('Erreur vérification email:', error);
       return false;
+    }
+  }
+
+  // Récupérer tous les utilisateurs (pour l'admin)
+  async getAllUsers(): Promise<User[]> {
+    try {
+      const response = await api.get('/users');
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Erreur récupération utilisateurs:', error);
+      return [];
+    }
+  }
+
+  // Récupérer un utilisateur par ID
+  async getUserById(userId: string): Promise<User | null> {
+    try {
+      const response = await api.get(`/users/${userId}`);
+      return response.data.data || null;
+    } catch (error) {
+      console.error(`Erreur récupération utilisateur ${userId}:`, error);
+      return null;
     }
   }
 }

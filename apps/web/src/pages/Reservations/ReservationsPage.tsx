@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import bookingService from '../../services/bookingService';
 import blockchainService from '../../services/blockchainService';
 import authService from '../../services/authService';
 import styles from './ReservationsPage.module.css';
@@ -123,7 +122,7 @@ const ReservationsPage: React.FC = () => {
       if (currentUser?.role === 'tutor') {
         // Pour les tuteurs, utiliser getBookingsByTutor avec le userId
         const filters = filter !== 'all' ? { status: filter.toUpperCase() } : undefined;
-        const resp = await bookingService.getBookingsByTutor(userId, filters);
+        const resp = await blockchainService.getBookingsByTutor(userId, filters);
         
         if (resp?.success) {
           fetched = resp.data?.reservations || resp.data || [];
@@ -132,7 +131,7 @@ const ReservationsPage: React.FC = () => {
       } else {
         // Pour les étudiants, utiliser getBookingsByUser
         const filters = filter !== 'all' ? { status: filter.toUpperCase() } : undefined;
-        const resp = await bookingService.getBookingsByUser(userId, filters);
+        const resp = await blockchainService.getBookingsByUser(userId, filters);
         
         if (resp?.success) {
           fetched = resp.data?.reservations || resp.data || [];
@@ -176,7 +175,7 @@ const ReservationsPage: React.FC = () => {
 
     setConfirmingId(reservationId);
     try {
-      const resp = await bookingService.confirmBooking(reservationId, tutorNotes);
+      const resp = await blockchainService.confirmBooking(reservationId, tutorNotes);
       if (resp?.success) {
         setSuccessMessage('✅ Réservation confirmée ! Les crédits ont été transférés vers votre portefeuille.');
         setTutorNotes('');
@@ -196,7 +195,7 @@ const ReservationsPage: React.FC = () => {
     if (reason === null) return;
 
     try {
-      const resp = await bookingService.cancelBooking(reservationId, reason);
+      const resp = await blockchainService.cancelBooking(reservationId, reason);
       if (resp?.success) {
         setSuccessMessage('✅ Réservation annulée avec succès');
         await loadReservations(currentUserId);
@@ -212,7 +211,7 @@ const ReservationsPage: React.FC = () => {
     if (!window.confirm('Marquer cette session comme terminée ?')) return;
 
     try {
-      const resp = await bookingService.completeBooking(reservationId);
+      const resp = await blockchainService.completeBooking(reservationId);
       if (resp?.success) {
         setSuccessMessage('✅ Session marquée comme terminée');
         await loadReservations(currentUserId);

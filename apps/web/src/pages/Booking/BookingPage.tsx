@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import bookingService from '../../services/bookingService';
 import tutorService from '../../services/tutorService';
 import annonceService from '../../services/annonceService';
 import blockchainService from '../../services/blockchainService';
@@ -78,14 +77,7 @@ const BookingPage: React.FC = () => {
         if (currentUser?.id) {
           try {
             const balanceData = await blockchainService.getBalance();
-            const available = Number(
-              balanceData?.wallet?.available ??
-              balanceData?.wallet?.availableCredits ??
-              balanceData?.available ??
-              balanceData?.balanceCredits ??
-              balanceData?.balance ??
-              0
-            );
+            const available = Number(balanceData.wallet.available ?? 0);
             setBalance(available);
           } catch (balanceError) {
             console.error('Erreur chargement solde:', balanceError);
@@ -161,7 +153,7 @@ const BookingPage: React.FC = () => {
         studentNotes
       };
 
-      const resp = await bookingService.createBooking(bookingData);
+      const resp = await blockchainService.createBooking(bookingData);
       if (resp?.success) {
         // Redirection basée sur le rôle : étudiants -> /blockchain, tuteurs -> /reservations
         const currentUser = authService.getCurrentUser();

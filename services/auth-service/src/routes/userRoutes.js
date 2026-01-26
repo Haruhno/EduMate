@@ -29,4 +29,25 @@ router.get('/users/:id', async (req, res) => {
   }
 });
 
+// GET /api/users
+router.get('/users', async (req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'isVerified']
+    });
+
+    res.json({
+      success: true,
+      data: users
+    });
+  } catch (error) {
+    console.error('Erreur récupération utilisateurs:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+
 module.exports = router;

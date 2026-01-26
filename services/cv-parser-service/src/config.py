@@ -17,6 +17,7 @@ class Config:
     # Mistral
     MISTRAL_API_KEY = os.getenv('MISTRAL_API_KEY')
     MISTRAL_MODEL = os.getenv('MISTRAL_MODEL', 'mistralai/mistral-7b-instruct:free')
+    MISTRAL_FALLBACK_MODEL = os.getenv('MISTRAL_FALLBACK_MODEL', 'mistralai/mistral-small-latest')
     MISTRAL_MAX_TOKENS = int(os.getenv('MISTRAL_MAX_TOKENS', 2000))
     MISTRAL_TEMPERATURE = float(os.getenv('MISTRAL_TEMPERATURE', 0.3))
     

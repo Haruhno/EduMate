@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+web3
+python-dotenv
+pydantic
+pydantic-settings
+aiofiles
+python-jose[cryptography]
+passlib[bcrypt]
+cryptography
+redis
+celery
+py-solc-x
+eth-account
+pyjwt
+requests

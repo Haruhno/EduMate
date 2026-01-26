@@ -6,7 +6,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
 // Routes sécurisées
 router.get('/search', authMiddleware, annonceController.searchAnnonces);
 router.get('/my-annonces', authMiddleware, annonceController.getMyAnnonces);
-router.get('/:id', authMiddleware, annonceController.getAnnonce);
+router.get('/:id', annonceController.getAnnonce); // Public - Récupérer une annonce (pas besoin d'auth)
 router.post('/', authMiddleware, annonceController.createAnnonce);
 router.put('/:id', authMiddleware, annonceController.updateAnnonce);
 router.delete('/:id', authMiddleware, annonceController.deleteAnnonce);
