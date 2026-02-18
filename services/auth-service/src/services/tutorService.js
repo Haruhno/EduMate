@@ -124,7 +124,7 @@ class TutorService {
         include: [{
           model: User,
           as: 'user',
-          attributes: ['id', 'firstName', 'lastName', 'email']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'skillsToTeach', 'skillsToLearn']
         }]
       });
 
@@ -146,7 +146,7 @@ class TutorService {
         include: [{
           model: User,
           as: 'user',
-          attributes: ['id', 'firstName', 'lastName', 'email']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'skillsToTeach', 'skillsToLearn']
         }]
       });
 

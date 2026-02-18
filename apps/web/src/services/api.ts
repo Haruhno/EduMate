@@ -36,9 +36,17 @@ api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // Session invalide → nettoyage uniquement
+      // Session invalide → nettoyage et redirection
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+      
+      // Émettre un événement global pour notifier l'app
+      window.dispatchEvent(new Event('auth:logout'));
+      
+      // Rediriger vers la page de connexion si on n'y est pas déjà
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/connexion')) {
+        window.location.href = '/connexion';
+      }
     }
 
     return Promise.reject(error);

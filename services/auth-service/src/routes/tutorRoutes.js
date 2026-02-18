@@ -376,7 +376,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
       include: [{
         model: User,
         as: 'user',
-        attributes: ['id', 'firstName', 'lastName', 'email']
+        attributes: ['id', 'firstName', 'lastName', 'email', 'skillsToTeach', 'skillsToLearn']
       }]
     });
 

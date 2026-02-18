@@ -32,17 +32,26 @@ const Navbar: React.FC = () => {
     // Vérifier au chargement
     checkAuth();
 
+    // Écouter l'événement de déconnexion automatique
+    const handleAutoLogout = () => {
+      console.log('Déconnexion automatique détectée');
+      setCurrentUser(null);
+      navigate('/connexion', { replace: true });
+    };
+
     // Écouter les événements de stockage pour les changements d'authentification
     const handleStorageChange = () => {
       checkAuth();
     };
 
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('auth:logout', handleAutoLogout);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth:logout', handleAutoLogout);
     };
-  }, []);
+  }, [navigate]);
 
   // Charger le statut du profil
   useEffect(() => {

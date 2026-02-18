@@ -457,8 +457,12 @@
 
 .dateTime {
   font-size: 0.9rem;
-  color: #64748b;
+  color: #475569;
+  font-weight: 600;
   margin-bottom: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .statusBadge {
@@ -523,6 +527,11 @@
   color: #64748b;
 }
 
+.courseDate {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
 .courseDescription {
   font-size: 0.9rem;
   color: #475569;
@@ -574,7 +583,7 @@
   flex: 1;
   display: flex;
   gap: 1rem;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .confirmTextarea {
@@ -609,11 +618,14 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  min-height: 44px;
+  white-space: nowrap;
 }
 
 .confirmBtn {
   background: linear-gradient(120deg, #facc15 0%, #fb923c 100%);
   color: white;
+  min-width: 180px;
 }
 
 .confirmBtn:hover:not(:disabled) {
@@ -646,6 +658,25 @@
 .completeBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.viewCourseBtn {
+  margin-top: 6px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #facc15 0%, #fb923c 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.viewCourseBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(250, 204, 21, 0.3);
 }
 
 .spinner {
@@ -910,4 +941,133 @@
 .modalButtonDanger:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
+}
+
+/* Blockchain Modal Styles */
+.bookingModal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-width: 500px;
+  width: 90%;
+  animation: slideUp 0.3s ease-in-out;
+  overflow: hidden;
+}
+
+.bookingModalHeader {
+  background: linear-gradient(135deg, #facc15 0%, #fb923c 100%);
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+}
+
+.bookingModalHeader h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.closeBookingBtn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: white;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.closeBookingBtn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.bookingModalContent {
+  padding: 2rem;
+}
+
+.bookingInfoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.bookingInfoRow:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.bookingLabel {
+  font-weight: 600;
+  color: #6b7280;
+  font-size: 0.95rem;
+  min-width: 120px;
+}
+
+.bookingValue {
+  color: #1f2937;
+  font-size: 0.95rem;
+  text-align: right;
+  flex: 1;
+}
+
+.bookingValue.amount {
+  color: #facc15;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.bookingValue.small {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  font-family: 'Courier New', monospace;
+}
+
+.bookingModalActions {
+  padding: 0 2rem 2rem;
+  display: flex;
+  gap: 1rem;
+}
+
+.closeModalButton {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #facc15 0%, #fb923c 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.closeModalButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+}
+
+.closeModalButton:active {
+  transform: translateY(0);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

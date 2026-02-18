@@ -87,6 +87,18 @@ const ProfileTutor = sequelize.define('ProfileTutor', {
     }
   },
   
+  // Compétences pour échanges
+  skillToTeach: {
+    type: DataTypes.JSON,
+    defaultValue: [],
+    comment: 'Compétences que le tuteur peut enseigner pour des échanges'
+  },
+  skillToLearn: {
+    type: DataTypes.JSON,
+    defaultValue: [],
+    comment: 'Compétences que le tuteur souhaite apprendre'
+  },
+  
   // Statut
   isVerified: {
     type: DataTypes.BOOLEAN,

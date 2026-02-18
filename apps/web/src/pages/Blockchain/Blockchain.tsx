@@ -22,6 +22,14 @@ const Blockchain: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'transfer'>('overview');
   const [transactionFilter, setTransactionFilter] = useState<'all' | 'incoming' | 'outgoing'>('all');
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
+  
+  // ⚡ États pour le chargement progressif
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(false);
+  
+  // Cache frontend pour éviter les rechargements inutiles
+  const [cacheTimestamp, setCacheTimestamp] = useState<number>(0);
+  const CACHE_TTL = 30000; // 30 secondes
 
   // États pour les formulaires
   const [transferData, setTransferData] = useState<TransferRequest>({
@@ -56,31 +64,67 @@ const Blockchain: React.FC = () => {
     return () => clearTimeout(timer);
   }, [copyMessage]);
 
-  const loadWalletData = async () => {
+  const loadWalletData = async (forceRefresh = false) => {
     console.log('🔄 [React] Chargement des données wallet...');
+    
+    // Vérifier le cache
+    const now = Date.now();
+    if (!forceRefresh && cacheTimestamp && (now - cacheTimestamp) < CACHE_TTL) {
+      console.log('⚡ [React] Utilisation du cache (données récentes)');
+      return;
+    }
+    
     setLoading(true);
     setError(null);
+    
     try {
-      const [balanceData, historyData, statsData] = await Promise.all([
-        blockchainService.getBalance(),
-        blockchainService.getHistory({ limit: 50 }),
-        blockchainService.getStats()
-      ]);
+      // 🚀 PHASE 1 : Charger le SOLDE en priorité (plus rapide)
+      console.log('⚡ [React] Phase 1: Chargement du solde...');
+      const balanceData = await blockchainService.getBalance();
+      setBalance(balanceData);
+      setLoading(false); // Débloquer l'UI immédiatement
+      console.log('✅ [React] Solde chargé:', balanceData.wallet.available);
       
-      console.log('✅ [React] Données chargées:', {
-        balance: balanceData.wallet.available,
-        transactions: historyData.transactions.length,
-        stats: statsData
+      // 🚀 PHASE 2 : Charger les 5 PREMIÈRES TRANSACTIONS RAPIDEMENT
+      console.log('⚡ [React] Phase 2: Chargement des 5 premières transactions...');
+      setTransactionsLoading(true);
+      blockchainService.getHistory({ limit: 5 }).then(historyData => {
+        setTransactions(historyData.transactions);
+        console.log('✅ [React] 5 transactions chargées');
+      }).catch(err => {
+        console.error('⚠️ [React] Erreur transactions initiales (non-bloquant):', err);
       });
       
-      setBalance(balanceData);
-      setTransactions(historyData.transactions);
-      setStats(statsData);
+      // 🚀 PHASE 3 : Charger les 20 TRANSACTIONS COMPLÈTES en arrière-plan
+      console.log('⚡ [React] Phase 3: Chargement de l\'historique complet...');
+      blockchainService.getHistory({ limit: 20 }).then(historyData => {
+        setTransactions(historyData.transactions);
+        setTransactionsLoading(false);
+        console.log('✅ [React] Historique complet chargé:', historyData.transactions.length);
+      }).catch(err => {
+        console.error('⚠️ [React] Erreur historique complet (non-bloquant):', err);
+        setTransactionsLoading(false);
+      });
+      
+      // 🚀 PHASE 4 : Charger les STATS en dernier (moins prioritaire)
+      console.log('⚡ [React] Phase 4: Chargement des stats...');
+      setStatsLoading(true);
+      blockchainService.getStats().then(statsData => {
+        setStats(statsData);
+        setStatsLoading(false);
+        console.log('✅ [React] Stats chargées');
+      }).catch(err => {
+        console.error('⚠️ [React] Erreur stats (non-bloquant):', err);
+        setStatsLoading(false);
+      });
+      
+      // Mettre à jour le cache
+      setCacheTimestamp(Date.now());
+      
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Erreur lors du chargement des données';
       setError(errorMessage);
       console.error('❌ [React] Erreur chargement données:', err);
-    } finally {
       setLoading(false);
     }
   };
@@ -109,8 +153,17 @@ const Blockchain: React.FC = () => {
       setTransferModalOpen(false);
       setTransferData({ toWalletAddress: '', amount: 0, description: '' });
       
-      // Recharger les données
-      await loadWalletData(); 
+      // ⚡ OPTIMISATION: Ne recharger QUE le solde + ajouter la transaction localement
+      const newBalance = await blockchainService.getBalance();
+      setBalance(newBalance);
+      
+      // Ajouter la transaction localement pour affichage instantané
+      if (response.transaction) {
+        setTransactions(prev => [response.transaction, ...prev]);
+      }
+      
+      // Invalider le cache pour le prochain chargement complet
+      setCacheTimestamp(0); 
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Erreur lors du transfert';
       setError(errorMessage);
@@ -141,7 +194,11 @@ const Blockchain: React.FC = () => {
         amount: 0,
         bankDetails: { accountHolder: '', iban: '', bankName: '' }
       });
-      await loadWalletData();
+      
+      // ⚡ OPTIMISATION: Ne recharger QUE le solde
+      const newBalance = await blockchainService.getBalance();
+      setBalance(newBalance);
+      setCacheTimestamp(0);
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Erreur lors de la demande de retrait';
       setError(errorMessage);
@@ -192,19 +249,38 @@ const Blockchain: React.FC = () => {
   const getTransactionDetails = (transaction: Transaction) => {
     const currentUserId = balance?.user?.id;
     
-    // BOOKINGS: Afficher le nom du tuteur depuis les metadata
+    // BOOKINGS: Détecter si c'est une transaction entrante (tuteur) ou sortante (étudiant)
     if (transaction.transactionType === 'BOOKING' && transaction.metadata?.tutorName) {
-      return {
-        type: 'booking',
-        direction: '→ Réservation',
-        description: `Cours avec ${transaction.metadata.tutorName}`,
-        userName: transaction.metadata.tutorName,
-        walletAddress: transaction.toWalletId,
-        amountColor: styles.negative,
-        amountSign: '-',
-        bookingId: transaction.metadata.bookingId,
-        tutorId: transaction.metadata.tutorId
-      };
+      // Si toWalletId est un UUID (contient des tirets), c'est une transaction entrante pour le tuteur
+      const isIncomingToTutor = transaction.toWalletId && transaction.toWalletId.includes('-') && transaction.toWalletId === currentUserId;
+      
+      if (isIncomingToTutor) {
+        // Transaction entrante pour le tuteur
+        return {
+          type: 'booking',
+          direction: '← Réservation',
+          description: `Cours avec ${transaction.fromWallet?.user?.firstName || 'Étudiant'} ${transaction.fromWallet?.user?.lastName || ''}`,
+          userName: `${transaction.fromWallet?.user?.firstName || 'Étudiant'} ${transaction.fromWallet?.user?.lastName || ''}`,
+          walletAddress: transaction.fromWalletId,
+          amountColor: styles.positive,
+          amountSign: '+',
+          bookingId: transaction.metadata.bookingId,
+          tutorId: transaction.metadata.tutorId
+        };
+      } else {
+        // Transaction sortante pour l'étudiant
+        return {
+          type: 'booking',
+          direction: '→ Réservation',
+          description: `Cours avec ${transaction.metadata.tutorName}`,
+          userName: transaction.metadata.tutorName,
+          walletAddress: transaction.toWalletId,
+          amountColor: styles.negative,
+          amountSign: '-',
+          bookingId: transaction.metadata.bookingId,
+          tutorId: transaction.metadata.tutorId
+        };
+      }
     }
     
     if (transaction.fromWalletId && transaction.toWalletId) {
@@ -248,11 +324,35 @@ const Blockchain: React.FC = () => {
 
   // Filtrer les transactions
   const filteredTransactions = transactions.filter(transaction => {
+    const currentUserId = balance?.user?.id;
+    
+    // Filtrer les transactions qui concernent l'utilisateur actuel
+    // Pour les bookings, ne montrer que la transaction de l'utilisateur qui l'a créée ou reçue
+    if (transaction.transactionType === 'BOOKING') {
+      // Si c'est une transaction vers un userId (pas une adresse wallet), c'est une transaction tuteur
+      // On vérifie si toWalletId est un UUID (format avec tirets)
+      const isToUserId = transaction.toWalletId && transaction.toWalletId.includes('-');
+      
+      if (isToUserId) {
+        // C'est une transaction entrante pour le tuteur
+        // Montrer uniquement si l'utilisateur actuel est le tuteur (toWalletId = currentUserId)
+        if (transaction.toWalletId !== currentUserId) {
+          return false;
+        }
+      } else {
+        // C'est une transaction sortante de l'étudiant vers l'escrow
+        // Montrer uniquement si l'utilisateur actuel est l'étudiant
+        if (transaction.fromWallet?.userId !== currentUserId) {
+          return false;
+        }
+      }
+    }
+    
+    // Appliquer les filtres de type (all, incoming, outgoing)
     if (transactionFilter === 'all') return true;
     
-    const currentUserId = balance?.user?.id;
     const isOutgoing = transaction.fromWallet?.userId === currentUserId;
-    const isIncoming = transaction.toWallet?.userId === currentUserId;
+    const isIncoming = transaction.toWallet?.userId === currentUserId || transaction.toWalletId === currentUserId;
     
     if (transactionFilter === 'outgoing') return isOutgoing;
     if (transactionFilter === 'incoming') return isIncoming;
@@ -423,11 +523,11 @@ const Blockchain: React.FC = () => {
                     <div className={styles.balanceTrend}>Prêt à utiliser</div>
                   </div>
                   <div className={styles.balanceItem}>
-                    <div className={styles.balanceLabel}>Solde bloqué</div>
+                    <div className={styles.balanceLabel}>Argent en attente</div>
                     <div className={styles.balanceAmount}>
                       {formatAmount(balance.wallet.locked)} 🪙
                     </div>
-                    <div className={styles.balanceTrend}>En attente</div>
+                    <div className={styles.balanceTrend}>Réservations en cours</div>
                   </div>
                   <div className={styles.balanceItem}>
                     <div className={styles.balanceLabel}>Solde total</div>
@@ -457,58 +557,56 @@ const Blockchain: React.FC = () => {
               </div>
             )}
 
-            {/* Statistiques */}
-            {stats && (
-              <div className={`${styles.card} ${styles.statsCard}`}>
-                <div className={styles.cardHeader}>
-                  <div className={styles.titleWithIconEnd}>
-                    <img src={statistique} className={styles.statImg}/>
-                    <h3>Statistiques</h3>
+            {/* Statistiques - Affichées dès le chargement avec valeurs par défaut */}
+            <div className={`${styles.card} ${styles.statsCard}`}>
+              <div className={styles.cardHeader}>
+                <div className={styles.titleWithIconEnd}>
+                  <img src={statistique} className={styles.statImg}/>
+                  <h3>Statistiques {statsLoading && '⏳'}</h3>
+                </div>
+              </div>
+              <div className={styles.statsGrid}>
+                <div className={styles.statItem}>
+                  <div className={styles.statIcon}>📈</div>
+                  <div className={styles.statContent}>
+                    <div className={`${styles.statValue} ${styles.primary}`}>
+                      {stats ? formatAmount(stats.today.sent + stats.today.received) : '0,00'} 🪙
+                    </div>
+                    <div className={styles.statLabel}>Aujourd'hui</div>
                   </div>
                 </div>
-                <div className={styles.statsGrid}>
-                  <div className={styles.statItem}>
-                    <div className={styles.statIcon}>📈</div>
-                    <div className={styles.statContent}>
-                      <div className={`${styles.statValue} ${styles.primary}`}>
-                        {formatAmount(stats.today.sent + stats.today.received)} 🪙
-                      </div>
-                      <div className={styles.statLabel}>Aujourd'hui</div>
+                <div className={styles.statItem}>
+                  <div className={styles.statIcon}>📅</div>
+                  <div className={styles.statContent}>
+                    <div className={styles.statValue}>
+                      {stats ? formatAmount(stats.monthly.sent + stats.monthly.received) : '0,00'} 🪙
                     </div>
+                    <div className={styles.statLabel}>Ce mois</div>
                   </div>
-                  <div className={styles.statItem}>
-                    <div className={styles.statIcon}>📅</div>
-                    <div className={styles.statContent}>
-                      <div className={styles.statValue}>
-                        {formatAmount(stats.monthly.sent + stats.monthly.received)} 🪙
-                      </div>
-                      <div className={styles.statLabel}>Ce mois</div>
-                    </div>
+                </div>
+                <div className={styles.statItem}>
+                  <div className={styles.statIcon}>🔄</div>
+                  <div className={styles.statContent}>
+                    <div className={styles.statValue}>{stats ? stats.allTime.transactions : 0}</div>
+                    <div className={styles.statLabel}>Transactions</div>
                   </div>
-                  <div className={styles.statItem}>
-                    <div className={styles.statIcon}>🔄</div>
-                    <div className={styles.statContent}>
-                      <div className={styles.statValue}>{stats.allTime.transactions}</div>
-                      <div className={styles.statLabel}>Transactions</div>
-                    </div>
-                  </div>
-                  <div className={styles.statItem}>
-                    <div className={styles.statIcon}>💸</div>
-                    <div className={styles.statContent}>
-                      <div className={styles.statValue}>{formatAmount(stats.allTime.fees)} 🪙</div>
-                      <div className={styles.statLabel}>Frais totaux</div>
-                    </div>
+                </div>
+                <div className={styles.statItem}>
+                  <div className={styles.statIcon}>💸</div>
+                  <div className={styles.statContent}>
+                    <div className={styles.statValue}>{stats ? formatAmount(stats.allTime.fees) : '0,00'} 🪙</div>
+                    <div className={styles.statLabel}>Frais totaux</div>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Dernières transactions */}
             <div className={`${styles.card} ${styles.recentTransactions}`}>
               <div className={styles.cardHeader}>
                 <div className={styles.titleWithIconEnd}>
                   <img src={transaction} className={styles.recentTransactionIcon}/>
-                  <h3>Dernières Transactions</h3>
+                  <h3>Dernières Transactions {transactionsLoading && '⏳'}</h3>
                 </div>
                 <button 
                   className={styles.btnText}
@@ -532,7 +630,7 @@ const Blockchain: React.FC = () => {
                 </div>
               ) : (
                 <div className={styles.transactionsList}>
-                  {transactions.slice(0, 5).map((transaction) => {
+                  {filteredTransactions.slice(0, 5).map((transaction) => {
                     const details = getTransactionDetails(transaction);
                     return (
                       <div key={transaction.id} className={styles.transactionItem}>

@@ -14,6 +14,9 @@ load_dotenv(dotenv_path=env_path, override=True)
 from .blockchain import blockchain_manager
 from .wallet import router as wallet_router
 from .booking import router as booking_router
+from .skill_exchange import router as skill_exchange_router
+from .skill_exchange_booking import router as skill_exchange_booking_router
+from .skill_exchange_history import router as skill_exchange_history_router
 
 # Configuration du logging
 logging.basicConfig(
@@ -107,6 +110,9 @@ app.add_middleware(
 # Inclure les routes
 app.include_router(wallet_router, prefix="/api/blockchain", tags=["blockchain"])
 app.include_router(booking_router, prefix="/api/blockchain", tags=["booking"])
+app.include_router(skill_exchange_router, prefix="/api/blockchain", tags=["skill-exchange"])
+app.include_router(skill_exchange_booking_router, prefix="/api/blockchain", tags=["skill-exchange-booking"])
+app.include_router(skill_exchange_history_router, prefix="/api/blockchain", tags=["skill-exchange-history"])
 
 @app.get("/")
 async def root():

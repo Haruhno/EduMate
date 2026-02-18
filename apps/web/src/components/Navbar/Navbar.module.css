@@ -769,6 +769,7 @@ body {
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-width: 0;
 }
 
 .userName {
@@ -783,6 +784,9 @@ body {
   font-size: 0.8rem;
   margin-top: 0.2rem;
   font-family: 'DMSans', sans-serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dropdownActions {

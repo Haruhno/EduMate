@@ -44,7 +44,7 @@ class ContractManager:
             })
             
             signed_approve = self.w3.eth.account.sign_transaction(approve_tx, private_key)
-            approve_hash = self.w3.eth.send_raw_transaction(signed_approve.rawTransaction)
+            approve_hash = self.w3.eth.send_raw_transaction(signed_approve.raw_transaction)
             self.w3.eth.wait_for_transaction_receipt(approve_hash)
         
         # Effectuer le transfert
@@ -59,7 +59,7 @@ class ContractManager:
         })
         
         signed_transfer = self.w3.eth.account.sign_transaction(transfer_tx, private_key)
-        transfer_hash = self.w3.eth.send_raw_transaction(signed_transfer.rawTransaction)
+        transfer_hash = self.w3.eth.send_raw_transaction(signed_transfer.raw_transaction)
         receipt = self.w3.eth.wait_for_transaction_receipt(transfer_hash)
         
         return {

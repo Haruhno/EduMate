@@ -8,6 +8,7 @@ const profileRoutes = require('./routes/profileRoutes');
 const tutorRoutes = require('./routes/tutorRoutes');
 const annonceRoutes = require('./routes/annonceRoutes');
 const userRoutes = require('./routes/userRoutes');
+const reviewRoutes = require('./routes/reviews');
 const path = require('path');
 
 const app = express();
@@ -23,7 +24,7 @@ const corsOptions = {
     'http://127.0.0.1:5174', 
     process.env.FRONTEND_URL || 'http://localhost:5173'
   ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
   optionsSuccessStatus: 200
@@ -42,6 +43,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/tutors', tutorRoutes);
 app.use('/api/annonces', annonceRoutes);
 app.use('/api', userRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // Route de santé
 app.get('/health', (req, res) => {
@@ -91,6 +93,7 @@ sequelize.sync({ alter: true })
     console.log('   - diplomas');
     console.log('   - experiences');
     console.log('   - annonces');
+    console.log('   - reviews');
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);

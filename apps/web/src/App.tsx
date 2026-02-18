@@ -23,6 +23,9 @@ import MesCours from "./pages/HistoriqueCours/HistoriqueCours";
 import ReservationsPage from "./pages/Reservations/ReservationsPage";
 import ProfileCompletion from "./components/ProfileCompletion/ProfileCompletion";
 import AvailabilityPage from "./pages/AvailabilityPage/AvailabilityPage";
+import ContactPage from "./pages/Contact/ContactPage";
+import SkillExchangePage from "./pages/SkillExchange/SkillExchangePage";
+import CreateSkillExchange from "./pages/SkillExchange/CreateSkillExchange";
 
 // Routes accessibles UNIQUEMENT si NON connecté
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -142,6 +145,23 @@ const App: React.FC = () => {
               </PrivateRoute>
             } 
           />
+          <Route 
+            path="/skill-exchange" 
+            element={
+              <PrivateRoute>
+                <SkillExchangePage />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/skill-exchange/create" 
+            element={
+              <PrivateRoute>
+                <CreateSkillExchange />
+              </PrivateRoute>
+            } 
+          />
+          <Route path="/contact" element={<ContactPage />} />
           {/* Fallback route */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

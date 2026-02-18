@@ -68,6 +68,9 @@ class MessageService {
 
   // Démarrer une conversation
   async startConversation(recipientId: string) {
+    console.log(`📧 Appel startConversation avec recipientId: ${recipientId}`);
+    console.log(`📧 URL complète: ${this.baseURL}/api/messages/conversations/start`);
+    console.log(`🔐 Token en localStorage: ${localStorage.getItem('token') ? '✅ Présent' : '❌ Absent'}`);
     const response = await api.post(`${this.baseURL}/api/messages/conversations/start`, { 
       recipientId 
     });

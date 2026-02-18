@@ -228,6 +228,13 @@ const DashboardPage: React.FC = () => {
             <p>Gérer vos crédits et transactions</p>
           </Link>
 
+          {/* Échange de compétences - Accessible par tous */}
+          <Link to="/skill-exchange" className={styles.actionCard}>
+            <div className={styles.actionIcon}>🔄</div>
+            <h3>Échange de compétences</h3>
+            <p>Échanger vos compétences gratuitement</p>
+          </Link>
+
           {isTutor && (
             <>
               <Link to="/annonces" className={styles.actionCard}>
@@ -241,41 +248,40 @@ const DashboardPage: React.FC = () => {
                 <h3>Mes disponibilités</h3>
                 <p>Gérer votre emploi du temps</p>
               </Link>
-              <Link to="/messages" className={styles.actionCard}>
-                <div className={styles.actionIcon}>💬</div>
-                <h3>Messages</h3>
-                <p>Consulter vos conversations</p>
-              </Link>
-
-              {/* NOUVEAU: Accès rapide aux réservations (pour tuteurs) */}
               <Link to="/reservations" className={styles.actionCard}>
                 <div className={styles.actionIcon}>🗓️</div>
                 <h3>Réservations</h3>
                 <p>Voir les réservations des étudiants</p>
+              </Link>
+
+              <Link to="/messages" className={styles.actionCard}>
+                <div className={styles.actionIcon}>💬</div>
+                <h3>Messages</h3>
+                <p>Consulter vos conversations</p>
               </Link>
             </>
           )}
 
           {isStudent && (
             <>
-              <div className={styles.actionCard}>
+              <Link to="/recherche-tuteur" className={styles.actionCard}>
                 <div className={styles.actionIcon}>🔍</div>
                 <h3>Trouver un tuteur</h3>
                 <p>Rechercher le professeur idéal</p>
-              </div>
-              <div className={styles.actionCard}>
+              </Link>
+              <Link to="/historique-cours" className={styles.actionCard}>
                 <div className={styles.actionIcon}>📖</div>
                 <h3>Mes cours</h3>
                 <p>Accéder à vos sessions</p>
-              </div>
+              </Link>
             </>
           )}
 
-          <div className={styles.actionCard}>
+          <Link to="/contact" className={styles.actionCard}>
             <div className={styles.actionIcon}>⚙️</div>
-            <h3>Paramètres</h3>
-            <p>Modifier vos préférences</p>
-          </div>
+            <h3>Nous contacter</h3>
+            <p>Nous poser vos questions</p>
+          </Link>
         </div>
       </div>
 

@@ -245,6 +245,29 @@
   border-color: #cbd5e1;
 }
 
+.exchangeButton {
+  padding: 0.875rem 1.5rem;
+  border: 2px solid #10B981;
+  background: linear-gradient(135deg, #D1FAE5, #A7F3D0);
+  color: #059669;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.exchangeButton:hover {
+  background: linear-gradient(135deg, #A7F3D0, #6EE7B7);
+  border-color: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
 .statsGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -753,6 +776,12 @@
   font-size: 0.9rem;
 }
 
+.reviewCourse {
+  color: #64748b;
+  font-size: 0.9rem;
+  margin-top: 0.1rem;
+}
+
 .reviewRating {
   color: #f59e0b;
   font-weight: 600;
@@ -763,6 +792,13 @@
   color: #475569;
   line-height: 1.6;
   margin: 0;
+}
+
+.reviewsLoading,
+.noReviews {
+  padding: 1rem;
+  color: #64748b;
+  text-align: center;
 }
 
 /* Section Disponibilités */

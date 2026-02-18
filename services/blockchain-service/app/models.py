@@ -96,6 +96,14 @@ class CreateBookingData(BaseModel):
     description: Optional[str] = None
     studentNotes: Optional[str] = None
 
+class CreateBatchBookingData(BaseModel):
+    """Données pour créer plusieurs réservations en une seule transaction"""
+    tutorId: str
+    annonceId: str
+    bookings: List[Dict[str, Any]]  # [{"date": "2026-01-27", "time": "09:00", "amount": 35, "duration": 60}, ...]
+    description: Optional[str] = None
+    studentNotes: Optional[str] = None
+
 class Booking(BaseModel):
     id: str
     tutorId: str
@@ -153,3 +161,35 @@ class UserAddressMap(BaseModel):
     blockchain_address: str
     private_key: str  # chiffré
     created_at: datetime
+
+# Modèles Skill Exchange
+class SkillExchangeStatus(str, Enum):
+    PENDING = "PENDING"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+    COMPLETED = "COMPLETED"
+
+class Skill(BaseModel):
+    id: str
+    name: str
+    level: Optional[str] = None  # beginner, intermediate, advanced, expert
+
+class CreateSkillExchangeData(BaseModel):
+    tutorId: str
+    skillOffered: Skill
+    skillRequested: Skill
+
+class SkillExchange(BaseModel):
+    id: int
+    studentId: str
+    tutorId: str
+    skillOffered: Skill
+    skillRequested: Skill
+    status: SkillExchangeStatus
+    createdAt: int  # timestamp
+    frontendId: str
+
+class SkillExchangeResponse(BaseModel):
+    success: bool
+    data: Optional[SkillExchange] = None
+    message: Optional[str] = None

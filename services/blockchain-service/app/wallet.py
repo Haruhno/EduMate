@@ -50,8 +50,42 @@ async def get_balance(userId: str = Query(...)) -> Dict[str, Any]:
         # Récupérer le solde depuis la blockchain
         edu_balance = blockchain_manager.get_token_balance(wallet["address"])
         
-        # Calculer les fonds verrouillés dans les escrows
+        # Calculer le locked_balance (argent en attente pour les tuteurs)
         locked_balance = 0.0
+        user_role = user_data.get("role", "student")
+        
+        # Pour les tuteurs: argent des réservations PENDING ou CONFIRMED (en escrow, pas dans leur wallet)
+        # ⚠️ IMPORTANT: C'est l'argent QUE LE TUTEUR VA RECEVOIR - il est EN ESCROW, pas dans son wallet
+        # Donc on ne soustrait PAS du solde disponible, on l'ajoute au total!
+        if user_role == "tutor":
+            try:
+                bookings = blockchain_manager.get_tutor_bookings(userId)
+                for booking in bookings:
+                    booking_status = booking.get("status", "")
+                    # Compter les réservations en attente ou confirmées (argent en escrow, pas reçu)
+                    if booking_status in ["PENDING", "CONFIRMED"]:
+                        locked_balance += float(booking.get("amount", 0))
+            except Exception as e:
+                logger.warning(f"Erreur calcul locked_balance pour tuteur: {e}")
+        
+        # Pour les étudiants: L'argent a DÉJÀ été déduit lors du transfer à l'escrow
+        # ⚠️ NE PAS compter une deuxième fois! L'argent n'est plus dans le portefeuille.
+        elif user_role == "student":
+            # locked_balance = 0 (l'argent a déjà été débité du edu_balance via transferFrom)
+            pass
+        
+        # ✅ CORRECTION: Pour les tuteurs, ne PAS soustraire locked_balance
+        # Les 35 EDU ne sont pas dans leur wallet, ils sont EN ESCROW
+        # Donc: available = solde réel sur blockchain
+        #       locked = montant en escrow attendu
+        #       total = available + locked (ce qu'ils contrôlent)
+        if user_role == "tutor":
+            available_balance = float(edu_balance)  # Ce qu'ils ont réellement
+            total_balance = float(edu_balance) + locked_balance  # Ce qu'ils contrôlent
+        else:
+            # Pour les étudiants: everything available car l'argent des bookings a déjà été déduit
+            available_balance = max(0.0, float(edu_balance) - locked_balance)
+            total_balance = float(edu_balance)
         
         response_data = WalletBalance(
             user={
@@ -62,9 +96,9 @@ async def get_balance(userId: str = Query(...)) -> Dict[str, Any]:
                 "role": user_data.get("role", "student")
             },
             wallet={
-                "available": float(edu_balance),
+                "available": available_balance,
                 "locked": locked_balance,
-                "total": float(edu_balance),
+                "total": total_balance,  # ✅ Utiliser total_balance au lieu de edu_balance
                 "walletAddress": wallet["address"],
                 "kycStatus": "verified"
             }
@@ -250,10 +284,13 @@ async def get_history(
         # Obtenir le wallet de l'utilisateur
         wallet = blockchain_manager.get_user_wallet(userId)
         
+        # ⚡ OPTIMISATION: Pas de multiplicateur - demander le limit exact
+        # ⚡ OPTIMISATION: include_wallet_info=False pour éviter appels HTTP coûteux à auth-service
         # Récupérer l'historique depuis la blockchain
         transactions = blockchain_manager.get_transaction_history(
             wallet["address"],
-            limit=limit * 10  # Récupérer plus pour filtrer
+            limit=limit,  # Demander exactement le nombre voulu
+            include_wallet_info=False  # ⚡ Ne pas charger les infos tuteur (trop coûteux)
         )
         
         # Appliquer des filtres optionnels

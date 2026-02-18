@@ -6,7 +6,9 @@ export interface User {
   role: string; 
   isVerified: boolean;
   createdAt?: string; 
-  updatedAt?: string; 
+  updatedAt?: string;
+  skillsToTeach?: string[] | Array<{name: string; level?: string}>;
+  skillsToLearn?: string[] | Array<{name: string; level?: string}>;
 }
 
 export interface LoginResponse {

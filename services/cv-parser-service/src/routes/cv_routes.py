@@ -55,8 +55,8 @@ def parse_cv():
         else:
             return jsonify({'success': False, 'message': f'Format non supporté: {file_ext}'}), 400
 
-        # Log du texte extrait (comme parse-raw)
-        logger.info(f"📄 Contenu brut du CV ({file.filename}):\n{text[:5000]}{'...' if len(text) > 5000 else ''}")
+        # Log simple du texte extrait
+        logger.info(f"✅ Texte extrait du CV ({len(text)} caractères)")
 
         # Vérifier que le texte est suffisamment long
         if len(text.strip()) < 50:
@@ -251,7 +251,7 @@ def parse_cv_raw():
             return jsonify({'success': False, 'message': f'Format non supporté: {file_ext}'}), 400
 
         # Afficher le texte dans la console du serveur
-        logger.info(f"📄 Contenu brut du CV ({file.filename}):\n{text[:5000]}{'...' if len(text) > 5000 else ''}")
+        logger.info(f"✅ Texte brut du CV extrait ({len(text)} caractères)")
 
         return jsonify({'success': True, 'filename': file.filename, 'text': text}), 200
 

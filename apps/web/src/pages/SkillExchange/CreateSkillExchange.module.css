@@ -1,0 +1,705 @@
+.container {
+  min-height: 100vh;
+  padding: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: #fffaf6;
+}
+
+.card {
+  width: 100%;
+  max-width: 1400px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+}
+
+/* Header */
+.header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.tutorName {
+  background: linear-gradient(120deg, #facc15 0%, #fb923c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Layout principal */
+.content {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 1100px) {
+  .content {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+/* Sections générales */
+.formSection {
+  background: white;
+  margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 1rem 0;
+}
+
+/* Compétences preview */
+.skillsPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.skillItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fef3c7;
+  border: 1px solid #facc15;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+}
+
+.skillName {
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+}
+
+.skillLevel {
+  color: #92400e;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.noSkills {
+  color: #999;
+  font-style: italic;
+  font-size: 0.95rem;
+  margin: 0.5rem 0;
+}
+
+/* Header des disponibilités */
+.availabilityHeader {
+  margin-bottom: 1rem;
+}
+
+.weekNavigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.navButton {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e9ecef;
+  background: white;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #666;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.navButton:hover {
+  background: #fef3c7;
+  border-color: #facc15;
+  color: #92400e;
+}
+
+.weekPeriod {
+  font-size: 0.9rem;
+  color: #333;
+  font-weight: 500;
+}
+
+/* Tableau des disponibilités */
+.availabilityTable {
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+  background: white;
+  width: 100%;
+}
+
+.tableHeader {
+  display: grid;
+  grid-template-columns: 80px repeat(7, 1fr);
+  background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
+  border-bottom: 1px solid #facc15;
+  width: 100%;
+}
+
+.timeColumn {
+  padding: 0.75rem 0.5rem;
+  font-size: 0.85rem;
+  color: #92400e;
+  background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
+  text-align: center;
+  border-right: 1px solid #facc15;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dayHeader {
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  border-right: 1px solid #facc15;
+  background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  cursor: default;
+}
+
+.dayHeader:last-child {
+  border-right: none;
+}
+
+.dayHeader.selectedDay {
+  background: #fde68a;
+  border-bottom: 2px solid #f59e0b;
+}
+
+.dayName {
+  font-weight: 600;
+  color: #92400e;
+  font-size: 0.85rem;
+  text-transform: lowercase;
+  margin-bottom: 2px;
+}
+
+.dayDate {
+  color: #92400e;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* Corps du tableau */
+.tableBody {
+  display: block;
+  width: 100%;
+}
+
+.timeRow {
+  display: grid;
+  grid-template-columns: 80px repeat(7, 1fr);
+  border-bottom: 1px solid #e9ecef;
+  min-height: 40px;
+  width: 100%;
+}
+
+.timeRow:last-child {
+  border-bottom: none;
+}
+
+.timeLabel {
+  padding: 0.5rem;
+  font-size: 0.85rem;
+  color: #92400e;
+  text-align: center;
+  border-right: 1px solid #facc15;
+  background: #fef3c7;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeCell {
+  padding: 0.5rem;
+  border-right: 1px solid #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+}
+
+.timeCell:last-child {
+  border-right: none;
+}
+
+/* Boutons de créneau */
+.slotButton {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #facc15;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  color: #92400e;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.slotButton:hover:not(:disabled) {
+  background: #fef3c7;
+  transform: scale(1.05);
+}
+
+.slotButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.slotButton.selected {
+  background: linear-gradient(120deg, #facc15 0%, #fb923c 100%);
+  color: white;
+  border-color: #fb923c;
+  box-shadow: 0 2px 4px rgba(251, 191, 36, 0.3);
+}
+
+.slotButton.inRange {
+  border: 1px solid #d1d5db;
+  background: #c2c2c2;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.slotButton.inRange:hover {
+  background: #f3f4f6;
+  transform: none;
+}
+
+.unavailableSlot {
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}
+
+.showMoreContainer,
+.showLessContainer {
+  text-align: center;
+  padding-bottom: 1rem;
+}
+
+.showMoreBtn,
+.showLessBtn {
+  padding: 0.6rem 1.5rem;
+  border: 1px solid #facc15;
+  background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #92400e;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 4px rgba(251, 191, 36, 0.1);
+}
+
+.showMoreBtn:hover,
+.showLessBtn:hover {
+  background: linear-gradient(120deg, #fde68a 0%, #fcd34d 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(251, 191, 36, 0.2);
+}
+
+/* Right column - Summary */
+.rightColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.summarySection {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 1.5rem;
+}
+
+.durationSelector {
+  margin-bottom: 1.5rem;
+}
+
+.durationSelector label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.durationButtons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.durationBtn {
+  padding: 0.6rem 0.8rem;
+  border: 2px solid #e9ecef;
+  background: white;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.durationBtn:hover {
+  border-color: #facc15;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.durationBtn.active {
+  background: linear-gradient(120deg, #facc15 0%, #fb923c 100%);
+  color: white;
+  border-color: #fb923c;
+  box-shadow: 0 2px 4px rgba(251, 191, 36, 0.3);
+}
+
+.offeringInfo {
+  background: #fffec8;
+  border: 1px solid #facc15;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.offeringInfo label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #92400e;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.offeringName {
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 0.25rem 0;
+  font-size: 0.95rem;
+}
+
+.offeringDetails {
+  color: #666;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.notesSection {
+  margin-bottom: 1.5rem;
+}
+
+.notesSection label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: #333;
+  resize: vertical;
+  transition: border 0.2s;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: #facc15;
+  box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.1);
+}
+
+.priceInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fffec8;
+  border: 1px solid #facc15;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.priceLabel {
+  font-weight: 600;
+  color: #333;
+}
+
+.priceValue {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #fb923c;
+}
+
+.freeTag {
+  background: linear-gradient(120deg, #facc15 0%, #fb923c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Selected slots section */
+.selectedSlotsSection {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 1.5rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.selectedHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.clearAllBtn {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #dc2626;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clearAllBtn:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+}
+
+.noSelection {
+  color: #999;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1rem 0;
+  margin: 0;
+}
+
+.slotsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.slotItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fffec8;
+  border: 1px solid #facc15;
+  border-radius: 6px;
+  padding: 0.75rem;
+  flex-shrink: 0;
+}
+
+.slotInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.slotDate {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #333;
+  text-transform: capitalize;
+}
+
+.slotTime {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #92400e;
+}
+
+.slotDuration {
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.removeSlotBtn {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  border-radius: 4px;
+  color: #dc2626;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.removeSlotBtn:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+}
+
+/* Messages d'erreur */
+.errorMessage {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  padding: 1rem;
+  color: #dc2626;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.cancelButton,
+.submitButton {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: none;
+}
+
+.cancelButton {
+  background: #f3f4f6;
+  color: #333;
+  border: 1px solid #e9ecef;
+}
+
+.cancelButton:hover:not(:disabled) {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
+.submitButton {
+  background: linear-gradient(120deg, #facc15 0%, #fb923c 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(251, 191, 36, 0.3);
+}
+
+.submitButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(251, 191, 36, 0.4);
+}
+
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+
+  .title {
+    font-size: 1.4rem;
+  }
+
+  .content {
+    grid-template-columns: 1fr;
+  }
+
+  .tableHeader {
+    grid-template-columns: 60px repeat(7, 1fr);
+  }
+
+  .timeRow {
+    grid-template-columns: 60px repeat(7, 1fr);
+  }
+
+  .timeColumn {
+    padding: 0.5rem 0.25rem;
+  }
+
+  .dayHeader {
+    min-height: 45px;
+    padding: 0.5rem 0.25rem;
+  }
+
+  .durationButtons {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ===== TOAST CONTAINER ===== */
+.toastContainer {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.toastContainer > * {
+  pointer-events: auto;
+  margin-bottom: 1rem;
+}

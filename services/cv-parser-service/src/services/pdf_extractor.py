@@ -27,23 +27,26 @@ class PDFExtractor:
     def extract_text_from_pdf_bytes(pdf_bytes: bytes) -> Optional[str]:
         """
         Extraire le texte depuis des bytes PDF (100% en mémoire)
+        Optimisé: essayer pdfplumber d'abord (plus rapide et précis)
         """
         try:
-            text = ""
-            
-            # Utiliser pdfplumber d'abord (plus précis)
+            # Utiliser pdfplumber d'abord (plus précis et rapide)
             try:
+                text = ""
                 with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
                     for page in pdf.pages:
                         page_text = page.extract_text()
                         if page_text:
                             text += page_text + "\n\n"
-                logger.info(f"✅ PDF extrait depuis bytes avec pdfplumber ({len(text)} caractères)")
-                return text.strip()
+                
+                if text.strip():
+                    logger.info(f"✅ PDF extrait avec pdfplumber ({len(text)} caractères)")
+                    return text.strip()
             except Exception as e:
-                logger.warning(f"pdfplumber échoué avec bytes: {e}, essai avec PyPDF2")
+                logger.debug(f"pdfplumber échoué: {e}, essai avec PyPDF2")
             
-            # Fallback avec PyPDF2
+            # Fallback avec PyPDF2 si pdfplumber échoue
+            text = ""
             pdf_reader = PyPDF2.PdfReader(io.BytesIO(pdf_bytes))
             for page_num in range(len(pdf_reader.pages)):
                 page = pdf_reader.pages[page_num]
@@ -51,8 +54,12 @@ class PDFExtractor:
                 if page_text:
                     text += page_text + "\n\n"
             
-            logger.info(f"✅ PDF extrait depuis bytes avec PyPDF2 ({len(text)} caractères)")
-            return text.strip()
+            if text.strip():
+                logger.info(f"✅ PDF extrait avec PyPDF2 ({len(text)} caractères)")
+                return text.strip()
+            
+            logger.warning("⚠️ Aucun texte extrait du PDF")
+            return ""
             
         except Exception as e:
             logger.error(f"Erreur extraction PDF bytes: {e}")

@@ -5,6 +5,7 @@ const Diploma = require('./Diploma');
 const Experience = require('./Experience');
 const Annonce = require('./Annonce');
 const AnnonceEmbedding = require('./AnnonceEmbedding');
+const Review = require('./Review');
 
 // Associations User - Profil
 User.hasOne(ProfileTutor, { 
@@ -77,6 +78,29 @@ AnnonceEmbedding.belongsTo(Annonce, {
   as: 'annonce'
 });
 
+// Review Associations
+User.hasMany(Review, {
+  foreignKey: 'reviewerId',
+  as: 'reviewsGiven',
+  onDelete: 'CASCADE'
+});
+
+Review.belongsTo(User, {
+  foreignKey: 'reviewerId',
+  as: 'reviewer'
+});
+
+User.hasMany(Review, {
+  foreignKey: 'targetUserId',
+  as: 'reviewsReceived',
+  onDelete: 'CASCADE'
+});
+
+Review.belongsTo(User, {
+  foreignKey: 'targetUserId',
+  as: 'target'
+});
+
 module.exports = {
   User,
   ProfileTutor,
@@ -84,5 +108,6 @@ module.exports = {
   Diploma,
   Experience,
   Annonce,
-  AnnonceEmbedding
+  AnnonceEmbedding,
+  Review
 };

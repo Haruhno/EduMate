@@ -150,6 +150,7 @@ class MistralCVService:
                 client = OpenAI(
                     api_key=self.api_key,
                     base_url="https://openrouter.ai/api/v1",
+                    timeout=Config.MISTRAL_TIMEOUT
                 )
                 
                 logger.debug(f"📡 Appel API Mistral ({model})...")

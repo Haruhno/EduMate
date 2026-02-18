@@ -1,8 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FC } from 'react'; 
+import { useNavigate } from 'react-router-dom';
 import styles from './HistoriqueCours.module.css';
+import blockchainService from '../../services/blockchainService';
+import authService from '../../services/authService';
+import { getAcceptedSkillExchangesForHistory, submitSkillExchangeReview, confirmSkillExchangeReview, rejectSkillExchange } from '../../services/skillExchangeService';
+import messageService from '../../services/messageService';
+import ReviewModal, { type ReviewData } from './ReviewModal';
 
 interface User {
+  id?: string;
+  userId?: string;  // ✅ Ajouter userId pour supporter les deux types d'ID
   name: string;
   avatar: string;
   role: string;
@@ -18,7 +26,8 @@ interface Review {
 }
 
 interface Session {
-  id: number;
+  id: number | string;
+  reviewId?: string;
   date: string;
   time: string;
   student?: User;
@@ -31,11 +40,70 @@ interface Session {
   duration?: string;
   review?: Review;
   color?: string;
+  status?: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'REVIEW_COMPLETED' | 'DISPUTED' | 'ACCEPTED';
+  isSkillExchange?: boolean;
+  skillsOffered?: Array<{ name: string; level?: string }>;
+  skillsRequested?: Array<{ name: string; level?: string }>;
 }
 
 interface SessionsPageProps {
   userRole?: 'tutor' | 'student';
 }
+
+const normalizeTimestampMs = (value?: string | number | null): number | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number') {
+    return value < 1e12 ? value * 1000 : value;
+  }
+  const numeric = Number(value);
+  if (!Number.isNaN(numeric)) {
+    return numeric < 1e12 ? numeric * 1000 : numeric;
+  }
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const getExchangeDateTime = (exchange: any, fallbackMs: number) => {
+  if (exchange.bookings && exchange.bookings.length > 0) {
+    const booking = exchange.bookings[0];
+    const dateTimeStr = `${booking.date}T${booking.time}`;
+    const startTimeMs = Date.parse(dateTimeStr);
+    return {
+      startTimeMs: Number.isNaN(startTimeMs) ? fallbackMs : startTimeMs,
+      dateLabel: booking.date,
+      timeLabel: booking.time,
+    };
+  }
+
+  const createdAtMs = normalizeTimestampMs(exchange.createdAt);
+  const safeMs = createdAtMs ?? fallbackMs;
+  return {
+    startTimeMs: safeMs,
+    dateLabel: new Date(safeMs).toLocaleDateString('fr-FR'),
+    timeLabel: new Date(safeMs).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+  };
+};
+
+const dedupeSkills = (skills?: Array<{ name?: string; level?: string }>) => {
+  if (!skills || skills.length === 0) return [] as Array<{ name: string; level?: string }>;
+  const map = new Map<string, { name: string; level?: string }>();
+  skills.forEach((skill) => {
+    const name = skill.name?.trim();
+    if (!name) return;
+    const key = name.toLowerCase();
+    if (!map.has(key)) {
+      map.set(key, { name, level: skill.level });
+    }
+  });
+  return Array.from(map.values());
+};
+
+const mergeSessionsById = (prev: Session[], next: Session[]) => {
+  const map = new Map<string, Session>();
+  prev.forEach((session) => map.set(String(session.id), session));
+  next.forEach((session) => map.set(String(session.id), session));
+  return Array.from(map.values());
+};
 
 // Données de démonstration avec types
 const tutorUpcomingSessions: Session[] = [
@@ -344,11 +412,546 @@ const studentPastSessions: Session[] = [
 ];
 
 const SessionsPage: FC<SessionsPageProps> = ({ userRole = 'tutor' }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [tutorView, setTutorView] = useState<'received' | 'created'>('received'); // Pour tuteurs: "Reçues" vs "Réservées"
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
+  const [pastSessions, setPastSessions] = useState<Session[]>([]);
   
-  const isTutor = userRole === 'tutor';
-  const upcomingSessions = isTutor ? tutorUpcomingSessions : studentUpcomingSessions;
-  const pastSessions = isTutor ? tutorPastSessions : studentPastSessions;
+  // States pour le ReviewModal
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [visioModalOpen, setVisioModalOpen] = useState(false);
+  const [visioLink, setVisioLink] = useState('');
+  const [visioSending, setVisioSending] = useState(false);
+  const [visioSession, setVisioSession] = useState<Session | null>(null);
+  
+  const currentUser = authService.getCurrentUser();
+  // ⚠️ IMPORTANT: Utiliser currentUser.role comme source de vérité (pas le prop userRole)
+  const isTutor = currentUser?.role === 'tutor';
+  
+  // Rediriger vers MessagePage avec l'ID du tuteur, la conversation sera créée sur cette page
+  const handleContact = async (userId: string) => {
+    navigate('/messages', { state: { recipientId: userId } });
+  };
+
+  // Ouvrir le ReviewModal pour une session
+  const handleOpenReviewModal = (session: Session) => {
+    setSelectedSession(session);
+    setReviewModalOpen(true);
+    setReviewError(null);
+  };
+
+  const extractVisioLink = (content?: string | null) => {
+    if (!content || !content.startsWith('VISIO_LINK|')) return null;
+    const parts = content.split('|');
+    return {
+      url: parts[1] || '',
+      title: parts[2] || 'Lien de visio',
+      details: parts[3] || ''
+    };
+  };
+
+  const handlePrepareSession = (session: Session) => {
+    setVisioSession(session);
+    setVisioLink('');
+    setVisioModalOpen(true);
+  };
+
+  const handleSendVisioLink = async () => {
+    if (!visioSession) return;
+    const recipientId = visioSession.student?.userId || visioSession.student?.id;
+
+    if (!recipientId) {
+      setError("Impossible de déterminer l'étudiant");
+      return;
+    }
+
+    let parsedUrl: URL | null = null;
+    try {
+      parsedUrl = new URL(visioLink.trim());
+    } catch {
+      setError('Lien de visio invalide');
+      return;
+    }
+
+    try {
+      setVisioSending(true);
+      const response = await messageService.startConversation(recipientId);
+      if (response?.success && response.data?._id) {
+        const title = visioSession.subject || 'Séance de visio';
+        const details = `${visioSession.date || ''} ${visioSession.time || ''}`.trim();
+        const content = `VISIO_LINK|${parsedUrl.toString()}|${title}|${details}`;
+        await messageService.sendMessage(response.data._id, content, 'system');
+        setVisioModalOpen(false);
+        setVisioLink('');
+        setVisioSession(null);
+      } else {
+        setError('Impossible de démarrer la conversation');
+      }
+    } catch (err: any) {
+      setError(err?.message || "Erreur lors de l'envoi du lien");
+    } finally {
+      setVisioSending(false);
+    }
+  };
+
+  const handleJoinSession = async (session: Session) => {
+    const recipientId = session.tutor?.userId || session.tutor?.id;
+    if (!recipientId) {
+      setError("Impossible de déterminer le tuteur");
+      return;
+    }
+
+    try {
+      const response = await messageService.startConversation(recipientId);
+      if (!response?.success || !response.data?._id) {
+        setError('Impossible de charger la conversation');
+        return;
+      }
+
+      const messagesResponse = await messageService.getMessages(response.data._id, 1, 100);
+      const messages = messagesResponse?.data || [];
+      const lastVisio = [...messages].reverse().find((message: any) => extractVisioLink(message?.content));
+      const visioData = extractVisioLink(lastVisio?.content);
+
+      if (visioData?.url) {
+        window.open(visioData.url, '_blank');
+        return;
+      }
+
+      setError('Aucun lien de visio trouvé. Contactez le tuteur.');
+      navigate('/messages', { state: { recipientId } });
+    } catch (err: any) {
+      setError(err?.message || 'Erreur lors de la récupération du lien');
+    }
+  };
+
+  const handleCancelSession = async (session: Session) => {
+    try {
+      if (session.isSkillExchange) {
+        await rejectSkillExchange(String(session.id));
+      } else {
+        await blockchainService.cancelBooking(String(session.id));
+      }
+
+      setUpcomingSessions(prev => prev.filter((item) => String(item.id) !== String(session.id)));
+      setPastSessions(prev => prev.filter((item) => String(item.id) !== String(session.id)));
+    } catch (err: any) {
+      setError(err?.message || "Erreur lors de l'annulation");
+    }
+  };
+
+  // Soumettre et confirmer l'avis
+  const handleSubmitReview = async (reviewData: ReviewData) => {
+    if (!selectedSession || !currentUser?.id) {
+      setReviewError('Données manquantes');
+      return;
+    }
+
+    try {
+      setReviewLoading(true);
+      setReviewError(null);
+
+      // reviewData contient déjà targetUserId du MenuModal
+      if (!reviewData.targetUserId) {
+        throw new Error('Impossible de déterminer l\'utilisateur cible');
+      }
+
+      const reviewId = selectedSession.reviewId || String(selectedSession.id);
+
+      // Soumettre l'avis
+      const submitResult = selectedSession.isSkillExchange
+        ? await submitSkillExchangeReview(String(selectedSession.id), {
+            targetUserId: reviewData.targetUserId,
+            comment: reviewData.comment,
+            rating: reviewData.rating,
+          })
+        : await blockchainService.submitReview(String(reviewId), {
+            targetUserId: reviewData.targetUserId,
+            comment: reviewData.comment,
+            rating: reviewData.rating,
+          });
+
+      console.log('✅ Avis soumis:', submitResult);
+
+      // Confirmer l'avis (irréversible)
+      const confirmResult = selectedSession.isSkillExchange
+        ? await confirmSkillExchangeReview(String(selectedSession.id))
+        : await blockchainService.confirmReview(String(reviewId));
+
+      console.log('✅ Avis confirmé:', confirmResult);
+
+      if (confirmResult?.allPartiesConfirmed || confirmResult?.bookingStatus === 'COMPLETED') {
+        setPastSessions((prev) =>
+          prev.map((session) =>
+            session.id === selectedSession.id
+              ? { ...session, status: 'REVIEW_COMPLETED' }
+              : session
+          )
+        );
+      }
+
+      // Fermer le modal
+      setReviewModalOpen(false);
+      setSelectedSession(null);
+    } catch (err: any) {
+      console.error('❌ Erreur soumission avis:', err);
+      setReviewError(err.message || 'Erreur lors de la soumission de l\'avis');
+      throw err; // Repropager pour que le modal affiche l'erreur
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    
+    const loadSessions = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        if (!isTutor) {
+          // Charger uniquement les cours acceptés (CONFIRMED/COMPLETED) de l'étudiant
+          const response = await blockchainService.getStudentCourses(currentUser.id);
+          
+          if (response?.success && response.data) {
+            const bookings = response.data;
+            console.log('📚 [HistoriqueCours Étudiant] Cours reçus:', bookings);
+            
+            // Séparer les cours à venir et passés
+            const now = Math.floor(Date.now() / 1000); // Timestamp en secondes
+            console.log('🕒 [HistoriqueCours Étudiant] Timestamp actuel:', now, new Date(now * 1000).toLocaleString());
+            console.log(`✅ [HistoriqueCours Étudiant] ${bookings.length} cours reçus du backend`);
+            
+            const upcoming = bookings.filter((b: any) => {
+              // Vérifier si startTime existe, sinon recréer à partir de date/time
+              const startTime = b.startTime || (b.date && b.time ? Math.floor(new Date(`${b.date}T${b.time}`).getTime() / 1000) : null);
+              const isUpcoming = startTime > now;
+              console.log(`📅 Booking ${b.id}: startTime=${startTime} (${new Date(startTime * 1000).toLocaleString()}), isUpcoming=${isUpcoming}`);
+              return isUpcoming;
+            });
+            
+            const past = bookings.filter((b: any) => {
+              const startTime = b.startTime || (b.date && b.time ? Math.floor(new Date(`${b.date}T${b.time}`).getTime() / 1000) : null);
+              return startTime <= now;
+            });
+            
+            console.log(`✅ [HistoriqueCours Étudiant] ${upcoming.length} à venir, ${past.length} passés`);
+            
+            // Transformer les données du backend au format Session
+            const transformBooking = (booking: any): Session => {
+              const startTime = booking.startTime || (booking.date && booking.time ? Math.floor(new Date(`${booking.date}T${booking.time}`).getTime() / 1000) : null);
+              const isSkillExchange = booking.amount === 0 || booking.isSkillExchange === true;
+              const notes = isSkillExchange
+                ? (booking.studentNotes || booking.description || booking.annonce?.description || '')
+                : (booking.annonce?.description || '');
+              return {
+                id: booking.blockchainId || booking.id,
+                date: new Date(startTime * 1000).toLocaleDateString('fr-FR', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                }),
+                time: new Date(startTime * 1000).toLocaleTimeString('fr-FR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }),
+                tutor: booking.tutor ? {
+                  id: booking.tutorId || booking.tutor.id,
+                  name: `${booking.tutor.firstName || ''} ${booking.tutor.lastName || ''}`.trim(),
+                  avatar: '👨‍🏫',
+                  role: 'Tuteur',
+                  rating: 4.8,
+                  reviews: 0,
+                  experience: `${booking.tutor.experienceYears || 5} ans d'expérience`,
+                  color: '#3B82F6'
+                } : undefined,
+                subject: isSkillExchange ? 'Échange de cours' : (booking.annonce?.subject || booking.description || 'Cours particulier'),
+                level: isSkillExchange ? 'Échange de compétences' : (booking.annonce?.level || 'Tous niveaux'),
+                mode: booking.annonce?.teachingMode === 'online' || booking.annonce?.teachingMode === 'En ligne' ? 'online' : 'inperson',
+                price: isSkillExchange ? '0€' : `${booking.amount}🪙`,
+                notes,
+                duration: `${booking.duration}min`,
+                color: '#3B82F6',
+                status: booking.status
+              };
+            };
+            
+            setUpcomingSessions(upcoming.map(transformBooking));
+            setPastSessions(past.map(transformBooking));
+          }
+        } else {
+          // Pour tuteur, charger selon la vue (reçues ou réservées)
+          let response;
+          
+          if (tutorView === 'received') {
+            // Cours REÇUS (réservations où je suis le tuteur)
+            response = await blockchainService.getBookingsByTutor(currentUser.id);
+          } else {
+            // Cours RÉSERVÉS (réservations où je suis l'étudiant)
+            response = await blockchainService.getBookingsByStudent(currentUser.id);
+          }
+          
+          if (response?.success && response.data) {
+            const bookings = response.data;
+            console.log(`📚 [HistoriqueCours Tuteur] ${tutorView === 'received' ? 'Cours reçus' : 'Cours réservés'}:`, bookings);
+            
+            // Séparer les cours à venir et passés
+            const now = Math.floor(Date.now() / 1000); // Timestamp en secondes
+            console.log('🕒 [HistoriqueCours Tuteur] Timestamp actuel:', now, new Date(now * 1000).toLocaleString());
+            
+            // Filtrer les cours acceptés (CONFIRMED, COMPLETED, REVIEW_COMPLETED) - exclure PENDING et CANCELLED
+            const validBookings = bookings.filter((b: any) => 
+              ['CONFIRMED', 'COMPLETED', 'REVIEW_COMPLETED'].includes(b.status)
+            );
+            console.log(`✅ [HistoriqueCours Tuteur] ${validBookings.length} cours valides (CONFIRMED/COMPLETED/REVIEW_COMPLETED)`);
+            
+            const upcoming = validBookings.filter((b: any) => {
+              const startTime = b.startTime || (b.date && b.time ? Math.floor(new Date(`${b.date}T${b.time}`).getTime() / 1000) : null);
+              const isUpcoming = startTime > now;
+              console.log(`📅 Booking ${b.id}: startTime=${startTime} (${new Date(startTime * 1000).toLocaleString()}), isUpcoming=${isUpcoming}`);
+              return isUpcoming;
+            });
+            
+            const past = validBookings.filter((b: any) => {
+              const startTime = b.startTime || (b.date && b.time ? Math.floor(new Date(`${b.date}T${b.time}`).getTime() / 1000) : null);
+              return startTime <= now;
+            });
+            
+            console.log(`✅ [HistoriqueCours Tuteur] ${upcoming.length} à venir, ${past.length} passés`);
+            
+            // Transformer les données du backend au format Session
+            const transformBooking = (booking: any): Session => {
+              const startTime = booking.startTime || (booking.date && booking.time ? Math.floor(new Date(`${booking.date}T${booking.time}`).getTime() / 1000) : null);
+              const isSkillExchange = booking.amount === 0 || booking.isSkillExchange === true;
+              const notes = isSkillExchange
+                ? (booking.studentNotes || booking.description || booking.annonce?.description || '')
+                : (booking.annonce?.description || '');
+              return {
+                id: booking.blockchainId || booking.id,
+                date: new Date(startTime * 1000).toLocaleDateString('fr-FR', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                }),
+                time: new Date(startTime * 1000).toLocaleTimeString('fr-FR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }),
+                student: tutorView === 'received' ? (booking.student ? {
+                  id: booking.studentId || booking.student.id,
+                  name: `${booking.student.firstName || ''} ${booking.student.lastName || ''}`.trim(),
+                  avatar: '👩‍🎓',
+                  role: 'Étudiant',
+                  rating: 4.5,
+                  reviews: 0,
+                  color: '#8B5CF6'
+                } : undefined) : (booking.tutor ? {
+                  id: booking.tutorId || booking.tutor.id,
+                  name: `${booking.tutor.firstName || ''} ${booking.tutor.lastName || ''}`.trim(),
+                  avatar: '👨‍🏫',
+                  role: 'Tuteur',
+                  rating: 4.8,
+                  reviews: 0,
+                  experience: `${booking.tutor.experienceYears || 5} ans d'expérience`,
+                  color: '#3B82F6'
+                } : undefined),
+                subject: isSkillExchange ? 'Échange de cours' : (booking.annonce?.subject || booking.description || 'Cours particulier'),
+                level: isSkillExchange ? 'Échange de compétences' : (booking.annonce?.level || 'Tous niveaux'),
+                mode: booking.annonce?.teachingMode === 'online' || booking.annonce?.teachingMode === 'En ligne' ? 'online' : 'inperson',
+                price: isSkillExchange ? '0€' : `${booking.amount}🪙`,
+                notes,
+                duration: `${booking.duration}min`,
+                color: tutorView === 'received' ? '#8B5CF6' : '#3B82F6',
+                status: booking.status
+              };
+            };
+            
+            setUpcomingSessions(upcoming.map(transformBooking));
+            setPastSessions(past.map(transformBooking));
+          }
+        }
+        
+        // Charger les échanges de compétences acceptés (indépendamment pour tuteur et étudiant)
+        try {
+          const exchangesResponse = await getAcceptedSkillExchangesForHistory();
+          if (exchangesResponse?.data) {
+            const allExchanges = exchangesResponse.data;
+            const nowMs = Date.now();
+            const getStartTimeMs = (exchange: any) => getExchangeDateTime(exchange, nowMs + 86400000).startTimeMs;
+            
+            if (!isTutor) {
+              // Étudiant: filtrer les échanges où je suis l'étudiant
+              const acceptedExchanges = allExchanges.filter(
+                (ex: any) => ex.studentId === currentUser.id && (ex.status || '').toUpperCase() === 'ACCEPTED'
+              );
+              
+              console.log('🔄 [HistoriqueCours Étudiant] Échanges acceptés:', acceptedExchanges);
+
+              // Transformer les échanges en sessions
+              const transformExchange = (exchange: any): Session => {
+                const { startTimeMs } = getExchangeDateTime(exchange, nowMs + 86400000);
+                const skillsOffered = dedupeSkills(exchange.skillsOffered || (exchange.skillOffered ? [exchange.skillOffered] : []));
+                const skillsRequested = dedupeSkills(exchange.skillsRequested || (exchange.skillRequested ? [exchange.skillRequested] : []));
+                const primaryRequested = skillsRequested[0];
+                const requestedNames = skillsRequested.map((skill) => skill.name).filter(Boolean) as string[];
+                const subject = exchange.annonce?.title || exchange.annonce?.subject || (requestedNames.length > 0
+                  ? requestedNames.join(', ')
+                  : 'Échange de cours');
+                const level = exchange.annonce?.level || (primaryRequested?.level
+                  ? `${primaryRequested.level.charAt(0).toUpperCase()}${primaryRequested.level.slice(1)}`
+                  : 'Échange de compétences');
+                const exchangeId = exchange.id || `${exchange.studentId}-${exchange.tutorId}-${exchange.createdAt || startTimeMs}`;
+                const reviewId = exchange.frontendId || exchangeId;
+
+                return {
+                  id: exchangeId,
+                  reviewId,
+                  date: new Date(startTimeMs).toLocaleDateString('fr-FR', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  }),
+                  time: new Date(startTimeMs).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                  tutor: exchange.tutor ? {
+                    id: exchange.tutorId || exchange.tutor.id,
+                    name: exchange.tutor.firstName || exchange.tutor.name || 'Tuteur',
+                    avatar: '👨‍🏫',
+                    role: 'Tuteur',
+                    rating: 4.8,
+                    reviews: 0,
+                    color: '#8B5CF6'
+                  } : undefined,
+                  subject,
+                  level,
+                  mode: 'online' as const,
+                  price: '0€',
+                  notes: exchange.studentNotes || '',
+                  duration: exchange.bookings?.[0]?.duration ? `${exchange.bookings[0].duration}min` : '60min',
+                  color: '#8B5CF6',
+                  status: 'ACCEPTED' as const,
+                  isSkillExchange: true,
+                  skillsOffered,
+                  skillsRequested
+                };
+              };
+
+              const exchangeUpcoming = acceptedExchanges.filter((ex: any) => {
+                const startTimeMs = getStartTimeMs(ex);
+                return startTimeMs > nowMs;
+              });
+
+              const exchangePast = acceptedExchanges.filter((ex: any) => {
+                const startTimeMs = getStartTimeMs(ex);
+                return startTimeMs <= nowMs;
+              });
+
+              setUpcomingSessions(prev => mergeSessionsById(prev, exchangeUpcoming.map(transformExchange)));
+              setPastSessions(prev => mergeSessionsById(prev, exchangePast.map(transformExchange)));
+            } else if (tutorView === 'received') {
+              // Tuteur (vue reçus): filtrer les échanges où je suis le tuteur
+              const acceptedExchanges = allExchanges.filter(
+                (ex: any) => ex.tutorId === currentUser.id && (ex.status || '').toUpperCase() === 'ACCEPTED'
+              );
+              
+              console.log('🔄 [HistoriqueCours Tuteur] Échanges reçus:', acceptedExchanges);
+
+              // Transformer les échanges en sessions
+              const transformExchange = (exchange: any): Session => {
+                const { startTimeMs } = getExchangeDateTime(exchange, nowMs + 86400000);
+                const skillsOffered = dedupeSkills(exchange.skillsOffered || (exchange.skillOffered ? [exchange.skillOffered] : []));
+                const skillsRequested = dedupeSkills(exchange.skillsRequested || (exchange.skillRequested ? [exchange.skillRequested] : []));
+                const primaryRequested = skillsRequested[0];
+                const requestedNames = skillsRequested.map((skill) => skill.name).filter(Boolean) as string[];
+                const subject = exchange.annonce?.title || exchange.annonce?.subject || (requestedNames.length > 0
+                  ? requestedNames.join(', ')
+                  : 'Échange de cours');
+                const level = exchange.annonce?.level || (primaryRequested?.level
+                  ? `${primaryRequested.level.charAt(0).toUpperCase()}${primaryRequested.level.slice(1)}`
+                  : 'Échange de compétences');
+                const exchangeId = exchange.id || `${exchange.studentId}-${exchange.tutorId}-${exchange.createdAt || startTimeMs}`;
+                const reviewId = exchange.frontendId || exchangeId;
+
+                return {
+                  id: exchangeId,
+                  reviewId,
+                  date: new Date(startTimeMs).toLocaleDateString('fr-FR', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  }),
+                  time: new Date(startTimeMs).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                  student: exchange.student ? {
+                    id: exchange.studentId || exchange.student.id,
+                    name: exchange.student.firstName || exchange.student.name || 'Étudiant',
+                    avatar: '👩‍🎓',
+                    role: 'Étudiant',
+                    rating: 4.8,
+                    reviews: 0,
+                    color: '#EC4899'
+                  } : undefined,
+                  subject,
+                  level,
+                  mode: 'online' as const,
+                  price: '0€',
+                  notes: exchange.studentNotes || '',
+                  duration: exchange.bookings?.[0]?.duration ? `${exchange.bookings[0].duration}min` : '60min',
+                  color: '#EC4899',
+                  status: 'ACCEPTED' as const,
+                  isSkillExchange: true,
+                  skillsOffered,
+                  skillsRequested
+                };
+              };
+
+              const exchangeUpcoming = acceptedExchanges.filter((ex: any) => {
+                const startTimeMs = getStartTimeMs(ex);
+                return startTimeMs > nowMs;
+              });
+
+              const exchangePast = acceptedExchanges.filter((ex: any) => {
+                const startTimeMs = getStartTimeMs(ex);
+                return startTimeMs <= nowMs;
+              });
+
+              setUpcomingSessions(prev => mergeSessionsById(prev, exchangeUpcoming.map(transformExchange)));
+              setPastSessions(prev => mergeSessionsById(prev, exchangePast.map(transformExchange)));
+            }
+          }
+        } catch (err) {
+          console.error('Erreur lors du chargement des échanges acceptés:', err);
+        }
+      } catch (err: any) {
+          console.error('Erreur chargement sessions:', err);
+          setError(err.message || 'Erreur lors du chargement des sessions');
+        } finally {
+          setLoading(false);
+        }
+      };
+    
+    loadSessions();
+  }, [currentUser?.id, isTutor, tutorView]);
+  
+  if (loading) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingContainer}>
+          <div className={styles.spinner}></div>
+          <p>Chargement des sessions...</p>
+        </div>
+      </div>
+    );
+  }
   
   const renderUserProfile = (user: User) => (
     <div className={styles.userProfile}>
@@ -405,8 +1008,29 @@ const SessionsPage: FC<SessionsPageProps> = ({ userRole = 'tutor' }) => {
               {session.time} • {session.duration || '1h30'}
             </div>
           </div>
-          <div className={`${styles.sessionStatus} ${isPast ? styles.statusCompleted : styles.statusUpcoming}`}>
-            {isPast ? 'Terminé' : 'À venir'}
+          <div className={styles.sessionStatusContainer}>
+            {/* Badge de statut blockchain */}
+            {session.status && (
+              <div className={`${styles.statusBadge} ${styles[`status${session.status}`]}`}>
+                {session.status === 'PENDING' && '⏳ En attente'}
+                {session.status === 'CONFIRMED' && '✅ Confirmé'}
+                {session.status === 'CANCELLED' && '❌ Annulé'}
+                {session.status === 'COMPLETED' && '✔️ Terminé'}
+                {session.status === 'REVIEW_COMPLETED' && '✨ Avis confirmé'}
+                {session.status === 'DISPUTED' && '⚠️ Litige'}
+              </div>
+            )}
+            {/* Badge temporel */}
+            <div className={`${styles.sessionStatus} ${isPast ? styles.statusCompleted : styles.statusUpcoming}`}>
+              {isPast ? (
+                <>
+                  ✅ Passé
+                  {session.status === 'REVIEW_COMPLETED' && ' • ✅ Complété!'}
+                </>
+              ) : (
+                '🔜 À venir'
+              )}
+            </div>
           </div>
         </div>
         
@@ -451,6 +1075,51 @@ const SessionsPage: FC<SessionsPageProps> = ({ userRole = 'tutor' }) => {
                 </div>
               </div>
             </div>
+
+            {/* Afficher les compétences pour les échanges */}
+            {session.isSkillExchange && (session.skillsOffered || session.skillsRequested) && (
+              <div className={styles.skillsExchange}>
+                {session.skillsOffered && session.skillsOffered.length > 0 && (
+                  <div className={styles.skillsSection}>
+                    <div className={styles.skillsSectionLabel}>
+                      <span>📚 {isTutor ? 'Compétences que l\'étudiant enseigne' : 'Mes compétences à enseigner'}</span>
+                    </div>
+                    <div className={styles.skillsList}>
+                      {session.skillsOffered.map((skill: any, idx: number) => (
+                        <div key={idx} className={styles.skillBadge}>
+                          <span className={styles.skillName}>{skill.name}</span>
+                          {skill.level && (
+                            <span className={styles.skillLevel}>
+                              {skill.level.charAt(0).toUpperCase() + skill.level.slice(1)}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {session.skillsRequested && session.skillsRequested.length > 0 && (
+                  <div className={styles.skillsSection}>
+                    <div className={styles.skillsSectionLabel}>
+                      <span>🎓 {isTutor ? 'Compétences que l\'étudiant veut apprendre' : 'Compétences à apprendre'}</span>
+                    </div>
+                    <div className={styles.skillsList}>
+                      {session.skillsRequested.map((skill: any, idx: number) => (
+                        <div key={idx} className={styles.skillBadge}>
+                          <span className={styles.skillName}>{skill.name}</span>
+                          {skill.level && (
+                            <span className={styles.skillLevel}>
+                              {skill.level.charAt(0).toUpperCase() + skill.level.slice(1)}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             
             {session.notes && (
               <div className={styles.sessionNotes}>
@@ -495,33 +1164,46 @@ const SessionsPage: FC<SessionsPageProps> = ({ userRole = 'tutor' }) => {
             <div className={styles.sessionActions}>
               {!isPast ? (
                 <>
-                  <button className={`${styles.actionButton} ${styles.primaryButton}`}>
+                  <button
+                    className={`${styles.actionButton} ${styles.primaryButton}`}
+                    onClick={() => {
+                      if (isTutor) {
+                        handlePrepareSession(session);
+                      } else {
+                        handleJoinSession(session);
+                      }
+                    }}
+                  >
                     <span>🎥</span>
                     {isTutor ? 'Préparer la séance' : 'Rejoindre le cours'}
                   </button>
-                  <button className={`${styles.actionButton} ${styles.secondaryButton}`}>
+                  <button 
+                    className={`${styles.actionButton} ${styles.secondaryButton}`}
+                    onClick={() => {
+                      const contactId = user.userId || user.id;
+                      contactId && handleContact(contactId);
+                    }}
+                  >
                     <span>💬</span>
                     Contacter {isTutor ? "l'élève" : "le tuteur"}
                   </button>
-                  <button className={`${styles.actionButton} ${styles.dangerButton}`}>
+                  <button
+                    className={`${styles.actionButton} ${styles.dangerButton}`}
+                    onClick={() => handleCancelSession(session)}
+                  >
                     <span>❌</span>
                     Annuler la séance
                   </button>
                 </>
-              ) : (
-                <>
-                  <button className={`${styles.actionButton} ${styles.primaryButton}`}>
-                    <span>📄</span>
-                    Voir le compte-rendu
-                  </button>
-                  {isTutor && (
-                    <button className={`${styles.actionButton} ${styles.secondaryButton}`}>
-                      <span>⭐</span>
-                      Noter l'élève
+                  ) : (
+                    <button 
+                      className={`${styles.actionButton} ${styles.primaryButton}`}
+                      onClick={() => handleOpenReviewModal(session)}
+                    >
+                      <span>✓</span>
+                      Confirmer
                     </button>
                   )}
-                </>
-              )}
             </div>
           </div>
         </div>
@@ -555,6 +1237,20 @@ const SessionsPage: FC<SessionsPageProps> = ({ userRole = 'tutor' }) => {
         </p>
       </header>
       
+      {/* Erreur */}
+      {error && (
+        <div style={{
+          padding: '16px',
+          marginBottom: '20px',
+          backgroundColor: '#FEE2E2',
+          border: '1px solid #FECACA',
+          borderRadius: '8px',
+          color: '#991B1B'
+        }}>
+          <strong>Erreur:</strong> {error}
+        </div>
+      )}
+      
       {/* Navigation par onglets */}
       <div className={styles.tabsContainer}>
         <button 
@@ -571,6 +1267,26 @@ const SessionsPage: FC<SessionsPageProps> = ({ userRole = 'tutor' }) => {
           Passés
           <span className={styles.tabBadge}>{pastSessions.length}</span>
         </button>
+        
+        {/* Pour tuteurs: toggles pour changer la perspective */}
+        {isTutor && (
+          <div className={styles.perspectiveToggleContainer}>
+            <button 
+              className={`${styles.perspectiveButton} ${tutorView === 'received' ? styles.active : ''}`}
+              onClick={() => setTutorView('received')}
+              title="Voir les cours qu'on vous a réservé"
+            >
+              Mes cours reçus
+            </button>
+            <button 
+              className={`${styles.perspectiveButton} ${tutorView === 'created' ? styles.active : ''}`}
+              onClick={() => setTutorView('created')}
+              title="Voir les cours que vous avez réservé"
+            >
+              Mes cours réservés
+            </button>
+          </div>
+        )}
       </div>
       
       {/* Section Cours à Venir */}
@@ -596,10 +1312,6 @@ const SessionsPage: FC<SessionsPageProps> = ({ userRole = 'tutor' }) => {
                     : ' Trouvez un tuteur pour vos prochaines révisions !'
                   }
                 </p>
-                <button className={`${styles.actionButton} ${styles.primaryButton}`}>
-                  <span>🔍</span>
-                  {isTutor ? 'Créer une annonce' : 'Trouver un tuteur'}
-                </button>
               </div>
             )}
           </div>
@@ -634,6 +1346,80 @@ const SessionsPage: FC<SessionsPageProps> = ({ userRole = 'tutor' }) => {
           </div>
         </section>
       </div>
+
+      {visioModalOpen && (
+        <div className={styles.visioOverlay}>
+          <div className={styles.visioModal}>
+            <div className={styles.visioHeader}>
+              <h2 className={styles.visioTitle}>Programmer la séance</h2>
+              <button
+                className={styles.visioClose}
+                onClick={() => {
+                  setVisioModalOpen(false);
+                  setVisioSession(null);
+                  setVisioLink('');
+                }}
+                disabled={visioSending}
+              >
+                ✕
+              </button>
+            </div>
+            <div className={styles.visioBody}>
+              <label className={styles.visioLabel}>Lien de visio</label>
+              <input
+                className={styles.visioInput}
+                placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                value={visioLink}
+                onChange={(event) => setVisioLink(event.target.value)}
+                disabled={visioSending}
+              />
+              <p className={styles.visioHint}>Le lien sera envoye a l'etudiant dans Messages.</p>
+            </div>
+            <div className={styles.visioFooter}>
+              <button
+                className={styles.visioCancel}
+                onClick={() => {
+                  setVisioModalOpen(false);
+                  setVisioSession(null);
+                  setVisioLink('');
+                }}
+                disabled={visioSending}
+              >
+                Annuler
+              </button>
+              <button
+                className={styles.visioConfirm}
+                onClick={handleSendVisioLink}
+                disabled={visioSending || !visioLink.trim()}
+              >
+                {visioSending ? 'Envoi...' : 'Confirmer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ReviewModal pour les cours passés */}
+      {selectedSession && (
+        <ReviewModal
+          isOpen={reviewModalOpen}
+          onClose={() => {
+            setReviewModalOpen(false);
+            setSelectedSession(null);
+          }}
+          onSubmit={handleSubmitReview}
+          reviewerType={isTutor ? 'tutor' : 'student'}
+          targetName={isTutor 
+            ? selectedSession.student?.name || 'l\'élève' 
+            : selectedSession.tutor?.name || 'le tuteur'
+          }
+          bookingId={String(selectedSession.reviewId || selectedSession.id)}
+          targetUserId={isTutor 
+            ? selectedSession.student?.id || selectedSession.student?.userId || '' 
+            : selectedSession.tutor?.id || selectedSession.tutor?.userId || ''
+          }
+        />
+      )}
     </div>
   );
 };

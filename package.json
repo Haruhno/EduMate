@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "start": "react-scripts start",
-    "dev": "concurrently \"npm run dev --workspace=apps/web\" \"npm run dev --workspace=services/auth-service\" \"npm run dev:blockchain\" \"npm run dev:cv-parser-service\"",
+    "dev": "concurrently \"npm run dev --workspace=apps/web\" \"npm run dev --workspace=services/auth-service\" \"npm run dev --workspace=services/message-service\" \"npm run dev:blockchain\" \"npm run dev:cv-parser-service\"",
     "dev:cv-parser-service": "python -m pip install --upgrade pip --quiet && python -m pip install -r services/cv-parser-service/requirements.txt --quiet --disable-pip-version-check && python services/cv-parser-service/src/app.py",
     "dev:blockchain": "python -m pip install --upgrade pip --quiet && python -m pip install -r services/cv-parser-service/requirements.txt --quiet --disable-pip-version-check && python services/blockchain-service/scripts/start_blockchain.py",
     "build": "vite build",

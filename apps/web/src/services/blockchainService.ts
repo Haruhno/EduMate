@@ -9,10 +9,12 @@ const AUTH_BASE_URL = 'http://localhost:3001/api';
 
 const blockchainApi = axios.create({
   baseURL: BLOCKCHAIN_BASE_URL,
+  timeout: 30000, // ⚡ 30 secondes - Backend Python très lent
 });
 
 const authApi = axios.create({
   baseURL: AUTH_BASE_URL,
+  timeout: 5000, // 5 secondes max
 });
 
 // Intercepteur pour ajouter le token
@@ -236,13 +238,16 @@ class BlockchainService {
   // ============ MÉTHODES WALLET/BLOCKCHAIN ============
   
   async getBalance(): Promise<WalletBalance> {
+    const startTime = performance.now();
     const user = getCurrentUser();
     
     if (!user?.id) {
       throw new Error('Utilisateur non connecté');
     }
     
+    console.log('⚡ [Service] Appel getBalance...');
     const response = await blockchainApi.get(`/balance?userId=${user.id}`);
+    console.log(`✅ [Service] getBalance terminé en ${(performance.now() - startTime).toFixed(0)}ms`);
     
     if (!response.data.success) {
       throw new Error(response.data.message || 'Erreur lors de la récupération du solde');
@@ -250,20 +255,13 @@ class BlockchainService {
     
     const balanceData = response.data.data;
     
-    try {
-      const userResponse = await authApi.get(`/users/${user.id}`);
+    // Utiliser les infos du localStorage au lieu d'un appel API supplémentaire
+    if (balanceData.user && user) {
       balanceData.user = {
         ...balanceData.user,
-        firstName: userResponse.data.data.firstName,
-        lastName: userResponse.data.data.lastName,
-        role: userResponse.data.data.role
-      };
-    } catch (error) {
-      balanceData.user = {
-        ...balanceData.user,
-        firstName: 'Utilisateur',
-        lastName: '',
-        role: 'user'
+        firstName: user.firstName || balanceData.user.firstName || 'Utilisateur',
+        lastName: user.lastName || balanceData.user.lastName || '',
+        role: user.role || balanceData.user.role || 'user'
       };
     }
     
@@ -302,6 +300,7 @@ class BlockchainService {
     endDate?: string;
     transactionType?: string;
   }): Promise<TransactionHistory> {
+    const startTime = performance.now();
     const user = getCurrentUser();
     if (!user?.id) {
       throw new Error('Utilisateur non connecté');
@@ -312,11 +311,14 @@ class BlockchainService {
     
     if (options?.page) params.append('page', options.page.toString());
     if (options?.limit) params.append('limit', options.limit.toString());
+    else params.append('limit', '20'); // ⚡ LIMITE PAR DÉFAUT RÉDUITE À 20
     if (options?.startDate) params.append('startDate', options.startDate);
     if (options?.endDate) params.append('endDate', options.endDate);
     if (options?.transactionType) params.append('transactionType', options.transactionType);
 
+    console.log('⚡ [Service] Appel getHistory...');
     const response = await blockchainApi.get(`/history?${params.toString()}`);
+    console.log(`✅ [Service] getHistory terminé en ${(performance.now() - startTime).toFixed(0)}ms`);
     
     if (!response.data.success) {
       throw new Error(response.data.message || 'Erreur lors de la récupération de l\'historique');
@@ -349,12 +351,15 @@ class BlockchainService {
   }
 
   async getStats(): Promise<WalletStats> {
+    const startTime = performance.now();
     const user = getCurrentUser();
     if (!user?.id) {
       throw new Error('Utilisateur non connecté');
     }
 
+    console.log('⚡ [Service] Appel getStats...');
     const response = await blockchainApi.get(`/stats?userId=${user.id}`);
+    console.log(`✅ [Service] getStats terminé en ${(performance.now() - startTime).toFixed(0)}ms`);
     
     if (!response.data.success) {
       throw new Error(response.data.message || 'Erreur lors de la récupération des statistiques');
@@ -418,6 +423,112 @@ class BlockchainService {
     }
   }
 
+  async createBatchBookings(data: {
+    tutorId: string;
+    annonceId: string;
+    bookings: Array<{
+      date: string;
+      time: string;
+      duration: number;
+      amount: number;
+    }>;
+    description?: string;
+    studentNotes?: string;
+  }) {
+    try {
+      const response = await blockchainApi.post('/booking/batch', data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur batch bookings:', error.response?.data);
+      throw new Error(error.response?.data?.message || 'Erreur lors de la création des réservations');
+    }
+  }
+
+  async createBatchSkillExchangeBookings(data: {
+    tutorId: string;
+    annonceId: string;
+    bookings: Array<{
+      date: string;
+      time: string;
+      duration: number;
+    }>;
+    skillsOffered: Array<{
+      name: string;
+      level: string;
+    }>;
+    skillsRequested: Array<{
+      name: string;
+    }>;
+    description?: string;
+    studentNotes?: string;
+    tutorSkillsToLearn?: Array<{
+      name: string;
+    }>;
+  }) {
+    try {
+      // Create a booking for each time slot
+      const results = [];
+      let successCount = 0;
+      let failureCount = 0;
+      const errors: any[] = [];
+
+      for (const booking of data.bookings) {
+        try {
+          const skillExchangePayload = {
+            tutorId: data.tutorId,
+            annonceId: data.annonceId,
+            date: booking.date,
+            time: booking.time,
+            duration: booking.duration,
+            skillsOffered: data.skillsOffered,
+            skillsRequested: data.skillsRequested,
+            description: data.description,
+            studentNotes: data.studentNotes
+          };
+
+          const response = await blockchainApi.post('/booking/skill-exchange', skillExchangePayload);
+          
+          if (response.data.success) {
+            successCount++;
+            results.push({
+              success: true,
+              data: response.data.data
+            });
+          } else {
+            failureCount++;
+            errors.push({
+              date: booking.date,
+              time: booking.time,
+              error: response.data.message
+            });
+          }
+        } catch (error: any) {
+          failureCount++;
+          errors.push({
+            date: booking.date,
+            time: booking.time,
+            error: error.response?.data?.message || error.message
+          });
+        }
+      }
+
+      return {
+        success: successCount > 0,
+        data: {
+          successCount,
+          failureCount,
+          totalRequested: data.bookings.length,
+          results
+        },
+        message: `${successCount} réservation(s) créée(s) avec succès (${failureCount} échouée(s))`,
+        errors: errors.length > 0 ? errors : undefined
+      };
+    } catch (error: any) {
+      console.error('Erreur batch skill exchanges:', error.response?.data);
+      throw new Error(error.response?.data?.message || 'Erreur lors de la création des échanges de compétences');
+    }
+  }
+
   async confirmBooking(bookingId: string, tutorNotes?: string) {
     try {
       const response = await blockchainApi.patch(`/booking/${bookingId}/confirm`, { tutorNotes });
@@ -469,6 +580,39 @@ class BlockchainService {
     }
   }
 
+  async getBookingsByStudent(studentId: string, filters?: { status?: string }) {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.status) params.append('status', filters.status);
+      
+      const response = await blockchainApi.get(`/booking/student/${studentId}?${params.toString()}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Erreur lors de la récupération des réservations de l\'étudiant');
+    }
+  }
+
+  async getAllBookings(userId: string, filters?: { status?: string }) {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.status) params.append('status', filters.status);
+      
+      const response = await blockchainApi.get(`/booking/all/${userId}?${params.toString()}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Erreur lors de la récupération de toutes les réservations');
+    }
+  }
+
+  async getStudentCourses(studentId: string) {
+    try {
+      const response = await blockchainApi.get(`/booking/student-courses/${studentId}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Erreur lors de la récupération des cours de l\'étudiant');
+    }
+  }
+
   async getBookingDetails(bookingId: string) {
     try {
       const response = await blockchainApi.get(`/booking/${bookingId}`);
@@ -517,6 +661,148 @@ class BlockchainService {
       }
       
       throw new Error(error.response?.data?.message || 'Erreur lors de la création de la réservation');
+    }
+  }
+
+  async confirmCourseOutcome(bookingId: string, courseHeld: boolean) {
+    try {
+      const response = await blockchainApi.post(`/booking/${bookingId}/confirm-outcome`, {}, {
+        params: { course_held: courseHeld }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Erreur lors de la confirmation');
+    }
+  }
+
+  // ============ REVIEW METHODS ============
+  
+  async submitReview(bookingId: string, reviewData: {
+    targetUserId: string;
+    comment: string;
+    rating?: number;
+  }) {
+    try {
+      const response = await blockchainApi.post(`/booking/${bookingId}/submit-review`, reviewData);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.detail || error.response?.data?.message || 'Erreur lors de la soumission de l\'avis');
+    }
+  }
+
+  async confirmReview(bookingId: string) {
+    try {
+      const response = await blockchainApi.post(`/booking/${bookingId}/confirm-review`, {});
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.detail || error.response?.data?.message || 'Erreur lors de la confirmation de l\'avis');
+    }
+  }
+
+  async getBookingReviews(bookingId: string) {
+    try {
+      const response = await blockchainApi.get(`/booking/${bookingId}/reviews`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Erreur lors de la récupération des avis');
+    }
+  }
+
+  // ============ SKILL EXCHANGE BOOKING METHODS ============
+  
+  /**
+   * Créer une réservation d'échange de compétences (gratuit - 0 EDU Coins)
+   */
+  async createSkillExchangeBooking(data: {
+    tutorId: string;
+    annonceId: string;
+    date: string;
+    time: string;
+    duration: number;
+    amount?: number;
+    description?: string;
+    studentNotes?: string;
+    isSkillExchange?: boolean;
+    skillOffered?: { name: string; level: string };
+    skillRequested?: { name: string; level?: string };
+  }) {
+    try {
+      const user = getCurrentUser();
+      if (!user?.id) {
+        throw new Error('Utilisateur non connecté');
+      }
+
+      const response = await blockchainApi.post('/booking/skill-exchange', {
+        studentId: user.id,
+        tutorId: data.tutorId,
+        annonceId: data.annonceId,
+        date: data.date,
+        time: data.time,
+        duration: data.duration,
+        amount: 0, // Toujours gratuit pour les échanges de compétences
+        description: data.description,
+        studentNotes: data.studentNotes,
+        isSkillExchange: true,
+        skillOffered: data.skillOffered,
+        skillRequested: data.skillRequested,
+      });
+
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Erreur lors de la création de l\'échange');
+      }
+
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Erreur lors de la création de l\'échange de compétences');
+    }
+  }
+
+  /**
+   * Accepter un échange de compétences (par le tuteur)
+   */
+  async acceptSkillExchange(bookingId: string) {
+    try {
+      const response = await blockchainApi.patch(
+        `/booking/${bookingId}/accept-exchange`
+      );
+
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Erreur lors de l\'acceptation');
+      }
+
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Erreur lors de l\'acceptation de l\'échange');
+    }
+  }
+
+  /**
+   * Récupérer les échanges de compétences pour l'utilisateur courant
+   */
+  async getSkillExchangeBookings(filters?: { status?: string }) {
+    try {
+      const user = getCurrentUser();
+      if (!user?.id) {
+        throw new Error('Utilisateur non connecté');
+      }
+
+      const params = new URLSearchParams();
+      params.append('userId', user.id);
+      params.append('isSkillExchange', 'true');
+      
+      if (filters?.status) {
+        params.append('status', filters.status);
+      }
+
+      const response = await blockchainApi.get(`/bookings?${params.toString()}`);
+
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Erreur récupération échanges');
+      }
+
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Erreur lors de la récupération des échanges');
     }
   }
 }

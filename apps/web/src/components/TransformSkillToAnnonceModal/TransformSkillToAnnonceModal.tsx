@@ -1343,7 +1343,7 @@ const SkillsInputWithAutocomplete: React.FC<SkillsInputWithAutocompleteProps> = 
       <OffersSummary
         offers={offers}
         competenceAssignments={competenceAssignments}
-        selectedSkills={[...localManualSkills, ...profileSkills]}
+        selectedSkills={[...localManualSkills, ...profileSkills, ...offers.flatMap(o => o.skills || [])]}
         onEditOffer={onEditOffer}
         onRemoveOffer={onRemoveOffer}
         onCreateOfferFromAll={onCreateOfferFromAll}
@@ -2416,10 +2416,14 @@ const TransformSkillToAnnonceModal: React.FC<TransformSkillToAnnonceModalProps> 
       setLoading(true);
       setError(null);
       
+      // Inclure les compétences des offres créées
+      const offerSkills = offers.flatMap(o => o.skills || []);
+      
       const allSkills = [...new Set([
         ...formData.selectedSkills,
         ...aiDetectedSkills,
-        ...manualAddedSkills
+        ...manualAddedSkills,
+        ...offerSkills
       ])];
       
       const skillsToSave = allSkills.filter(skill => 

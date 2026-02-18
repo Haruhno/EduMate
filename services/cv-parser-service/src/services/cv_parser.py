@@ -69,14 +69,11 @@ class CVParserService:
             
             # Vérifier que le texte n'est pas vide
             if not cv_text or len(cv_text.strip()) < 50:
-                logger.warning(f"Texte extrait trop court: {len(cv_text)} caractères")
-                logger.info(f"📄 Contenu texte extrait (court): {cv_text}")
+                logger.warning(f"⚠️ Texte extrait trop court: {len(cv_text)} caractères")
                 # Essayer une extraction locale
                 cv_data = self._extract_locally(cv_text)
             else:
                 logger.info(f"✅ Texte extrait ({len(cv_text)} caractères)")
-                logger.info(f"📄 Contenu texte extrait du CV:\n{cv_text[:5000]}{'...' if len(cv_text) > 5000 else ''}")
-                logger.debug(f"Premiers 500 caractères: {cv_text[:500]}...")
                 
                 try:
                     # Analyser avec Mistral

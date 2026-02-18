@@ -12,8 +12,8 @@ export interface ProfileData {
   address: string;
 
   //Compétences
-  skillsToTeach?: string[]; 
-  skillsToLearn?: string[]; 
+  skillsToTeach?: any[]; // Can be string[] or Skill[] (with id, name, level)
+  skillsToLearn?: any[]; // Can be string[] or Skill[] (with id, name, level) 
 
   // Éducation
   educationLevel: string;

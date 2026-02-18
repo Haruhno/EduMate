@@ -16,6 +16,8 @@ export interface TutorFromDB {
   location: any;
   isVerified: boolean;
   isCompleted: boolean;
+  skillsToTeach?: Array<{ id?: string; name: string; level?: string }>;
+  skillsToLearn?: Array<{ id?: string; name: string; level?: string }>;
   user?: {
     id: string;
     firstName: string;

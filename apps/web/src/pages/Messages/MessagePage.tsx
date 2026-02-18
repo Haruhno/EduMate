@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import EmojiPicker from 'emoji-picker-react';
 import type { EmojiClickData } from 'emoji-picker-react';
 import styles from './MessagePage.module.css';
-import messageService, { type Conversation, type Message, type User } from '../../services/messageService';
+import messageService, { type Conversation, type Message } from '../../services/messageService';
 import authService from '../../services/authService';
 
 interface OnlineUser {
@@ -17,6 +17,7 @@ interface OnlineUser {
 
 const MessagesPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -27,7 +28,7 @@ const MessagesPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'chats' | 'contacts'>('chats');
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [, setShowProfileMenu] = useState(false);
   const [showMessageMenu, setShowMessageMenu] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
@@ -52,6 +53,12 @@ const MessagesPage: React.FC = () => {
         await loadConversations();
         await loadOnlineUsers();
         
+        // Si recipientId est passé en paramètre, créer ou charger la conversation
+        const recipientId = location.state?.recipientId;
+        if (recipientId) {
+          await startConversation(recipientId);
+        }
+        
       } catch (error: any) {
         console.error('Erreur lors du chargement initial:', error);
         if (error?.response?.status === 401) {
@@ -64,7 +71,7 @@ const MessagesPage: React.FC = () => {
     };
 
     loadInitialData();
-  }, [navigate]);
+  }, [navigate, location.state?.recipientId]);
 
   // Fermer les menus quand on clique ailleurs
   useEffect(() => {
@@ -109,34 +116,21 @@ const MessagesPage: React.FC = () => {
     try {
       const response = await messageService.getAllUsers();
       if (response.success) {
-        // Filtrer uniquement les utilisateurs qui possèdent un profil (plusieurs formes possibles)
-        const usersWithProfiles = (response.data || []).filter((user: any) => {
-          if (!user) return false;
-          // Exclure l'utilisateur courant si présent
-          if (currentUser && user.id === currentUser.id) return false;
-
-          // Vérifications robustes pour différentes formes de données côté backend
-          const hasProfileFlag = !!user.hasProfile;
-          const hasProfileObj = !!user.profile || !!user.profileTutor || !!user.profileStudent;
-          const hasProfileId = !!user.profileId || !!user.profile_tutor_id || !!user.profile_student_id;
-
-          return hasProfileFlag || hasProfileObj || hasProfileId;
-        });
-
-        const usersWithStatus = usersWithProfiles.map((user: any, index: number) => ({
-          id: user.id,
-          name: `${user.firstName} ${user.lastName}`,
-          role: user.role,
+        // Afficher TOUS les utilisateurs de la BD comme contacts (pour la démo)
+        const usersWithStatus = (response.data || []).map((user: any, index: number) => ({
+          id: user.userId || user.id,  // ✅ Utiliser userId (User ID) et pas l'ID du profil
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Utilisateur',
+          role: user.role || 'user',
           profilePicture:
             user.profilePicture ||
             user.profile?.profilePicture ||
             user.profileTutor?.profilePicture ||
             user.profileStudent?.profilePicture ||
             undefined,
-          // Simple simulation du status en dev — tu peux remplacer par vrai statut socket
           isOnline: index % 3 !== 0,
           lastSeen: index % 3 === 0 ? 'Il y a 2h' : undefined
         }));
+        console.log('📋 Utilisateurs chargés (avec userId):', usersWithStatus);
         setOnlineUsers(usersWithStatus);
       }
     } catch (error) {
@@ -149,8 +143,15 @@ const MessagesPage: React.FC = () => {
       setIsLoading(true);
       const response = await messageService.startConversation(recipientId);
       if (response.success) {
-        setSelectedConversation(response.data);
-        setMessages([]);
+        const conversation = response.data;
+        setSelectedConversation(conversation);
+        
+        // ✅ Charger les messages pour la nouvelle conversation
+        const messagesResponse = await messageService.getMessages(conversation._id, 1, 100);
+        if (messagesResponse.success) {
+          setMessages(messagesResponse.data);
+        }
+        
         await loadConversations();
         setActiveTab('chats');
       }
@@ -418,6 +419,16 @@ const MessagesPage: React.FC = () => {
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const parseVisioMessage = (message: Message) => {
+    if (message.messageType !== 'system' || !message.content?.startsWith('VISIO_LINK|')) return null;
+    const parts = message.content.split('|');
+    return {
+      url: parts[1] || '',
+      title: parts[2] || 'Lien de visio',
+      details: parts[3] || ''
+    };
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -655,6 +666,7 @@ const MessagesPage: React.FC = () => {
                   const readTimestamp = isLastMessageOfConversation ? getLastMessageReadTimestamp() : null;
                   const isDeleted = message.messageType === 'system' && message.content === 'Message supprimé';
                   const isMyMessage = message.senderId === currentUser?.id;
+                  const visioData = parseVisioMessage(message);
                   
                   return (
                     <div
@@ -688,7 +700,25 @@ const MessagesPage: React.FC = () => {
                       ) : (
                         <>
                           <div className={styles.messageContent}>
-                            {message.messageType === 'image' && message.mediaUrl ? (
+                            {visioData ? (
+                              <div className={styles.visioCard}>
+                                <div className={styles.visioHeader}>
+                                  <span className={styles.visioBadge}>Visio</span>
+                                  {visioData.details && (
+                                    <span className={styles.visioMeta}>{visioData.details}</span>
+                                  )}
+                                </div>
+                                <div className={styles.visioTitle}>{visioData.title}</div>
+                                <a
+                                  href={visioData.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className={styles.visioLink}
+                                >
+                                  Rejoindre la visio
+                                </a>
+                              </div>
+                            ) : message.messageType === 'image' && message.mediaUrl ? (
                               <div className={styles.imageMessageWrapper}>
                                 <img 
                                   src={message.mediaUrl} 

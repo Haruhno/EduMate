@@ -3,7 +3,10 @@ require('dotenv').config();
 
 class AITextProcessor {
   constructor() {
-    this.apiKey = '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';
+    this.apiKey = process.env.OPENROUTER_API_KEY;
+    if (!this.apiKey) {
+      throw new Error('OPENROUTER_API_KEY n\'est pas définie dans .env');
+    }
   }
 
   // MÉTHODE EXISTANTE : Générer une offre COMPLÈTE
@@ -44,7 +47,7 @@ RÉPONSE EN JSON :
       const response = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
         {
-          model: 'liquid/lfm-2.5-1.2b-instruct:free',
+          model: process.env.OPENROUTER_MODEL,
           messages: [
             {
               role: 'system',
@@ -128,7 +131,7 @@ FORMAT DE RÉPONSE OBLIGATOIRE :
       const response = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
         {
-          model: 'liquid/lfm-2.5-1.2b-instruct:free',
+          model: process.env.OPENROUTER_MODEL,
           messages: [
             {
               role: 'system',
@@ -218,7 +221,7 @@ Réponds uniquement avec le titre.`;
       const response = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
         {
-          model: 'liquid/lfm-2.5-1.2b-instruct:free',
+          model: process.env.OPENROUTER_MODEL,
           messages: [
             {
               role: 'system',
@@ -282,7 +285,7 @@ Réponds uniquement avec la description, sans titre ni JSON.`;
       const response = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
         {
-          model: 'liquid/lfm-2.5-1.2b-instruct:free',
+          model: process.env.OPENROUTER_MODEL,
           messages: [
             {
               role: 'system',

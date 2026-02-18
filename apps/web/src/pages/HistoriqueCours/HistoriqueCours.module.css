@@ -245,6 +245,59 @@
   height: 24px;
 }
 
+/* ===== PERSPECTIVE TOGGLE POUR TUTEURS ===== */
+.perspectiveToggleContainer {
+  display: flex;
+  gap: 0.75rem;
+  margin-left: auto;
+  padding-left: 1.5rem;
+  border-left: 2px solid var(--border-light);
+}
+
+.perspectiveButton {
+  padding: 1rem 1.75rem;
+  border: none;
+  background: transparent;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--medium-text);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  font-family: 'DMSans', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.perspectiveButton:hover {
+  color: var(--dark-gold);
+  background: rgba(230, 184, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.perspectiveButton.active {
+  color: var(--white);
+  background: var(--gradient-sunset);
+  box-shadow: 0 4px 20px rgba(255, 140, 0, 0.4);
+  transform: translateY(-2px);
+}
+
+.perspectiveButton.active::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 4px;
+  background: var(--dark-gold);
+  border-radius: 2px;
+}
+
 /* ===== SECTION COURS À VENIR ===== */
 .upcomingSection {
   margin-bottom: 6rem;
@@ -268,6 +321,104 @@
 
 .pastSection {
   border-top: none;
+}
+
+/* ===== VISIO MODAL ===== */
+.visioOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.visioModal {
+  background: var(--white);
+  border-radius: var(--radius-md);
+  padding: 1.75rem;
+  width: min(520px, 90vw);
+  box-shadow: var(--shadow-hard);
+  border: 2px solid var(--border-light);
+}
+
+.visioHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.visioTitle {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--dark-text);
+}
+
+.visioClose {
+  border: none;
+  background: transparent;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--medium-text);
+}
+
+.visioBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.visioLabel {
+  font-weight: 700;
+  color: var(--dark-text);
+}
+
+.visioInput {
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border-light);
+  font-size: 1rem;
+  outline: none;
+}
+
+.visioInput:focus {
+  border-color: var(--border-dark);
+  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.2);
+}
+
+.visioHint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--medium-text);
+}
+
+.visioFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.visioCancel {
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border-light);
+  background: var(--white);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.visioConfirm {
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--gradient-gold);
+  font-weight: 800;
+  cursor: pointer;
+  color: var(--dark-text);
 }
 
 .sectionHeader {
@@ -413,6 +564,58 @@
   color: var(--warm-yellow);
 }
 
+/* Container pour les badges de statut */
+.sessionStatusContainer {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Badge de statut blockchain */
+.statusBadge {
+  padding: 0.5rem 1.25rem;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  white-space: nowrap;
+}
+
+.statusPENDING {
+  background: linear-gradient(135deg, #FFF7E6, #FFE4B3);
+  color: #B45309;
+  border-color: #FCD34D;
+}
+
+.statusCONFIRMED {
+  background: linear-gradient(135deg, #D1FAE5, #A7F3D0);
+  color: #059669;
+  border-color: #6EE7B7;
+}
+
+.statusCANCELLED {
+  background: linear-gradient(135deg, #FEE2E2, #FECACA);
+  color: #DC2626;
+  border-color: #FCA5A5;
+}
+
+.statusCOMPLETED {
+  background: linear-gradient(135deg, #DBEAFE, #BFDBFE);
+  color: #1D4ED8;
+  border-color: #93C5FD;
+}
+
+.statusDISPUTED {
+  background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+  color: #D97706;
+  border-color: #FCD34D;
+}
+
+/* Badge temporel */
 .sessionStatus {
   padding: 0.75rem 1.75rem;
   border-radius: 30px;
@@ -872,7 +1075,30 @@
   animation: shimmer 2s infinite linear;
 }
 
-/* ===== RESPONSIVE ===== */
+/* ===== LOADING STATE ===== */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 600px;
+  gap: 2rem;
+}
+
+.spinner {
+  width: 60px;
+  height: 60px;
+  border: 6px solid var(--light-gold);
+  border-top-color: var(--primary-gold);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 @media (max-width: 1200px) {
   .container {
     max-width: 100%;
@@ -887,6 +1113,20 @@
   
   .title {
     font-size: 2.5rem;
+  }
+  
+  .perspectiveToggleContainer {
+    margin-left: 0;
+    border-left: none;
+    padding-left: 0;
+    margin-top: 0.5rem;
+    width: 100%;
+    flex-direction: column;
+  }
+  
+  .perspectiveButton {
+    width: 100%;
+    justify-content: center;
   }
   
   .sessionHeader {
@@ -928,9 +1168,93 @@
     justify-content: center;
   }
   
+  .perspectiveToggleContainer {
+    margin-left: 0;
+    border-left: none;
+    padding-left: 0;
+    margin-top: 0.5rem;
+    width: 100%;
+    flex-direction: column;
+  }
+  
+  .perspectiveButton {
+    width: 100%;
+    justify-content: center;
+  }
+  
   .sectionHeader {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
+}
+
+/* ===== SKILL EXCHANGE STYLES ===== */
+.skillsExchange {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #F5F3FF 0%, #EBE9FF 100%);
+  border: 2px solid #D8D2FF;
+  border-radius: 16px;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.skillsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.skillsSectionLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--dark-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.skillsList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.skillBadge {
+  background: linear-gradient(135deg, #FFFFFF 0%, #F9F7FF 100%);
+  border: 2px solid #D8D2FF;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.skillBadge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(216, 210, 255, 0.3);
+  border-color: #A89DFF;
+  background: linear-gradient(135deg, #FFFFFF 0%, #EBE9FF 100%);
+}
+
+.skillName {
+  color: var(--dark-text);
+  font-weight: 700;
+}
+
+.skillLevel {
+  display: inline-block;
+  background: linear-gradient(135deg, #D8D2FF 0%, #C4BDFF 100%);
+  color: var(--dark-text);
+  padding: 0.25rem 0.625rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-left: auto;
 }

@@ -8,7 +8,7 @@ contract EduToken {
     string public constant name = "EduToken";
     string public constant symbol = "EDU";
     uint8 public constant decimals = 18;
-    uint256 public constant INITIAL_BALANCE = 600 * 10**decimals; // 500 EDU
+    uint256 public constant INITIAL_BALANCE = 600 * 10**decimals; // 600 EDU
     uint256 public constant TOTAL_SUPPLY = 1000000 * 10**decimals;
     
     address public owner;
@@ -326,7 +326,7 @@ contract BookingEscrow {
                     booking.status = BookingStatus.COMPLETED;
                     booking.outcome = Outcome.COURSE_HELD;
                     
-                    // Transfer funds to tutor
+                    // Transfer funds to tuto r
                     require(token.transfer(booking.tutor, booking.amount), "Transfer to tutor failed");
                     
                     emit BookingCompleted(bookingId);
@@ -398,5 +398,147 @@ contract BookingEscrow {
     
     function getBookingCount() external view returns (uint256) {
         return _bookingCounter;
+    }
+}
+
+// ============================
+// SkillExchange Contract
+// ============================
+contract SkillExchange {
+    EduToken public token;
+    
+    enum ExchangeStatus { PENDING, ACCEPTED, REJECTED, COMPLETED }
+    
+    struct Exchange {
+        bytes32 studentId;
+        bytes32 tutorId;
+        string skillOffered;     // JSON: {"id": "...", "name": "...", "level": "..."}
+        string skillRequested;   // JSON: {"id": "...", "name": "...", "level": "..."}
+        ExchangeStatus status;
+        uint256 createdAt;
+        bytes32 frontendId;      // ID du frontend pour mapping
+    }
+    
+    uint256 private _exchangeCounter;
+    mapping(uint256 => Exchange) public exchanges;
+    mapping(bytes32 => uint256) public frontendToExchangeId;
+    
+    event ExchangeCreated(
+        uint256 indexed exchangeId,
+        bytes32 indexed studentId,
+        bytes32 indexed tutorId,
+        string skillOffered,
+        string skillRequested,
+        uint256 timestamp,
+        bytes32 frontendId
+    );
+    
+    event ExchangeAccepted(uint256 indexed exchangeId, bytes32 tutorId, uint256 timestamp);
+    event ExchangeRejected(uint256 indexed exchangeId, bytes32 tutorId, uint256 timestamp);
+    event ExchangeCompleted(uint256 indexed exchangeId, uint256 timestamp);
+    
+    constructor(address tokenAddress) {
+        token = EduToken(tokenAddress);
+    }
+    
+    function createExchange(
+        bytes32 studentId,
+        bytes32 tutorId,
+        string memory skillOffered,
+        string memory skillRequested,
+        bytes32 frontendId
+    ) external returns (uint256) {
+        require(studentId != bytes32(0), "Invalid student ID");
+        require(tutorId != bytes32(0), "Invalid tutor ID");
+        require(bytes(skillOffered).length > 0, "Skill offered required");
+        require(bytes(skillRequested).length > 0, "Skill requested required");
+        
+        _exchangeCounter++;
+        uint256 exchangeId = _exchangeCounter;
+        
+        exchanges[exchangeId] = Exchange({
+            studentId: studentId,
+            tutorId: tutorId,
+            skillOffered: skillOffered,
+            skillRequested: skillRequested,
+            status: ExchangeStatus.PENDING,
+            createdAt: block.timestamp,
+            frontendId: frontendId
+        });
+        
+        frontendToExchangeId[frontendId] = exchangeId;
+        
+        emit ExchangeCreated(
+            exchangeId,
+            studentId,
+            tutorId,
+            skillOffered,
+            skillRequested,
+            block.timestamp,
+            frontendId
+        );
+        
+        return exchangeId;
+    }
+    
+    function acceptExchange(uint256 exchangeId, bytes32 tutorId) external {
+        Exchange storage ex = exchanges[exchangeId];
+        require(ex.studentId != bytes32(0), "Exchange does not exist");
+        require(ex.tutorId == tutorId, "Only tutor can accept");
+        require(ex.status == ExchangeStatus.PENDING, "Exchange not pending");
+        
+        ex.status = ExchangeStatus.ACCEPTED;
+        
+        emit ExchangeAccepted(exchangeId, tutorId, block.timestamp);
+    }
+    
+    function rejectExchange(uint256 exchangeId, bytes32 tutorId) external {
+        Exchange storage ex = exchanges[exchangeId];
+        require(ex.studentId != bytes32(0), "Exchange does not exist");
+        require(ex.tutorId == tutorId, "Only tutor can reject");
+        require(ex.status == ExchangeStatus.PENDING, "Exchange not pending");
+        
+        ex.status = ExchangeStatus.REJECTED;
+        
+        emit ExchangeRejected(exchangeId, tutorId, block.timestamp);
+    }
+    
+    function completeExchange(uint256 exchangeId) external {
+        Exchange storage ex = exchanges[exchangeId];
+        require(ex.studentId != bytes32(0), "Exchange does not exist");
+        require(ex.status == ExchangeStatus.ACCEPTED, "Exchange must be accepted first");
+        
+        ex.status = ExchangeStatus.COMPLETED;
+        
+        emit ExchangeCompleted(exchangeId, block.timestamp);
+    }
+    
+    function getExchange(uint256 exchangeId) external view returns (
+        bytes32 studentId,
+        bytes32 tutorId,
+        string memory skillOffered,
+        string memory skillRequested,
+        uint8 status,
+        uint256 createdAt,
+        bytes32 frontendId
+    ) {
+        Exchange memory ex = exchanges[exchangeId];
+        return (
+            ex.studentId,
+            ex.tutorId,
+            ex.skillOffered,
+            ex.skillRequested,
+            uint8(ex.status),
+            ex.createdAt,
+            ex.frontendId
+        );
+    }
+    
+    function getExchangeByFrontendId(bytes32 frontendId) external view returns (uint256) {
+        return frontendToExchangeId[frontendId];
+    }
+    
+    function getExchangeCount() external view returns (uint256) {
+        return _exchangeCounter;
     }
 }

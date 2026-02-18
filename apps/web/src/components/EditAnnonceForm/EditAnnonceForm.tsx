@@ -26,7 +26,7 @@ const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({
     "Espagnol", "Finance", "Français", "Géographie", "Gestion",
     "Graphisme", "Histoire", "Histoire-Géographie", "Histoire de l'art",
     "Informatique", "Italien", "Japonais", "Latin", "Littérature",
-    "Marketing", "Management et gestion des entreprises", "Mathématiques", "Mécanique", "Médecine", "Méthodologie", "Musique",
+    "Marketing", "Management et gestion des entreprises", "Mathématiques", "Mécanique", "Médecine", "Musique",
     "Philosophie", "Physique", "Portugais", "Programmation",
     "Psychologie", "Russe", "SES", "SVT", "Sciences de l'ingénieur",
     "Sciences politiques", "Sociologie", "Statistiques", "Sport",
@@ -34,7 +34,7 @@ const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({
     "Génie mécanique", "Biochimie", "Géologie", "Astronomie",
     "Écologie", "Bureautique", "Rédaction", "Préparation aux concours",
     "Aide aux devoirs", "Méthodologie", "Orientation scolaire",
-    "Soutien scolaire", "Russe", "Néerlandais", "Coréen"
+    "Soutien scolaire", "Néerlandais", "Coréen"
   ].sort();
 
   // Liste des niveaux disponibles
@@ -43,14 +43,15 @@ const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({
     "Primaire",
     "Collège", 
     "Lycée",
-    "Supérieur",
-    "Prépa"
+    "Master",
+    "Doctorat"
   ];
 
   const [formData, setFormData] = useState({
     title: annonce.title,
     description: annonce.description,
     subject: annonce.subject,
+    subjects: annonce.subjects || [],
     level: annonce.level,
     hourlyRate: annonce.hourlyRate,
     teachingMode: annonce.teachingMode,
@@ -61,6 +62,11 @@ const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showToggleStatusConfirmation, setShowToggleStatusConfirmation] = useState(false);
+  const [newSubject, setNewSubject] = useState('');
+  const [editingSubjectIndex, setEditingSubjectIndex] = useState<number | null>(null);
+  const [editingSubjectValue, setEditingSubjectValue] = useState('');
+  const [isActive, setIsActive] = useState(annonce.isActive);
+  const [lastDeletedSubject, setLastDeletedSubject] = useState<{ index: number; value: string } | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -108,10 +114,10 @@ const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({
     setShowToggleStatusConfirmation(false);
 
     try {
-      const newStatus = !annonce.isActive;
-      // Vous devrez ajouter cette méthode dans votre annonceService
+      const newStatus = !isActive;
       const response = await annonceService.toggleAnnonce(annonce.id, newStatus);
       if (response.success) {
+        setIsActive(newStatus);
         onUpdate(response.data);
         if (onToggleStatus) {
           onToggleStatus(annonce.id, newStatus);
@@ -128,6 +134,65 @@ const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({
 
   const handleCancelToggleStatus = () => {
     setShowToggleStatusConfirmation(false);
+  };
+
+  const handleAddSubject = () => {
+    const trimmedSubject = newSubject.trim();
+    if (trimmedSubject && !formData.subjects.includes(trimmedSubject)) {
+      setFormData(prev => ({
+        ...prev,
+        subjects: [...prev.subjects, trimmedSubject]
+      }));
+      setNewSubject('');
+    }
+  };
+
+  const handleRemoveSubject = (index: number) => {
+    setLastDeletedSubject({ index, value: formData.subjects[index] });
+    setFormData(prev => ({
+      ...prev,
+      subjects: prev.subjects.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleUndoRemoveSubject = () => {
+    if (lastDeletedSubject) {
+      setFormData(prev => {
+        const newSubjects = [...prev.subjects];
+        newSubjects.splice(lastDeletedSubject.index, 0, lastDeletedSubject.value);
+        return {
+          ...prev,
+          subjects: newSubjects
+        };
+      });
+      setLastDeletedSubject(null);
+    }
+  };
+
+  const handleEditSubject = (index: number) => {
+    setEditingSubjectIndex(index);
+    setEditingSubjectValue(formData.subjects[index]);
+  };
+
+  const handleSaveEditSubject = (index: number) => {
+    const trimmedValue = editingSubjectValue.trim();
+    if (trimmedValue && !formData.subjects.some((s, i) => i !== index && s === trimmedValue)) {
+      setFormData(prev => {
+        const newSubjects = [...prev.subjects];
+        newSubjects[index] = trimmedValue;
+        return {
+          ...prev,
+          subjects: newSubjects
+        };
+      });
+    }
+    setEditingSubjectIndex(null);
+    setEditingSubjectValue('');
+  };
+
+  const handleCancelEditSubject = () => {
+    setEditingSubjectIndex(null);
+    setEditingSubjectValue('');
   };
 
   return (
@@ -175,25 +240,161 @@ const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({
             />
           </div>
 
-          <div className={styles.formRow}>
-            <div className={styles.formGroup}>
-              <label htmlFor="subject">Matière *</label>
-              <select
-                id="subject"
-                name="subject"
-                value={formData.subject}
-                onChange={handleChange}
-                required
-              >
-                <option value="">Sélectionnez une matière</option>
-                {availableSubjects.map((subject, index) => (
-                  <option key={index} value={subject}>
-                    {subject}
-                  </option>
-                ))}
-              </select>
+          <div className={styles.formGroup}>
+            <label>Compétences enseignées</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+              {formData.subjects.map((skill: string, index: number) => (
+                <div
+                  key={index}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    backgroundColor: editingSubjectIndex === index ? '#fff3e0' : '#e8f5e9',
+                    padding: '6px 12px',
+                    borderRadius: '16px',
+                    fontSize: '14px',
+                    border: editingSubjectIndex === index ? '2px solid #ff9800' : 'none'
+                  }}
+                >
+                  {editingSubjectIndex === index ? (
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        value={editingSubjectValue}
+                        onChange={(e) => setEditingSubjectValue(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            handleSaveEditSubject(index);
+                          }
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          border: '1px solid #ff9800',
+                          fontSize: '14px',
+                          width: '150px'
+                        }}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSaveEditSubject(index)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '16px',
+                          color: '#4caf50'
+                        }}
+                      >
+                        ✓
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelEditSubject}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '16px',
+                          color: '#f44336'
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span
+                        onClick={() => handleEditSubject(index)}
+                        style={{
+                          cursor: 'pointer',
+                          flex: 1
+                        }}
+                      >
+                        {skill}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSubject(index)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '16px',
+                          color: '#f44336',
+                          padding: '0',
+                          marginLeft: '4px'
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
             </div>
+            
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="text"
+                value={newSubject}
+                onChange={(e) => setNewSubject(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddSubject();
+                  }
+                }}
+                placeholder="Ajouter une compétence..."
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  border: '1px solid #ddd',
+                  fontSize: '14px'
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleAddSubject}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#4caf50',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Ajouter
+              </button>
+              {lastDeletedSubject && (
+                <button
+                  type="button"
+                  onClick={handleUndoRemoveSubject}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#2196f3',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}
+                  title={`Annuler la suppression de "${lastDeletedSubject.value}"`}
+                >
+                  ↶ Annuler suppression
+                </button>
+              )}
+            </div>
+          </div>
 
+          <div className={styles.formRow}>
             <div className={styles.formGroup}>
               <label htmlFor="level">Niveau *</label>
               <select
@@ -247,8 +448,8 @@ const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({
           <div className={styles.statusSection}>
             <div className={styles.statusInfo}>
               <span className={styles.statusLabel}>Statut actuel :</span>
-              <span className={`${styles.statusBadge} ${annonce.isActive ? styles.active : styles.inactive}`}>
-                {annonce.isActive ? '🟢 Active' : '🔴 Inactive'}
+              <span className={`${styles.statusBadge} ${isActive ? styles.active : styles.inactive}`}>
+                {isActive ? '🟢 Active' : '🔴 Inactive'}
               </span>
             </div>
             <button
@@ -257,7 +458,7 @@ const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({
               className={styles.toggleStatusButton}
               disabled={isLoading}
             >
-              {annonce.isActive ? 'Désactiver l\'annonce' : 'Activer l\'annonce'}
+              {isActive ? 'Désactiver l\'annonce' : 'Activer l\'annonce'}
             </button>
           </div>
 
@@ -316,13 +517,13 @@ const EditAnnonceForm: React.FC<EditAnnonceFormProps> = ({
         <div className={styles.confirmationOverlay}>
           <div className={styles.confirmationModal}>
             <div className={styles.confirmationHeader}>
-              <h3>
-                {annonce.isActive ? 'Désactiver l\'annonce' : 'Activer l\'annonce'}
+              <h3>  
+                {isActive ? 'Désactiver l\'annonce' : 'Activer l\'annonce'}
               </h3>
             </div>
             <div className={styles.confirmationContent}>
               <p>
-                {annonce.isActive 
+                {isActive 
                   ? 'Êtes-vous sûr de vouloir désactiver cette annonce ? Elle ne sera plus visible par les étudiants.'
                   : 'Êtes-vous sûr de vouloir activer cette annonce ? Elle sera à nouveau visible par les étudiants.'
                 }

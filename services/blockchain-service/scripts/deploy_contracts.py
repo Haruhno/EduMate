@@ -45,11 +45,14 @@ def compile_contracts():
     # Récupérer les contrats compilés
     edu_token_interface = compiled["<stdin>:EduToken"]
     booking_escrow_interface = compiled["<stdin>:BookingEscrow"]
+    skill_exchange_interface = compiled["<stdin>:SkillExchange"]
     
     edu_token_bytecode = edu_token_interface['bin']
     edu_token_abi = edu_token_interface['abi']
     booking_escrow_bytecode = booking_escrow_interface['bin']
     booking_escrow_abi = booking_escrow_interface['abi']
+    skill_exchange_bytecode = skill_exchange_interface['bin']
+    skill_exchange_abi = skill_exchange_interface['abi']
     
     print("[OK] Contrats compilés avec succès")
     
@@ -61,6 +64,10 @@ def compile_contracts():
         "BookingEscrow": {
             "bytecode": booking_escrow_bytecode,
             "abi": booking_escrow_abi
+        },
+        "SkillExchange": {
+            "bytecode": skill_exchange_bytecode,
+            "abi": skill_exchange_abi
         }
     }
 
@@ -109,7 +116,7 @@ def deploy_contracts(compiled_contracts):
     signed_tx = w3.eth.account.sign_transaction(tx, OWNER_PRIVATE_KEY)
     
     try:
-        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
     except Exception as e:
         print(f"[ERREUR] Envoi transaction échoué: {e}")
         return None
@@ -157,7 +164,7 @@ def deploy_contracts(compiled_contracts):
     signed_tx = w3.eth.account.sign_transaction(tx, OWNER_PRIVATE_KEY)
     
     try:
-        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
     except Exception as e:
         print(f"[ERREUR] Envoi transaction BookingEscrow échoué: {e}")
         return None
@@ -180,9 +187,53 @@ def deploy_contracts(compiled_contracts):
     print(f"[OK] BookingEscrow déployé à: {booking_escrow_address}")
     print(f"   Gas utilisé: {tx_receipt.gasUsed}")
     
+    # Déployer SkillExchange
+    print("\n[INFO] Déploiement de SkillExchange...")
+    
+    skill_exchange_contract = w3.eth.contract(
+        abi=compiled_contracts["SkillExchange"]["abi"],
+        bytecode=compiled_contracts["SkillExchange"]["bytecode"]
+    )
+    
+    nonce = w3.eth.get_transaction_count(account.address)
+    
+    tx = skill_exchange_contract.constructor(edu_token_address).build_transaction({
+        'from': account.address,
+        'gas': 3_000_000,
+        'gasPrice': gas_price,
+        'nonce': nonce,
+    })
+    
+    signed_tx = w3.eth.account.sign_transaction(tx, OWNER_PRIVATE_KEY)
+    
+    try:
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+    except Exception as e:
+        print(f"[ERREUR] Envoi transaction SkillExchange échoué: {e}")
+        return None
+    
+    print(f"   Transaction envoyée: {tx_hash.hex()}")
+    print("   Attente de confirmation...")
+    
+    try:
+        tx_receipt = w3.eth.wait_for_transaction_receipt(
+            tx_hash,
+            timeout=30,
+            poll_latency=2
+        )
+    except Exception as e:
+        print(f"[ERREUR] Timeout transaction SkillExchange: {e}")
+        return None
+    
+    skill_exchange_address = tx_receipt.contractAddress
+    
+    print(f"[OK] SkillExchange déployé à: {skill_exchange_address}")
+    print(f"   Gas utilisé: {tx_receipt.gasUsed}")
+    
     return {
         "edu_token": edu_token_address,
-        "booking_escrow": booking_escrow_address
+        "booking_escrow": booking_escrow_address,
+        "skill_exchange": skill_exchange_address
     }
 
 def save_env_file(contract_addresses):
@@ -193,6 +244,7 @@ def save_env_file(contract_addresses):
 BLOCKCHAIN_PROVIDER_URL=http://127.0.0.1:8545
 EDU_TOKEN_ADDRESS={contract_addresses['edu_token']}
 BOOKING_ESCROW_ADDRESS={contract_addresses['booking_escrow']}
+SKILL_EXCHANGE_ADDRESS={contract_addresses['skill_exchange']}
 BLOCKCHAIN_OWNER_PRIVATE_KEY={OWNER_PRIVATE_KEY}
 
 # Authentication Service
@@ -214,6 +266,7 @@ ENVIRONMENT=development
     print("\n[INFO] Adresses des contrats:")
     print(f"EDU_TOKEN_ADDRESS={contract_addresses['edu_token']}")
     print(f"BOOKING_ESCROW_ADDRESS={contract_addresses['booking_escrow']}")
+    print(f"SKILL_EXCHANGE_ADDRESS={contract_addresses['skill_exchange']}")
 
 def verify_deployment(w3, contract_addresses, compiled_contracts):
     """Vérifier que les contrats sont bien déployés"""
@@ -251,6 +304,24 @@ def verify_deployment(w3, contract_addresses, compiled_contracts):
         
         # Vérifier que les adresses correspondent
         if token_address.lower() == contract_addresses['edu_token'].lower():
+            print("   [OK] Adresse du token vérifiée")
+        else:
+            print("   [ERREUR] Adresse du token incorrecte!")
+        
+        # Vérifier SkillExchange
+        skill_exchange = w3.eth.contract(
+            address=contract_addresses['skill_exchange'],
+            abi=compiled_contracts["SkillExchange"]["abi"]
+        )
+        
+        skill_token_address = skill_exchange.functions.token().call()
+        exchange_count = skill_exchange.functions.getExchangeCount().call()
+        
+        print(f"\n[INFO] SkillExchange")
+        print(f"   Token: {skill_token_address}")
+        print(f"   Exchanges: {exchange_count}")
+        
+        if skill_token_address.lower() == contract_addresses['edu_token'].lower():
             print("   [OK] Adresse du token vérifiée")
         else:
             print("   [ERREUR] Adresse du token incorrecte!")

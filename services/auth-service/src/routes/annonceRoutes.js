@@ -4,15 +4,16 @@ const annonceController = require('../controllers/annonceController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
 
-// Routes publiques
-router.get('/:id', annonceController.getAnnonce);
+// Routes spécifiques (AVANT /:id !)
+router.get('/my-annonces', authMiddleware, annonceController.getMyAnnonces);
 router.get('/search', annonceController.searchAnnonces);
 router.get('/hybrid-search', annonceController.hybridSearch);
 
+// Routes publiques
+router.get('/:id', annonceController.getAnnonce);
+
 // Routes protégées
 router.use(authMiddleware);
-
-router.get('/my-annonces', annonceController.getMyAnnonces);
 router.post('/from-text', annonceController.createAnnonceFromText);
 router.post('/', annonceController.createAnnonce);
 

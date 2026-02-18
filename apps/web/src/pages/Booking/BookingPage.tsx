@@ -274,8 +274,23 @@ const BookingPage: React.FC = () => {
     return [...new Set(allSlotsInRanges)].sort();
   };
 
+  // Vérifier si un créneau est dans le passé
+  const isSlotInPast = (dayDate: string, timeSlot: string): boolean => {
+    const now = new Date();
+    const [hours, minutes] = timeSlot.split(':').map(Number);
+    const slotDateTime = new Date(dayDate);
+    slotDateTime.setHours(hours, minutes, 0, 0);
+    
+    return slotDateTime <= now;
+  };
+
   // Vérifier si un créneau est disponible (tenant compte des plages sélectionnées)
   const isSlotAvailableWithSelection = (dayDate: string, timeSlot: string, durationMinutes: number): boolean => {
+    // Vérifier d'abord si le créneau n'est pas dans le passé
+    if (isSlotInPast(dayDate, timeSlot)) {
+      return false;
+    }
+    
     // Vérifier d'abord avec le tuteur
     if (!isSlotAvailable(dayDate, timeSlot, durationMinutes)) {
       return false;
@@ -478,40 +493,51 @@ const BookingPage: React.FC = () => {
     
     try {
       const hourlyRate = selectedAnnonce.hourlyRate || 30;
-      const bookingPromises = selectedSlots.map(slot => {
-        const slotAmount = (hourlyRate * slot.duration) / 60;
-        
-        const bookingData = {
-          tutorId: tutorId as string,
-          annonceId: selectedAnnonce.id,
-          annonceTitle: selectedAnnonce.title,
-          date: slot.date,
-          time: slot.time,
-          amount: parseFloat(slotAmount.toFixed(2)),
-          duration: slot.duration,
-          description: selectedAnnonce.description || '',
-          studentNotes
-        };
-        
-        return blockchainService.createBooking(bookingData);
+      
+      // Préparer les données batch pour toutes les réservations
+      const bookingsData = selectedSlots.map(slot => ({
+        date: slot.date,
+        time: slot.time,
+        duration: slot.duration,
+        amount: parseFloat(((hourlyRate * slot.duration) / 60).toFixed(2))
+      }));
+      
+      // Envoyer TOUTES les réservations en une seule requête batch
+      const batchData = {
+        tutorId: tutorId as string,
+        annonceId: selectedAnnonce.id,
+        bookings: bookingsData,
+        description: selectedAnnonce.description || '',
+        studentNotes
+      };
+      
+      console.log('📦 Envoi batch bookings:', {
+        count: bookingsData.length,
+        totalAmount: amount,
+        totalDuration: bookingsData.reduce((sum: number, b: any) => sum + b.duration, 0)
       });
       
-      const results = await Promise.all(bookingPromises);
-      const allSuccess = results.every(resp => resp?.success);
+      // Appeler le nouvel endpoint batch
+      const response = await blockchainService.createBatchBookings(batchData);
       
-      if (allSuccess) {
-        const messageState = {
-          message: `${selectedSlots.length} réservation(s) créée(s) avec succès !`,
-          bookingStatus: 'PENDING'
-        };
-        
-        if (currentUser?.role === 'tutor') {
-          navigate('/reservations', { state: messageState });
-        } else {
-          navigate('/blockchain', { state: messageState });
-        }
+      // Si au moins une réservation a réussi, on continue
+      if (!response?.success || !response?.data?.count || response.data.count === 0) {
+        const errorMsg = response?.data?.failures 
+          ? `Impossible de créer les réservations: ${response.data.failures[0]?.error || 'Erreur blockchain'}`
+          : response?.message || 'Erreur lors de la création des réservations';
+        setError(errorMsg);
+        return;
+      }
+      
+      const messageState = {
+        message: `${response.data?.count} réservation(s) créée(s) avec succès ! ${response.data?.failedCount > 0 ? `(${response.data.failedCount} échouée(s))` : ''}`,
+        bookingStatus: 'PENDING'
+      };
+      
+      if (currentUser?.role === 'tutor') {
+        navigate('/reservations', { state: messageState });
       } else {
-        setError('Erreur lors de la création de certaines réservations');
+        navigate('/blockchain', { state: messageState });
       }
     } catch (err: any) {
       console.error('Erreur réservation:', err);

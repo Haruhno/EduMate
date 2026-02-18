@@ -1,6 +1,14 @@
 const annonceService = require('../services/annonceService');
+const { validate: isValidUUID } = require('uuid');
 
 class AnnonceController {
+  // Validateur UUID utilitaire
+  validateUUID(id) {
+    if (!isValidUUID(id)) {
+      throw new Error(`ID invalide : "${id}" n'est pas un UUID valide`);
+    }
+    return true;
+  }
   async createAnnonce(req, res) {
     try {
       const user = req.user;
@@ -151,6 +159,15 @@ class AnnonceController {
   async getAnnonce(req, res) {
     try {
       const { id } = req.params;
+      
+      // Valider le format UUID
+      if (!isValidUUID(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID invalide - doit être un UUID'
+        });
+      }
+      
       console.log(`🔍 Récupération annonce ID: ${id}`);
       
       const annonce = await annonceService.getAnnonceById(id);

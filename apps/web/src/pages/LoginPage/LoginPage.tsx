@@ -38,7 +38,18 @@ const LoginPage: React.FC = () => {
       // Recharger la page pour mettre à jour la navbar et l'état d'authentification
       window.location.href = '/';
     } catch (error: any) {
-      setError(error.message || 'Une erreur est survenue lors de la connexion');
+      // Afficher un message d'erreur lisible selon le code d'erreur
+      let errorMessage = 'Une erreur est survenue lors de la connexion';
+      
+      if (error.response?.status === 401 || error.message?.includes('401')) {
+        errorMessage = 'Email ou mot de passe incorrect';
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response.data?.message || 'Email ou mot de passe invalid';
+      } else if (error.message?.includes('Network')) {
+        errorMessage = 'Erreur réseau. Vérifiez votre connexion Internet';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

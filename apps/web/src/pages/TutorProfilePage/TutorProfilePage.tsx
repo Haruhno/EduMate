@@ -4,8 +4,11 @@ import styles from './TutorProfilePage.module.css';
 import tutorService from '../../services/tutorService';
 import annonceService from '../../services/annonceService';
 import authService from '../../services/authService';
+import reviewService, { type TutorReview } from '../../services/reviewService';
 import type { TutorFromDB } from '../../services/tutorService';
 import type { AnnonceFromDB } from '../../services/annonceService';
+import SkillExchangeBookingModal from '../../components/SkillExchange/SkillExchangeBookingModal';
+import TutorSkillsDisplay from '../../components/SkillExchange/TutorSkillsDisplay';
 
 interface Tutor {
   id: string;
@@ -65,10 +68,15 @@ const TutorProfilePage: React.FC = () => {
   const [diplomas, setDiplomas] = useState<Diploma[]>([]);
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [annonces, setAnnonces] = useState<AnnonceFromDB[]>([]);
+  const [reviews, setReviews] = useState<TutorReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'about' | 'annonces' | 'reviews'>('about');
   const [minPrice, setMinPrice] = useState<number>(0);
   const [errorType, setErrorType] = useState<'not_found' | 'unverified' | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showExchangeModal, setShowExchangeModal] = useState(false);
+  const [tutorSkillsToLearn, setTutorSkillsToLearn] = useState<Array<{id?: string; name: string; level?: string}>>([]);
 
   const annonceIdFromState = location.state?.annonceId;
 
@@ -86,6 +94,32 @@ const TutorProfilePage: React.FC = () => {
     return `${startMonth} ${startYear} - ${endMonth} ${endYear}`;
   };
 
+  const formatReviewDate = (rawDate?: string | null) => {
+    if (!rawDate) return 'Date inconnue';
+    const date = new Date(rawDate);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMinutes < 60) return `Il y a ${diffMinutes} min`;
+    if (diffHours < 24) return `Il y a ${diffHours} h`;
+    if (diffDays < 7) return `Il y a ${diffDays} jours`;
+
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
+  const getReviewerInitials = (firstName?: string, lastName?: string) => {
+    const firstInitial = firstName?.trim()?.[0] || '';
+    const lastInitial = lastName?.trim()?.[0] || '';
+    return `${firstInitial}${lastInitial}`.toUpperCase() || 'AV';
+  };
+
   // Vérifier le nombre d'éléments
   const hasMultipleDiplomas = diplomas.length > 1;
   const hasSingleDiploma = diplomas.length === 1;
@@ -96,12 +130,7 @@ const TutorProfilePage: React.FC = () => {
 
   // Vérifier si l'utilisateur courant est le tuteur lui-même
   const isCurrentUserTutor = () => {
-    console.log('Debug - isCurrentUserTutor appelé');
-    console.log('Debug - user:', user);
-    console.log('Debug - tutor:', tutor);
-    
     if (!user || !tutor) {
-      console.log('Debug - user ou tutor est null');
       return false;
     }
     
@@ -109,13 +138,8 @@ const TutorProfilePage: React.FC = () => {
     const currentUserId = user.id;
     const tutorUserId = tutor.userId; // ID de l'utilisateur associé au tuteur
     
-    console.log('Debug - currentUserId:', currentUserId);
-    console.log('Debug - tutorUserId:', tutorUserId);
-    
     // Comparer les IDs d'utilisateur
     const isSameUser = currentUserId && tutorUserId && currentUserId === tutorUserId;
-    
-    console.log('Debug - isSameUser:', isSameUser);
     
     return isSameUser;
   };
@@ -126,17 +150,19 @@ const TutorProfilePage: React.FC = () => {
         // Méthode 1: Vérifier si l'utilisateur est stocké dans le localStorage
         const userData = localStorage.getItem('user');
         if (userData) {
-          setUser(JSON.parse(userData));
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+          setCurrentUser(parsedUser); // Charger aussi currentUser
         }
         
         // Méthode 2: Utiliser authService pour récupérer l'utilisateur
-        const currentUser = authService.getCurrentUser();
-        if (currentUser) {
-          setUser(currentUser);
-          console.log('Debug - Utilisateur chargé via authService:', currentUser);
+        const currentUserData = authService.getCurrentUser();
+        if (currentUserData) {
+          setUser(currentUserData);
+          setCurrentUser(currentUserData); // Charger aussi currentUser
         }
       } catch (error) {
-        console.error('Erreur lors du chargement de l\'utilisateur:', error);
+        // Erreur lors du chargement de l'utilisateur
       }
     };
 
@@ -148,18 +174,16 @@ const TutorProfilePage: React.FC = () => {
       ? JSON.parse(tutorData.availability) 
       : tutorData.availability;
     
-    console.log('Debug - tutorData.user:', tutorData.user);
-    
     return {
       id: tutorData.id,
       name: `${tutorData.user?.firstName || ''} ${tutorData.user?.lastName || ''}`.trim() || 'Tuteur Expert',
       subject: tutorData.specialties?.[0] || 'Tutorat général',
-      rating: tutorData.rating || 4,
-      reviews: tutorData.reviewsCount || 0,
+      rating: typeof tutorData.rating === 'number' ? tutorData.rating : 0,
+      reviews: typeof tutorData.reviewsCount === 'number' ? tutorData.reviewsCount : 0,
       price: `À partir de ${minPrice || 30}`,
       status: availability?.online ? "En ligne" : "Disponible",
       emoji: "👨‍🏫",
-      badge: getBadgeFromRating(tutorData.rating || 4),
+      badge: getBadgeFromRating(typeof tutorData.rating === 'number' ? tutorData.rating : 0),
       specialties: tutorData.specialties || [],
       gradient: getGradientFromSpecialties(tutorData.specialties || []),
       bio: tutorData.bio,
@@ -205,11 +229,7 @@ const TutorProfilePage: React.FC = () => {
         setLoading(true);
         setErrorType(null);
         
-        console.log('Debug - Chargement du tuteur avec ID:', id);
-        
         const tutorResponse = await tutorService.getTutorById(id);
-        
-        console.log('Debug - Réponse du tuteur:', tutorResponse);
         
         if (tutorResponse.success && tutorResponse.data) {
           
@@ -249,8 +269,33 @@ const TutorProfilePage: React.FC = () => {
             setExperiences([]);
           }
           
+          // Charger les compétences que le tuteur veut apprendre
+
+          
+          // Essayer tous les cas possibles (ProfileTutor et User, singulier et pluriel)
+          let skillsToLearn = [];
+          
+          if (tutorData.user?.skillsToLearn && Array.isArray(tutorData.user.skillsToLearn) && tutorData.user.skillsToLearn.length > 0) {
+
+            skillsToLearn = tutorData.user.skillsToLearn;
+          } else if (tutorData.user?.skillToLearn && Array.isArray(tutorData.user.skillToLearn) && tutorData.user.skillToLearn.length > 0) {
+
+            skillsToLearn = tutorData.user.skillToLearn;
+          } else if (tutorData.skillToLearn && Array.isArray(tutorData.skillToLearn) && tutorData.skillToLearn.length > 0) {
+
+            skillsToLearn = tutorData.skillToLearn;
+          } else if (tutorData.skillsToLearn && Array.isArray(tutorData.skillsToLearn) && tutorData.skillsToLearn.length > 0) {
+
+            skillsToLearn = tutorData.skillsToLearn;
+          } else {
+
+          }
+          
+
+          setTutorSkillsToLearn(skillsToLearn);
+          
         } else {
-          console.log('❌ Tuteur non trouvé');
+
           setTutor(null);
           if (tutorResponse.existsButUnverified) {
             setErrorType('unverified');
@@ -259,7 +304,7 @@ const TutorProfilePage: React.FC = () => {
           }
         }
       } catch (error) {
-        console.error('Erreur lors du chargement du tuteur:', error);
+
         setTutor(null);
         setErrorType('not_found');
       } finally {
@@ -270,13 +315,53 @@ const TutorProfilePage: React.FC = () => {
     fetchTutorData();
   }, [id]);
 
-  const handleContact = () => {
-    console.log('Contacter le tuteur:', tutor?.id);
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!tutor?.userId) return;
+      try {
+        setReviewsLoading(true);
+        const response = await reviewService.getTutorReviews(tutor.userId);
+        if (response?.success && Array.isArray(response.data)) {
+          setReviews(response.data);
+          
+          // ✅ Calculer le rating moyen à partir des reviews (si tutor.rating est 0 ou invalide)
+          if (response.data.length > 0 && (!tutor.rating || tutor.rating === 0)) {
+            const validRatings = response.data
+              .map(r => r.rating)
+              .filter(rating => typeof rating === 'number' && rating > 0);
+            
+            if (validRatings.length > 0) {
+              const avgRating = validRatings.reduce((sum, r) => sum + r, 0) / validRatings.length;
+              setTutor(prev => prev ? { 
+                ...prev, 
+                rating: avgRating,
+                badge: getBadgeFromRating(avgRating) // ✅ Mettre à jour le badge aussi
+              } : null);
+            }
+          }
+        } else {
+          setReviews([]);
+        }
+      } catch (error) {
+
+        setReviews([]);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+
+    fetchReviews();
+  }, [tutor?.userId]);
+
+  // Rediriger vers MessagePage avec l'ID du tuteur, la conversation sera créée sur cette page
+  const handleContact = async () => {
+    if (!tutor?.userId) return;
+    navigate('/messages', { state: { recipientId: tutor.userId } }); // ✅ Utiliser userId au lieu de id
   };
 
   const handleBookSession = (annonceId?: string) => {
     if (isCurrentUserTutor()) {
-      console.log('❌ Impossible de réserver avec soi-même');
+
       return;
     }
 
@@ -292,7 +377,7 @@ const TutorProfilePage: React.FC = () => {
         }
       });
     } else {
-      console.warn('Aucun id de profil tuteur disponible pour la réservation');
+
     }
   };
 
@@ -357,7 +442,8 @@ const TutorProfilePage: React.FC = () => {
 
   // Vérifier si l'utilisateur est le tuteur
   const isSelf = isCurrentUserTutor();
-  console.log('Debug - Rendu, isSelf:', isSelf);
+  const reviewsCount = reviews.length > 0 ? reviews.length : tutor.reviews;
+
 
   return (
     <div className={styles.tutorProfilePage}>
@@ -405,7 +491,7 @@ const TutorProfilePage: React.FC = () => {
                   </div>
                   <div className={styles.ratingInfo}>
                     <span className={styles.ratingValue}>{tutor.rating}</span>
-                    <span className={styles.reviews}>({tutor.reviews} avis)</span>
+                    <span className={styles.reviews}>({reviewsCount} avis)</span>
                   </div>
                 </div>
               </div>
@@ -429,6 +515,16 @@ const TutorProfilePage: React.FC = () => {
                 >
                   Contacter
                 </button>
+                
+                {/* Bouton d'échange de compétences */}
+                {!isSelf && tutorSkillsToLearn.length > 0 && (
+                  <button 
+                    onClick={() => setShowExchangeModal(true)}
+                    className={styles.exchangeButton}
+                  >
+                    Échanger nos compétences
+                  </button>
+                )}
               </div>
 
               <div className={styles.statsGrid}>
@@ -450,6 +546,26 @@ const TutorProfilePage: React.FC = () => {
 
           {/* Contenu principal */}
           <div className={styles.mainContent}>
+            {/* Affichage des compétences du tuteur */}
+            {tutor && ((tutor as any).skillsToTeach?.length > 0 || (tutor as any).skillsToLearn?.length > 0) && (
+              <TutorSkillsDisplay
+                skillsToTeach={
+                  (tutor as any).skillsToTeach?.map((s: any) => ({
+                    id: s.id || s.name,
+                    name: s.name || s,
+                    level: s.level
+                  })) || []
+                }
+                skillsToLearn={
+                  (tutor as any).skillsToLearn?.map((s: any) => ({
+                    id: s.id || s.name,
+                    name: s.name || s,
+                    level: s.level
+                  })) || []
+                }
+              />
+            )}
+            
             <div className={styles.tabNavigation}>
               <button 
                 className={`${styles.tab} ${activeTab === 'about' ? styles.active : ''}`}
@@ -467,7 +583,7 @@ const TutorProfilePage: React.FC = () => {
                 className={`${styles.tab} ${activeTab === 'reviews' ? styles.active : ''}`}
                 onClick={() => setActiveTab('reviews')}
               >
-                Avis ({tutor.reviews})
+                Avis ({reviewsCount})
               </button>
             </div>
 
@@ -836,43 +952,50 @@ const TutorProfilePage: React.FC = () => {
                             </span>
                           ))}
                         </div>
-                        <div className={styles.totalReviews}>{tutor.reviews} avis</div>
+                        <div className={styles.totalReviews}>{reviewsCount} avis</div>
                       </div>
                     </div>
                   </div>
 
                   <div className={styles.reviewsList}>
-                    <div className={styles.reviewCard}>
-                      <div className={styles.reviewHeader}>
-                        <div className={styles.reviewerInfo}>
-                          <div className={styles.reviewerAvatar}>ML</div>
-                          <div>
-                            <div className={styles.reviewerName}>Marie L.</div>
-                            <div className={styles.reviewDate}>Il y a 2 semaines</div>
-                          </div>
-                        </div>
-                        <div className={styles.reviewRating}>★ 5.0</div>
-                      </div>
-                      <p className={styles.reviewText}>
-                        Excellent professeur ! Très patient et pédagogue. Mes progrès en mathématiques sont remarquables depuis que je prends des cours avec lui.
-                      </p>
-                    </div>
+                    {reviewsLoading && (
+                      <div className={styles.reviewsLoading}>Chargement des avis...</div>
+                    )}
 
-                    <div className={styles.reviewCard}>
-                      <div className={styles.reviewHeader}>
-                        <div className={styles.reviewerInfo}>
-                          <div className={styles.reviewerAvatar}>TP</div>
-                          <div>
-                            <div className={styles.reviewerName}>Thomas P.</div>
-                            <div className={styles.reviewDate}>Il y a 1 mois</div>
+                    {!reviewsLoading && reviews.length === 0 && (
+                      <div className={styles.noReviews}>Aucun avis pour le moment.</div>
+                    )}
+
+                    {!reviewsLoading && reviews.length > 0 && (
+                      reviews.map((review) => {
+                        const reviewerFirstName = review.reviewer?.firstName || '';
+                        const reviewerLastName = review.reviewer?.lastName || '';
+                        const reviewerName = `${reviewerFirstName} ${reviewerLastName}`.trim() || 'Étudiant';
+                        const reviewerInitials = getReviewerInitials(reviewerFirstName, reviewerLastName);
+                        const dateLabel = formatReviewDate(review.confirmedAt || review.createdAt);
+                        const courseTitle = review.courseTitle || 'Session de tutorat';
+                        const ratingValue = typeof review.rating === 'number' ? review.rating : 0;
+
+                        return (
+                          <div key={review.id} className={styles.reviewCard}>
+                            <div className={styles.reviewHeader}>
+                              <div className={styles.reviewerInfo}>
+                                <div className={styles.reviewerAvatar}>{reviewerInitials}</div>
+                                <div>
+                                  <div className={styles.reviewerName}>{reviewerName}</div>
+                                  <div className={styles.reviewDate}>{dateLabel}</div>
+                                  <div className={styles.reviewCourse}>{courseTitle}</div>
+                                </div>
+                              </div>
+                              <div className={styles.reviewRating}>★ {ratingValue.toFixed(1)}</div>
+                            </div>
+                            <p className={styles.reviewText}>
+                              {review.comment}
+                            </p>
                           </div>
-                        </div>
-                        <div className={styles.reviewRating}>★ 4.5</div>
-                      </div>
-                      <p className={styles.reviewText}>
-                        Cours très structurés et adaptés à mes besoins. Les explications sont claires et les exercices pertinents. Je recommande vivement !
-                      </p>
-                    </div>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               )}    
@@ -880,6 +1003,18 @@ const TutorProfilePage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Modal d'échange de compétences */}
+      {showExchangeModal && tutor && (
+        <SkillExchangeBookingModal
+          tutorId={tutor.userId!}
+          tutorProfileId={tutor.id} // Passer le tutorProfileId
+          tutorName={tutor.name}
+          tutorSkillsToLearn={tutorSkillsToLearn}
+          tutorOfferings={annonces}
+          onClose={() => setShowExchangeModal(false)}
+        />
+      )}
     </div>
   );
 };

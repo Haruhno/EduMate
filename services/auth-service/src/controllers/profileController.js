@@ -202,7 +202,7 @@ class ProfileController {
         include: [{
           model: User,
           as: 'user',
-          attributes: ['id', 'firstName', 'lastName', 'email']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'skillsToTeach', 'skillsToLearn']
         }]
       });
 
@@ -240,7 +240,7 @@ class ProfileController {
         include: [{
           model: User,
           as: 'user',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'role']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'skillsToTeach', 'skillsToLearn']
         }]
       });
 
@@ -278,7 +278,7 @@ class ProfileController {
         include: [{
           model: User,
           as: 'user',
-          attributes: ['id', 'firstName', 'lastName', 'email']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'skillsToTeach', 'skillsToLearn']
         }]
       });
 
@@ -316,7 +316,7 @@ class ProfileController {
         include: [{
           model: User,
           as: 'user',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'role']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'skillsToTeach', 'skillsToLearn']
         }]
       });
 
@@ -456,6 +456,140 @@ class ProfileController {
       res.status(500).json({
         success: false,
         message: `Erreur lors de l'ajout des compétences: ${error.message}`
+      });
+    }
+  }
+
+  /**
+   * Calculer et mettre à jour le rating moyen d'un tuteur basé sur ses reviews
+   */
+  async updateTutorRating(tutorUserId) {
+    try {
+      const { Review, ProfileTutor } = require('../models/associations');
+      
+      // Récupérer toutes les reviews confirmées où le tuteur est la cible
+      const reviews = await Review.findAll({
+        where: {
+          targetUserId: tutorUserId,
+          isConfirmed: true
+        },
+        attributes: ['rating']
+      });
+
+      // Filtrer les reviews qui ont une note (étudiants évaluant des tuteurs)
+      const ratingsOnly = reviews.filter(r => r.rating !== null).map(r => r.rating);
+
+      if (ratingsOnly.length === 0) {
+        console.log(`ℹ️ Aucune note trouvée pour le tuteur ${tutorUserId}`);
+        return { rating: 0, reviewsCount: 0 };
+      }
+
+      // Calculer la moyenne
+      const averageRating = ratingsOnly.reduce((sum, rating) => sum + rating, 0) / ratingsOnly.length;
+      const roundedRating = Math.round(averageRating * 10) / 10; // Arrondir à 1 décimale
+
+      // Mettre à jour le profil tuteur
+      const tutorProfile = await ProfileTutor.findOne({ where: { userId: tutorUserId } });
+      
+      if (tutorProfile) {
+        await tutorProfile.update({
+          rating: roundedRating,
+          reviewsCount: ratingsOnly.length
+        });
+        
+        console.log(`✅ Rating tuteur ${tutorUserId} mis à jour: ${roundedRating}/5 (${ratingsOnly.length} avis)`);
+      }
+
+      return {
+        rating: roundedRating,
+        reviewsCount: ratingsOnly.length
+      };
+    } catch (error) {
+      console.error('❌ Erreur mise à jour rating tuteur:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Endpoint public pour récupérer le rating d'un tuteur
+   */
+  async getTutorRating(req, res) {
+    try {
+      const { tutorId } = req.params;
+      const { ProfileTutor, User } = require('../models/associations');
+      
+      // Chercher le profil tuteur par ID de profil
+      let tutorProfile = await ProfileTutor.findByPk(tutorId, {
+        include: [{
+          model: User,
+          as: 'user',
+          attributes: ['id', 'firstName', 'lastName']
+        }]
+      });
+
+      // Si pas trouvé, chercher par userId
+      if (!tutorProfile) {
+        tutorProfile = await ProfileTutor.findOne({
+          where: { userId: tutorId },
+          include: [{
+            model: User,
+            as: 'user',
+            attributes: ['id', 'firstName', 'lastName']
+          }]
+        });
+      }
+
+      if (!tutorProfile) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tuteur non trouvé'
+        });
+      }
+
+      // Recalculer le rating pour être sûr qu'il soit à jour
+      const { rating, reviewsCount } = await this.updateTutorRating(tutorProfile.userId);
+
+      res.json({
+        success: true,
+        data: {
+          tutorId: tutorProfile.id,
+          userId: tutorProfile.userId,
+          name: `${tutorProfile.user.firstName} ${tutorProfile.user.lastName}`,
+          rating,
+          reviewsCount
+        }
+      });
+    } catch (error) {
+      console.error('❌ Erreur récupération rating tuteur:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Endpoint pour mettre à jour le rating d'un tuteur (appelé après confirmation d'avis)
+   */
+  async updateTutorRatingEndpoint(req, res) {
+    try {
+      const { userId } = req.params;
+      
+      const { rating, reviewsCount } = await this.updateTutorRating(userId);
+
+      res.json({
+        success: true,
+        message: 'Rating mis à jour avec succès',
+        data: {
+          rating,
+          reviewsCount
+        }
+      });
+    } catch (error) {
+      console.error('❌ Erreur endpoint mise à jour rating:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message
       });
     }
   }

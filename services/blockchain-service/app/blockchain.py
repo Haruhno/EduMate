@@ -1,11 +1,13 @@
 from web3 import Web3, HTTPProvider
-from web3.middleware import geth_poa_middleware
+from web3.middleware import ExtraDataToPOAMiddleware
 from eth_account import Account
 from eth_account.messages import encode_defunct
 import hashlib
 import hmac
 import os
 import uuid
+import time
+import json
 from typing import Dict, List, Optional, Tuple, Any
 import logging
 import requests
@@ -49,7 +51,7 @@ class BlockchainManager:
         if not self.w3.is_connected():
             raise ConnectionError("Impossible de se connecter à Ganache")
         
-        self.w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+        self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
         self.auth_service_url = auth_service_url
         
         # Charger les contrats depuis l'environnement
@@ -57,6 +59,21 @@ class BlockchainManager:
         
         # Générateur de wallets déterministes
         self.wallet_generator = DeterministicWalletGenerator()
+        
+        # ⚡ CACHE pour les stats (éviter recalcul à chaque appel)
+        self._stats_cache = {}
+        self._stats_cache_timestamp = {}
+        self._stats_cache_ttl = 30  # 30 secondes
+        
+        # ⚡ CACHE pour l'historique des transactions
+        self._history_cache = {}
+        self._history_cache_timestamp = {}
+        self._history_cache_ttl = 15  # 15 secondes (plus court car plus dynamique)
+        
+        # ⚡ CACHE pour les infos wallet (éviter requêtes HTTP répétées)
+        self._wallet_info_cache = {}
+        self._wallet_info_cache_timestamp = {}
+        self._wallet_info_cache_ttl = 60  # 60 secondes (les users changent rarement de nom)
         
         logger.info("✅ BlockchainManager initialisé - 100% on-chain")
     
@@ -106,8 +123,9 @@ class BlockchainManager:
         """Charger les adresses des contrats depuis les variables d'environnement"""
         self.token_address = os.getenv("EDU_TOKEN_ADDRESS")
         self.escrow_address = os.getenv("BOOKING_ESCROW_ADDRESS")
+        self.skill_exchange_address = os.getenv("SKILL_EXCHANGE_ADDRESS")
         
-        if not self.token_address or not self.escrow_address:
+        if not self.token_address or not self.escrow_address or not self.skill_exchange_address:
             raise ValueError("Adresses des contrats non configurées dans l'environnement")
         
         # ABIs fixes
@@ -161,9 +179,43 @@ class BlockchainManager:
             {"constant": True, "inputs": [], "name": "getBookingCount", "outputs": [{"name": "", "type": "uint256"}], "type": "function"}
         ]
         
+        self.skill_exchange_abi = [
+            {"constant": False, "inputs": [{"name": "studentId", "type": "bytes32"}, {"name": "tutorId", "type": "bytes32"}, {"name": "skillOffered", "type": "string"}, {"name": "skillRequested", "type": "string"}, {"name": "frontendId", "type": "bytes32"}], "name": "createExchange", "outputs": [{"name": "", "type": "uint256"}], "type": "function"},
+            {"constant": False, "inputs": [{"name": "exchangeId", "type": "uint256"}, {"name": "tutorId", "type": "bytes32"}], "name": "acceptExchange", "outputs": [], "type": "function"},
+            {"constant": False, "inputs": [{"name": "exchangeId", "type": "uint256"}, {"name": "tutorId", "type": "bytes32"}], "name": "rejectExchange", "outputs": [], "type": "function"},
+            {"constant": False, "inputs": [{"name": "exchangeId", "type": "uint256"}], "name": "completeExchange", "outputs": [], "type": "function"},
+            {"constant": True, "inputs": [{"name": "exchangeId", "type": "uint256"}], "name": "getExchange", "outputs": [{"name": "studentId", "type": "bytes32"}, {"name": "tutorId", "type": "bytes32"}, {"name": "skillOffered", "type": "string"}, {"name": "skillRequested", "type": "string"}, {"name": "status", "type": "uint8"}, {"name": "createdAt", "type": "uint256"}, {"name": "frontendId", "type": "bytes32"}], "type": "function"},
+            {"constant": True, "inputs": [{"name": "frontendId", "type": "bytes32"}], "name": "getExchangeByFrontendId", "outputs": [{"name": "", "type": "uint256"}], "type": "function"},
+            {"constant": True, "inputs": [], "name": "getExchangeCount", "outputs": [{"name": "", "type": "uint256"}], "type": "function"},
+            {"anonymous": False, "inputs": [
+                {"indexed": True, "name": "exchangeId", "type": "uint256"},
+                {"indexed": True, "name": "studentId", "type": "bytes32"},
+                {"indexed": True, "name": "tutorId", "type": "bytes32"},
+                {"indexed": False, "name": "skillOffered", "type": "string"},
+                {"indexed": False, "name": "skillRequested", "type": "string"},
+                {"indexed": False, "name": "timestamp", "type": "uint256"},
+                {"indexed": False, "name": "frontendId", "type": "bytes32"}
+            ], "name": "ExchangeCreated", "type": "event"},
+            {"anonymous": False, "inputs": [
+                {"indexed": True, "name": "exchangeId", "type": "uint256"},
+                {"indexed": False, "name": "tutorId", "type": "bytes32"},
+                {"indexed": False, "name": "timestamp", "type": "uint256"}
+            ], "name": "ExchangeAccepted", "type": "event"},
+            {"anonymous": False, "inputs": [
+                {"indexed": True, "name": "exchangeId", "type": "uint256"},
+                {"indexed": False, "name": "tutorId", "type": "bytes32"},
+                {"indexed": False, "name": "timestamp", "type": "uint256"}
+            ], "name": "ExchangeRejected", "type": "event"},
+            {"anonymous": False, "inputs": [
+                {"indexed": True, "name": "exchangeId", "type": "uint256"},
+                {"indexed": False, "name": "timestamp", "type": "uint256"}
+            ], "name": "ExchangeCompleted", "type": "event"}
+        ]
+        
         # Convertir les adresses en checksum
         self.token_address = self.w3.to_checksum_address(self.token_address)
         self.escrow_address = self.w3.to_checksum_address(self.escrow_address)
+        self.skill_exchange_address = self.w3.to_checksum_address(self.skill_exchange_address)
         
         self.token_contract = self.w3.eth.contract(
             address=self.token_address,
@@ -174,17 +226,41 @@ class BlockchainManager:
             address=self.escrow_address,
             abi=self.escrow_abi
         )
+        
+        self.skill_exchange_contract = self.w3.eth.contract(
+            address=self.skill_exchange_address,
+            abi=self.skill_exchange_abi
+        )
     
-    def get_transaction_history(self, user_wallet_address: str, limit: int = 50) -> List[Dict]:
+    def get_transaction_history(self, user_wallet_address: str, limit: int = 20, include_wallet_info: bool = True) -> List[Dict]:
         """
         Récupère l'historique des transactions depuis la blockchain
         en utilisant get_logs (méthode fiable pour Ganache)
         Récupère DEUX types d'événements:
         1. EduTransfer (transferts avec description)
         2. Transfer standard (transferFrom utilisé par les bookings)
+        
+        Args:
+            include_wallet_info: Si False, ne pas appeler _get_wallet_info_sync (gain de performance)
+        
+        ⚡ OPTIMISATION: Cache de 15 secondes pour éviter les scans répétés
         """
         try:
             wallet_address = self.w3.to_checksum_address(user_wallet_address)
+            
+            # ⚡ Créer une clé de cache unique
+            cache_key = f"{wallet_address}:{limit}:{include_wallet_info}"
+            
+            # ⚡ Vérifier le cache d'abord
+            now = time.time()
+            if cache_key in self._history_cache:
+                cache_age = now - self._history_cache_timestamp.get(cache_key, 0)
+                if cache_age < self._history_cache_ttl:
+                    logger.info(f"⚡ [CACHE] Historique servi depuis le cache pour {wallet_address[:8]}... (âge: {cache_age:.1f}s)")
+                    return self._history_cache[cache_key]
+            
+            logger.info(f"⏱️ [HISTORY] Scan blockchain pour {wallet_address[:8]}... (limit={limit})")
+            start_time = time.time()
             
             # Obtenir l'adresse du owner pour filtrer les initialisations
             owner_address = self.token_contract.functions.owner().call()
@@ -197,7 +273,8 @@ class BlockchainManager:
             
             try:
                 # ============ ÉVÉNEMENTS EduTransfer (custom avec description) ============
-                edu_event_signature = self.w3.keccak(text="EduTransfer(address,address,uint256,string,uint256)").hex()
+                # ⚠️ Ne PAS utiliser .hex() - Ganache requiert le préfixe "0x"
+                edu_event_signature = self.w3.keccak(text="EduTransfer(address,address,uint256,string,uint256)")
                 
                 # EduTransfer où l'utilisateur est l'expéditeur
                 edu_logs_from = self.w3.eth.get_logs({
@@ -223,7 +300,8 @@ class BlockchainManager:
                 })
                 
                 # ============ ÉVÉNEMENTS Transfer standard (ERC20) ============
-                transfer_event_signature = self.w3.keccak(text="Transfer(address,address,uint256)").hex()
+                # ⚠️ Ne PAS utiliser .hex() - Ganache requiert le préfixe "0x"
+                transfer_event_signature = self.w3.keccak(text="Transfer(address,address,uint256)")
                 
                 # Transfer où l'utilisateur est l'expéditeur
                 transfer_logs_from = self.w3.eth.get_logs({
@@ -264,7 +342,8 @@ class BlockchainManager:
                         block = self.w3.eth.get_block(log['blockNumber'])
                         
                         # Déterminer le type d'événement
-                        is_edu_transfer = log['topics'][0].hex() == edu_event_signature
+                        # ⚠️ Comparer en bytes car edu_event_signature est maintenant en bytes
+                        is_edu_transfer = log['topics'][0] == edu_event_signature
                         
                         if is_edu_transfer:
                             # Décoder EduTransfer
@@ -283,11 +362,22 @@ class BlockchainManager:
                                 logger.debug(f"Filtrage transfert initialisation: {amount} EDU de {from_address} vers {to_address}")
                                 continue
                             
+                            # ⚠️ FILTRER les transferts provenant de l'escrow (déjà affichés comme bookings)
+                            # Quand les deux parties confirment leurs avis, l'escrow libère les fonds au tuteur
+                            # Ce transfert escrow→tuteur crée un événement Transfer qui apparaît en double
+                            # dans l'historique (une fois comme booking, une fois comme transfer)
+                            escrow_checksum = self.w3.to_checksum_address(self.escrow_address)
+                            if from_address == escrow_checksum:
+                                logger.debug(f"🔕 [FILTRÉ] Transfer escrow→{to_address[:10]}... (déjà affiché comme booking)")
+                                continue
+                            
                             # Description par défaut
                             description = "Transfert de tokens"
                         
                         # Enrichir les métadonnées pour les bookings
                         metadata = {}
+                        booking_status = "completed"  # Statut par défaut
+                        
                         if event['args']['to'] == self.escrow_address:
                             # C'est un booking - chercher le booking correspondant
                             try:
@@ -299,10 +389,25 @@ class BlockchainManager:
                                     booking_tutor = booking[2]
                                     booking_amount = float(self.w3.from_wei(booking[3], 'ether'))
                                     booking_description = booking[11]  # Index de la description dans le struct
+                                    booking_blockchain_status = booking[6]  # Index du statut: 0=PENDING, 1=CONFIRMED, 2=FAILED, 3=CANCELLED
                                     
                                     if booking_student == event['args']['from'] and abs(booking_amount - amount) < 0.01:
                                         # Utiliser la description du booking depuis la blockchain
                                         description = booking_description
+                                        
+                                        # Déterminer le statut réel de la transaction basé sur le statut du booking
+                                        # 0 = PENDING → transaction pending (argent bloqué)
+                                        # 1 = CONFIRMED → transaction pending (toujours en attente de confirmation du cours)
+                                        # 2 = FAILED ou 3 = CANCELLED → transaction cancelled
+                                        if booking_blockchain_status == 0:
+                                            booking_status = "pending"  # Réservation en attente
+                                        elif booking_blockchain_status == 1:
+                                            booking_status = "pending"  # Confirmée mais cours pas encore validé
+                                        elif booking_blockchain_status == 2 or booking_blockchain_status == 3:
+                                            booking_status = "cancelled"
+                                        else:
+                                            booking_status = "completed"  # Autres cas
+                                        
                                         # Récupérer les infos du tuteur depuis la BDD
                                         try:
                                             tutor_user_id_bytes = self.token_contract.functions.getUserId(booking_tutor).call()
@@ -340,7 +445,7 @@ class BlockchainManager:
                             "amount": amount,
                             "fee": 0.0,
                             "transactionType": "BOOKING" if event['args']['to'] == self.escrow_address else "TRANSFER",
-                            "status": "completed",
+                            "status": booking_status,  # Utiliser le statut réel du booking
                             "description": description,
                             "metadata": metadata,
                             "createdAt": datetime.fromtimestamp(block['timestamp']).isoformat(),
@@ -354,12 +459,173 @@ class BlockchainManager:
                         }
                         transactions.append(transaction)
                         
+                        # Si c'est une réservation (booking), créer aussi une transaction "entrante" pour le tuteur
+                        if event['args']['to'] == self.escrow_address and metadata:
+                            # Transaction "entrante" pour le tuteur (en pending, car elle sera complétée après la validation du cours)
+                            tutor_transaction = {
+                                "id": (log['transactionHash'].hex()[:32] + "_tutor")[-32:],  # ID unique pour le tuteur
+                                "fromWalletId": event['args']['from'],  # L'étudiant
+                                "toWalletId": metadata.get('tutorId'),  # L'ID du tuteur (user ID, pas wallet)
+                                "amount": amount,
+                                "fee": 0.0,
+                                "transactionType": "BOOKING",
+                                "status": "pending",  # Toujours pending pour le tuteur jusqu'à validation du cours
+                                "description": description,
+                                "metadata": metadata,
+                                "createdAt": datetime.fromtimestamp(block['timestamp']).isoformat(),
+                                "fromWallet": self._get_wallet_info_sync(event['args']['from']),
+                                "toWallet": None,  # On ne peut pas récupérer le wallet du tuteur depuis juste l'ID
+                                "ledgerBlock": {
+                                    "id": log['blockNumber'],
+                                    "hash": block['hash'].hex(),
+                                    "timestamp": block['timestamp']
+                                }
+                            }
+                            transactions.append(tutor_transaction)
+                        
                     except Exception as e:
                         logger.warning(f"Erreur traitement log: {e}")
                         continue
                         
             except Exception as e:
                 logger.error(f"Erreur récupération logs: {e}")
+            
+            # ============ AJOUTER LES TRANSACTIONS ENTRANTES POUR LES TUTEURS ============
+            # Si l'utilisateur est un tuteur, ajouter les transactions entrantes pour ses bookings
+            try:
+                # Récupérer le userId de cet utilisateur depuis la blockchain
+                user_id_bytes = self.token_contract.functions.getUserId(wallet_address).call()
+                user_id = self.bytes32_to_uuid(user_id_bytes)
+                
+                if user_id:
+                    # Récupérer tous les bookings où cet utilisateur est tuteur
+                    tutor_bookings = self.get_tutor_bookings(user_id)
+                    
+                    # Pour chaque booking, créer une transaction entrante si elle n'existe pas déjà
+                    existing_booking_ids = set()
+                    for tx in transactions:
+                        if tx.get('metadata', {}).get('bookingId'):
+                            existing_booking_ids.add(tx['metadata']['bookingId'])
+                    
+                    for booking in tutor_bookings:
+                        booking_id = booking.get('blockchainId')
+                        
+                        # Si cette transaction n'existe pas déjà, la créer
+                        if booking_id not in existing_booking_ids:
+                            # Récupérer les détails du booking depuis la blockchain
+                            blockchain_booking = self.escrow_contract.functions.getBooking(booking_id).call()
+                            student_address = blockchain_booking[1]
+                            amount = blockchain_booking[3] / 10**18
+                            created_at = blockchain_booking[8]
+                            booking_status = blockchain_booking[6]
+                            description = blockchain_booking[11] if len(blockchain_booking) > 11 else "Réservation de cours"
+                            
+                            # Déterminer le statut de la transaction
+                            transaction_status = "completed"
+                            if booking_status == 0 or booking_status == 1:
+                                transaction_status = "pending"
+                            elif booking_status == 2:
+                                transaction_status = "cancelled"
+                            
+                            # Récupérer les infos du tuteur depuis auth-service
+                            tutor_name = "Tuteur"
+                            try:
+                                tutor_resp = requests.get(
+                                    f"{self.auth_service_url}/api/users/{user_id}",
+                                    timeout=5
+                                )
+                                if tutor_resp.status_code == 200:
+                                    tutor_data = tutor_resp.json().get("data", {})
+                                    tutor_name = f"{tutor_data.get('firstName', 'Tuteur')} {tutor_data.get('lastName', '')}"
+                            except:
+                                pass
+                            
+                            # Créer la transaction entrante pour le tuteur
+                            tutor_transaction = {
+                                "id": f"booking_{booking_id}_tutor",
+                                "fromWalletId": student_address,
+                                "toWalletId": user_id,
+                                "amount": amount,
+                                "fee": 0.0,
+                                "transactionType": "BOOKING",
+                                "status": transaction_status,
+                                "description": description,
+                                "metadata": {
+                                    "bookingId": booking_id,
+                                    "tutorId": user_id,
+                                    "tutorName": tutor_name,
+                                    "studentId": booking.get('studentId'),
+                                    "annonceId": booking.get('annonceId'),
+                                    "startTime": booking.get('startTime'),
+                                    "duration": booking.get('duration')
+                                },
+                                "createdAt": datetime.fromtimestamp(created_at).isoformat(),
+                                "fromWallet": self._get_wallet_info_sync(student_address),
+                                "toWallet": None,
+                                "ledgerBlock": None
+                            }
+                            transactions.append(tutor_transaction)
+            except Exception as e:
+                logger.warning(f"Erreur ajout transactions tuteur: {e}")
+            
+            # ============ AJOUTER LES TRANSACTIONS SKILL EXCHANGE ============
+            try:
+                # Récupérer le userId de cet utilisateur depuis la blockchain
+                user_id_bytes = self.token_contract.functions.getUserId(wallet_address).call()
+                user_id = self.bytes32_to_uuid(user_id_bytes)
+                
+                if user_id:
+                    # Récupérer tous les skill exchanges où cet utilisateur est impliqué
+                    skill_exchanges = self.get_user_skill_exchanges(user_id)
+                    
+                    for exchange in skill_exchanges:
+                        try:
+                            exchange_id = exchange.get("id")
+                            student_id = exchange.get("studentId")
+                            tutor_id = exchange.get("tutorId")
+                            status = exchange.get("status")
+                            created_at = exchange.get("createdAt")
+                            frontend_id = exchange.get("frontendId")
+                            
+                            # Créer une transaction pour chaque skill exchange (même si 0 EDU)
+                            # C'est une transaction virtuelle pour affichage (type: SKILL_EXCHANGE)
+                            transaction = {
+                                "id": f"skill_exchange_{exchange_id}_{created_at}",
+                                "fromWalletId": student_id,  # ID utilisateur
+                                "toWalletId": tutor_id,      # ID utilisateur
+                                "amount": 0.0,  # Les skill exchanges sont gratuits
+                                "fee": 0.0,
+                                "transactionType": "SKILL_EXCHANGE",
+                                "status": "pending" if status in ["PENDING", "ACCEPTED"] else "completed",
+                                "description": f"Échange de compétences",
+                                "metadata": {
+                                    "exchangeId": exchange_id,
+                                    "studentId": student_id,
+                                    "tutorId": tutor_id,
+                                    "skillOffered": exchange.get("skillOffered"),
+                                    "skillRequested": exchange.get("skillRequested"),
+                                    "status": status,
+                                    "frontendId": frontend_id
+                                },
+                                "createdAt": exchange.get("createdAtIso") or datetime.fromtimestamp(created_at).isoformat() if isinstance(created_at, (int, float)) else str(created_at),
+                                "fromWallet": None,
+                                "toWallet": None,
+                                "ledgerBlock": None
+                            }
+                            transactions.append(transaction)
+                            
+                        except Exception as ex:
+                            logger.warning(f"Erreur ajout skill exchange {exchange.get('id')}: {ex}")
+                            continue
+            except Exception as e:
+                logger.warning(f"Erreur ajout transactions skill exchange: {e}")
+            
+            # ⚡ Mettre en cache
+            self._history_cache[cache_key] = transactions
+            self._history_cache_timestamp[cache_key] = time.time()
+            
+            elapsed = (time.time() - start_time) * 1000
+            logger.info(f"✅ [HISTORY] {len(transactions)} transactions récupérées en {elapsed:.0f}ms")
             
             return transactions
             
@@ -370,8 +636,15 @@ class BlockchainManager:
     def _get_wallet_info_sync(self, wallet_address: str) -> Dict:
         """
         Récupère les infos utilisateur depuis l'auth-service pour une adresse wallet (sync)
+        ⚡ OPTIMISATION: Cache de 60 secondes pour éviter requêtes HTTP répétées
         """
         try:
+            # ⚡ Vérifier le cache d'abord
+            if wallet_address in self._wallet_info_cache:
+                cache_age = time.time() - self._wallet_info_cache_timestamp.get(wallet_address, 0)
+                if cache_age < self._wallet_info_cache_ttl:
+                    return self._wallet_info_cache[wallet_address]
+            
             # Essayer de récupérer le userId depuis la blockchain et le normaliser
             try:
                 user_id_bytes = self.token_contract.functions.getUserId(wallet_address).call()
@@ -384,7 +657,7 @@ class BlockchainManager:
                     )
                     if response.status_code == 200:
                         user_data = response.json().get("data", {})
-                        return {
+                        result = {
                             "id": user_id,
                             "userId": user_data.get("id"),
                             "walletAddress": wallet_address,
@@ -395,21 +668,32 @@ class BlockchainManager:
                                 "email": user_data.get("email", "")
                             }
                         }
+                        # ⚡ Mettre en cache le résultat réussi
+                        self._wallet_info_cache[wallet_address] = result
+                        self._wallet_info_cache_timestamp[wallet_address] = time.time()
+                        return result
             except Exception as e:
                 logger.debug(f"Impossible de normaliser l'userId pour {wallet_address}: {e}")
             
             # Fallback: juste l'adresse
-            return {
+            result = {
                 "id": wallet_address,
                 "walletAddress": wallet_address,
                 "user": None
             }
+            # ⚡ Mettre en cache même les fallback
+            self._wallet_info_cache[wallet_address] = result
+            self._wallet_info_cache_timestamp[wallet_address] = time.time()
+            return result
         except:
-            return {
+            result = {
                 "id": wallet_address,
                 "walletAddress": wallet_address,
                 "user": None
             }
+            self._wallet_info_cache[wallet_address] = result
+            self._wallet_info_cache_timestamp[wallet_address] = time.time()
+            return result
     
     async def verify_user_exists(self, user_id: str) -> Dict:
         """Vérifier que l'utilisateur existe dans l'auth-service"""
@@ -463,16 +747,44 @@ class BlockchainManager:
         }
     
     def get_wallet_stats(self, user_id: str) -> Dict[str, Any]:
-        """Récupérer les statistiques détaillées depuis la blockchain"""
+        """Récupérer les statistiques détaillées depuis la blockchain
+        
+        Les statistiques ne doivent compter QUE les transactions réelles de l'utilisateur :
+        - Pour l'étudiant : les transactions sortantes (vers l'escrow)
+        - Pour le tuteur : les transactions entrantes (depuis l'escrow après validation)
+        - Ne PAS compter les transactions virtuelles créées pour affichage
+        
+        ⚡ OPTIMISATION: Cache de 30 secondes + limit réduit à 50 transactions
+        """
         try:
+            # ⚡ Vérifier le cache d'abord
+            now = time.time()
+            if user_id in self._stats_cache:
+                cache_age = now - self._stats_cache_timestamp.get(user_id, 0)
+                if cache_age < self._stats_cache_ttl:
+                    logger.info(f"⚡ [CACHE] Stats servies depuis le cache pour {user_id} (âge: {cache_age:.1f}s)")
+                    return self._stats_cache[user_id]
+            
+            logger.info(f"⏱️ [STATS] Calcul des stats pour {user_id}...")
+            start_time = time.time()
+            
             wallet = self.get_user_wallet(user_id)
             address = wallet["address"]
             
             # Récupérer le solde
             available_balance = self.get_token_balance(address)
             
-            # Récupérer l'historique pour calculer les stats
-            transactions = self.get_transaction_history(address, limit=100)
+            # ⚡ OPTIMISATION: Réduire le limit à 20 (pareil que les transactions pour scan plus rapide)
+            # Les stats mensuelles nécessitent rarement 50+ transactions
+            # ⚡ OPTIMISATION: include_wallet_info=False car on n'a besoin que des montants
+            transactions = self.get_transaction_history(address, limit=20, include_wallet_info=False)
+            
+            # FILTRER les transactions virtuelles (celles créées pour affichage uniquement)
+            # Exclure les transactions avec id contenant '_tutor' ou commençant par 'booking_'
+            real_transactions = [
+                tx for tx in transactions 
+                if not (tx.get('id', '').endswith('_tutor') or tx.get('id', '').startswith('booking_'))
+            ]
             
             # Calculer les stats
             today_sent = 0.0
@@ -482,18 +794,21 @@ class BlockchainManager:
             all_time_sent = 0.0
             all_time_received = 0.0
             all_time_fees = 0.0
+            transaction_count = 0  # Compter uniquement les transactions qui concernent l'utilisateur
             
             today = datetime.now().date()
             current_month = datetime.now().month
             current_year = datetime.now().year
             
-            for tx in transactions:
+            for tx in real_transactions:
                 try:
                     tx_date = datetime.fromisoformat(tx["createdAt"].replace('Z', '+00:00'))
                     amount = tx["amount"]
                     
+                    # Ne compter la transaction qu'UNE SEULE FOIS (soit entrante, soit sortante)
                     if tx["fromWalletId"] == address:
                         # Transaction sortante
+                        transaction_count += 1
                         all_time_sent += amount
                         
                         if tx_date.date() == today:
@@ -504,6 +819,7 @@ class BlockchainManager:
                             
                     elif tx["toWalletId"] == address:
                         # Transaction entrante
+                        transaction_count += 1
                         all_time_received += amount
                         
                         if tx_date.date() == today:
@@ -534,12 +850,19 @@ class BlockchainManager:
                     "received": monthly_received
                 },
                 "allTime": {
-                    "transactions": len(transactions),
+                    "transactions": transaction_count,  # ⚡ Compter uniquement les transactions de l'utilisateur
                     "sent": all_time_sent,
                     "received": all_time_received,
                     "fees": all_time_fees
                 }
             }
+            
+            # ⚡ Mettre en cache
+            self._stats_cache[user_id] = stats
+            self._stats_cache_timestamp[user_id] = time.time()
+            
+            elapsed = (time.time() - start_time) * 1000
+            logger.info(f"✅ [STATS] Stats calculées en {elapsed:.0f}ms pour {user_id}")
             
             return stats
             
@@ -562,6 +885,9 @@ class BlockchainManager:
         """Enregistrer un wallet utilisateur sur la blockchain"""
         wallet = self.get_user_wallet(user_id)
         
+        # ✅ CORRECTION: Convertir l'adresse en checksum format
+        wallet_address = self.w3.to_checksum_address(wallet["address"])
+        
         # Vérifier si le wallet est déjà enregistré
         if wallet.get("exists_on_chain", False):
             return f"Wallet déjà enregistré pour l'utilisateur {user_id}"
@@ -576,7 +902,7 @@ class BlockchainManager:
         # Construire la transaction
         tx = self.token_contract.functions.registerWallet(
             user_id_bytes32,
-            wallet["address"]
+            wallet_address
         ).build_transaction({
             'from': owner_address,
             'gas': 200000,
@@ -594,7 +920,7 @@ class BlockchainManager:
             owner_private_key = "0x" + owner_private_key
         
         signed_tx = self.w3.eth.account.sign_transaction(tx, owner_private_key)
-        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
         
         # Distribuer les 500 EDUcoins
@@ -605,6 +931,9 @@ class BlockchainManager:
     def distribute_initial_tokens(self, wallet_address: str) -> str:
         """Distribuer 500 EDUcoins à un wallet"""
         try:
+            # ✅ CORRECTION: Convertir l'adresse en checksum format
+            wallet_address = self.w3.to_checksum_address(wallet_address)
+            
             owner_address = self.token_contract.functions.owner().call()
             owner_address = self.w3.to_checksum_address(owner_address)
             
@@ -637,7 +966,7 @@ class BlockchainManager:
                 owner_private_key = "0x" + owner_private_key
             
             signed_tx = self.w3.eth.account.sign_transaction(tx, owner_private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
             
             return tx_hash.hex()
@@ -658,9 +987,10 @@ class BlockchainManager:
             users = response.json().get("data", [])
             results = []
 
-            # Récupérer l'adresse du owner pour envoyer l'ETH
-            owner_address = self.token_contract.functions.owner().call()
-            owner_address = self.w3.to_checksum_address(owner_address)
+            # Utiliser le 1er compte Ganache qui a de l'ETH
+            ganache_account_0_address = "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
+            ganache_account_0_key = "0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
+            owner_address = self.w3.to_checksum_address(ganache_account_0_address)
 
             for user in users:
                 user_id = user.get("id")
@@ -672,12 +1002,22 @@ class BlockchainManager:
                         # Récupérer le wallet
                         wallet = self.get_user_wallet(user_id)
 
-                        # Créditer le wallet avec un peu d'ETH pour le gas
-                        self.w3.eth.send_transaction({
+                        # Créditer le wallet avec ETH pour le gas (0.5 ETH = plein)
+                        wallet_address = self.w3.to_checksum_address(wallet["address"])
+                        nonce = self.w3.eth.get_transaction_count(owner_address)
+                        
+                        tx = {
                             'from': owner_address,
-                            'to': wallet["address"],
-                            'value': self.w3.to_wei(0.1, 'ether')  # 0.01 ETH
-                        })
+                            'to': wallet_address,
+                            'value': self.w3.to_wei(0.5, 'ether'),
+                            'gas': 21000,
+                            'gasPrice': self.w3.eth.gas_price,
+                            'nonce': nonce
+                        }
+                        
+                        signed = self.w3.eth.account.sign_transaction(tx, ganache_account_0_key)
+                        tx_receipt = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+                        self.w3.eth.wait_for_transaction_receipt(tx_receipt)
 
                         results.append({
                             "user_id": user_id,
@@ -783,7 +1123,7 @@ class BlockchainManager:
                     owner_private_key = "0x" + owner_private_key
                 
                 signed_eth_tx = self.w3.eth.account.sign_transaction(transfer_eth_tx, owner_private_key)
-                eth_tx_hash = self.w3.eth.send_raw_transaction(signed_eth_tx.rawTransaction)
+                eth_tx_hash = self.w3.eth.send_raw_transaction(signed_eth_tx.raw_transaction)
                 self.w3.eth.wait_for_transaction_receipt(eth_tx_hash, timeout=30)
                 
                 logger.info(f"✅ 0.05 ETH envoyés. Tx: {eth_tx_hash.hex()}")
@@ -804,7 +1144,7 @@ class BlockchainManager:
             })
             
             signed_tx = self.w3.eth.account.sign_transaction(tx, private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
             
             # Attendre la confirmation
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=30)
@@ -833,6 +1173,10 @@ class BlockchainManager:
         student_wallet = self.get_user_wallet(student_user_id)
         tutor_wallet = self.get_user_wallet(tutor_user_id)
         
+        # ✅ CORRECTION: Convertir les adresses en checksum format
+        student_address = self.w3.to_checksum_address(student_wallet["address"])
+        tutor_address = self.w3.to_checksum_address(tutor_wallet["address"])
+        
         # Convertir amount en wei
         amount_wei = self.w3.to_wei(amount, 'ether')
         
@@ -840,46 +1184,61 @@ class BlockchainManager:
         frontend_id_bytes32 = self.uuid_to_bytes32(frontend_booking_id)
         
         # 1. Approver le contrat escrow pour dépenser les tokens
-        nonce = self.w3.eth.get_transaction_count(student_wallet["address"])
+        nonce = self.w3.eth.get_transaction_count(student_address)
+        logger.info(f"[BLOCKCHAIN] Student nonce initial: {nonce}")
+        
         approve_tx = self.token_contract.functions.approve(
             self.escrow_address,
             amount_wei
         ).build_transaction({
-            'from': student_wallet["address"],
+            'from': student_address,
             'gas': 100000,
             'gasPrice': self.w3.eth.gas_price,
             'nonce': nonce,
         })
         
         signed_approve_tx = self.w3.eth.account.sign_transaction(approve_tx, student_wallet["private_key"])
-        approve_hash = self.w3.eth.send_raw_transaction(signed_approve_tx.rawTransaction)
+        approve_hash = self.w3.eth.send_raw_transaction(signed_approve_tx.raw_transaction)
+        logger.info(f"[BLOCKCHAIN] Approve TX sent: {approve_hash.hex()}")
+        
         approve_receipt = self.w3.eth.wait_for_transaction_receipt(approve_hash, timeout=30)
         logger.info(f"[BLOCKCHAIN] Approve TX status: {approve_receipt.status} (1=success, 0=failed)")
+        logger.info(f"[BLOCKCHAIN] Approve TX gas used: {approve_receipt.gasUsed}")
         if approve_receipt.status != 1:
             raise ValueError(f"Approve transaction failed: {approve_hash.hex()}")
         
         # 2. Créer la réservation sur le contrat escrow
+        # ⚠️ IMPORTANT: Le nonce doit être incrémenté car la TX précédente est confirmée
+        nonce_for_booking = nonce + 1
+        logger.info(f"[BLOCKCHAIN] Creating booking with nonce: {nonce_for_booking}")
+        
         booking_tx = self.escrow_contract.functions.createBooking(
-            tutor_wallet["address"],
+            tutor_address,
             amount_wei,
             start_timestamp,
             duration,
             description,
             frontend_id_bytes32
         ).build_transaction({
-            'from': student_wallet["address"],
+            'from': student_address,
             'gas': 800000,  # Augmenté pour gérer string storage + transferFrom + struct
             'gasPrice': self.w3.eth.gas_price,
-            'nonce': nonce + 1,
+            'nonce': nonce_for_booking,
         })
         
         signed_booking_tx = self.w3.eth.account.sign_transaction(booking_tx, student_wallet["private_key"])
-        booking_hash = self.w3.eth.send_raw_transaction(signed_booking_tx.rawTransaction)
+        booking_hash = self.w3.eth.send_raw_transaction(signed_booking_tx.raw_transaction)
+        logger.info(f"[BLOCKCHAIN] Booking TX sent: {booking_hash.hex()}")
+        
         booking_receipt = self.w3.eth.wait_for_transaction_receipt(booking_hash, timeout=30)
         logger.info(f"[BLOCKCHAIN] Booking TX status: {booking_receipt.status} (1=success, 0=failed)")
         logger.info(f"[BLOCKCHAIN] Booking TX gas used: {booking_receipt.gasUsed}")
         if booking_receipt.status != 1:
-            raise ValueError(f"Booking creation transaction failed: {booking_hash.hex()}")
+            # Diagnostiquer la raison de l'échec
+            error_reason = "Transaction échouée"
+            if booking_receipt.gasUsed < 50000:
+                error_reason = "Le créneau est probablement dans le passé ou les conditions du contrat ne sont pas remplies"
+            raise ValueError(f"Erreur blockchain: {error_reason}. TX: {booking_hash.hex()}")
         
         # Extraire l'ID de la réservation depuis les événements
         booking_id = None
@@ -943,15 +1302,18 @@ class BlockchainManager:
         """Confirmer une réservation (tutor)"""
         tutor_wallet = self.get_user_wallet(tutor_user_id)
         
+        # ✅ CORRECTION: Convertir l'adresse en checksum format
+        tutor_address = self.w3.to_checksum_address(tutor_wallet["address"])
+        
         tx = self.escrow_contract.functions.confirmBooking(booking_id).build_transaction({
-            'from': tutor_wallet["address"],
+            'from': tutor_address,
             'gas': 200000,
             'gasPrice': self.w3.eth.gas_price,
-            'nonce': self.w3.eth.get_transaction_count(tutor_wallet["address"]),
+            'nonce': self.w3.eth.get_transaction_count(tutor_address),
         })
         
         signed_tx = self.w3.eth.account.sign_transaction(tx, tutor_wallet["private_key"])
-        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
         
         return {
@@ -965,15 +1327,18 @@ class BlockchainManager:
         """Rejeter une réservation (tutor)"""
         tutor_wallet = self.get_user_wallet(tutor_user_id)
         
+        # ✅ CORRECTION: Convertir l'adresse en checksum format
+        tutor_address = self.w3.to_checksum_address(tutor_wallet["address"])
+        
         tx = self.escrow_contract.functions.rejectBooking(booking_id).build_transaction({
-            'from': tutor_wallet["address"],
+            'from': tutor_address,
             'gas': 200000,
             'gasPrice': self.w3.eth.gas_price,
-            'nonce': self.w3.eth.get_transaction_count(tutor_wallet["address"]),
+            'nonce': self.w3.eth.get_transaction_count(tutor_address),
         })
         
         signed_tx = self.w3.eth.account.sign_transaction(tx, tutor_wallet["private_key"])
-        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
         
         return {
@@ -987,18 +1352,21 @@ class BlockchainManager:
         """Confirmer l'issue d'un cours"""
         user_wallet = self.get_user_wallet(user_id)
         
+        # ✅ CORRECTION: Convertir l'adresse en checksum format
+        user_address = self.w3.to_checksum_address(user_wallet["address"])
+        
         tx = self.escrow_contract.functions.confirmCourseOutcome(
             booking_id,
             course_held
         ).build_transaction({
-            'from': user_wallet["address"],
+            'from': user_address,
             'gas': 200000,
             'gasPrice': self.w3.eth.gas_price,
-            'nonce': self.w3.eth.get_transaction_count(user_wallet["address"]),
+            'nonce': self.w3.eth.get_transaction_count(user_address),
         })
         
         signed_tx = self.w3.eth.account.sign_transaction(tx, user_wallet["private_key"])
-        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
         
         return {
@@ -1007,6 +1375,496 @@ class BlockchainManager:
             "course_held": course_held,
             "block_number": receipt.blockNumber
         }
+    
+    def get_tutor_bookings(self, tutor_user_id: str) -> List[Dict]:
+        """Récupérer toutes les réservations pour un tuteur (100% on-chain)"""
+        tutor_wallet = self.get_user_wallet(tutor_user_id)
+        tutor_address = self.w3.to_checksum_address(tutor_wallet["address"])
+        
+        bookings = []
+        
+        try:
+            # Récupérer le nombre total de réservations
+            booking_count = self.escrow_contract.functions.getBookingCount().call()
+            logger.info(f"[GET_TUTOR_BOOKINGS] Total bookings in contract: {booking_count}")
+            
+            # Parcourir toutes les réservations et filtrer pour ce tuteur
+            for booking_id in range(booking_count):
+                try:
+                    # Récupérer la réservation
+                    booking_data = self.escrow_contract.functions.getBooking(booking_id).call()
+                    
+                    # Unpack les données
+                    (
+                        id_,
+                        student,
+                        tutor,
+                        amount,
+                        start_time,
+                        duration,
+                        status,
+                        outcome,
+                        created_at,
+                        student_confirmed,
+                        tutor_confirmed,
+                        description,
+                        frontend_id
+                    ) = booking_data
+                    
+                    # Vérifier si ce tuteur correspond
+                    if self.w3.to_checksum_address(tutor) == tutor_address:
+                        logger.info(f"[GET_TUTOR_BOOKINGS] Booking {booking_id} is for this tutor")
+                        
+                        # Convertir le frontend_id en UUID
+                        frontend_id_str = self.bytes32_to_uuid(frontend_id) or frontend_id.hex()
+                        
+                        # Mapper le statut
+                        status_map = {0: "PENDING", 1: "CONFIRMED", 2: "CANCELLED", 3: "COMPLETED", 4: "DISPUTED"}
+                        
+                        booking_dict = {
+                            "id": frontend_id_str,
+                            "blockchainId": booking_id,
+                            "studentAddress": student,
+                            "tutorAddress": tutor,
+                            "amount": float(self.w3.from_wei(amount, 'ether')),
+                            "startTime": start_time,
+                            "duration": duration,
+                            "status": status_map.get(status, "UNKNOWN"),
+                            "outcome": outcome,
+                            "createdAt": created_at,
+                            "studentConfirmed": student_confirmed,
+                            "tutorConfirmed": tutor_confirmed,
+                            "description": description,
+                            "frontendId": frontend_id_str
+                        }
+                        
+                        bookings.append(booking_dict)
+                        
+                except Exception as e:
+                    logger.debug(f"[GET_TUTOR_BOOKINGS] Error reading booking {booking_id}: {e}")
+                    continue
+            
+            logger.info(f"[GET_TUTOR_BOOKINGS] Found {len(bookings)} bookings for tutor {tutor_user_id}")
+            return bookings
+            
+        except Exception as e:
+            logger.error(f"[GET_TUTOR_BOOKINGS] Error retrieving tutor bookings: {e}")
+            raise
+
+    def get_student_bookings(self, student_user_id: str) -> List[Dict]:
+        """Récupérer toutes les réservations pour un étudiant (100% on-chain)"""
+        student_wallet = self.get_user_wallet(student_user_id)
+        student_address = self.w3.to_checksum_address(student_wallet["address"])
+        
+        bookings = []
+        
+        try:
+            # Récupérer le nombre total de réservations
+            booking_count = self.escrow_contract.functions.getBookingCount().call()
+            logger.info(f"[GET_STUDENT_BOOKINGS] Total bookings in contract: {booking_count}")
+            
+            # Parcourir toutes les réservations et filtrer pour cet étudiant
+            for booking_id in range(booking_count):
+                try:
+                    # Récupérer la réservation
+                    booking_data = self.escrow_contract.functions.getBooking(booking_id).call()
+                    
+                    # Unpack les données
+                    (
+                        id_,
+                        student,
+                        tutor,
+                        amount,
+                        start_time,
+                        duration,
+                        status,
+                        outcome,
+                        created_at,
+                        student_confirmed,
+                        tutor_confirmed,
+                        description,
+                        frontend_id
+                    ) = booking_data
+                    
+                    # Vérifier si cet étudiant correspond
+                    if self.w3.to_checksum_address(student) == student_address:
+                        logger.info(f"[GET_STUDENT_BOOKINGS] Booking {booking_id} is for this student")
+                        
+                        # Convertir le frontend_id en UUID
+                        frontend_id_str = self.bytes32_to_uuid(frontend_id) or frontend_id.hex()
+                        
+                        # Mapper le statut
+                        status_map = {0: "PENDING", 1: "CONFIRMED", 2: "CANCELLED", 3: "COMPLETED", 4: "DISPUTED"}
+                        
+                        booking_dict = {
+                            "id": frontend_id_str,
+                            "blockchainId": booking_id,
+                            "studentAddress": student,
+                            "tutorAddress": tutor,
+                            "amount": float(self.w3.from_wei(amount, 'ether')),
+                            "startTime": start_time,
+                            "duration": duration,
+                            "status": status_map.get(status, "UNKNOWN"),
+                            "outcome": outcome,
+                            "createdAt": created_at,
+                            "studentConfirmed": student_confirmed,
+                            "tutorConfirmed": tutor_confirmed,
+                            "description": description,
+                            "frontendId": frontend_id_str
+                        }
+                        
+                        bookings.append(booking_dict)
+                        
+                except Exception as e:
+                    logger.debug(f"[GET_STUDENT_BOOKINGS] Error reading booking {booking_id}: {e}")
+                    continue
+            
+            logger.info(f"[GET_STUDENT_BOOKINGS] Found {len(bookings)} bookings for student {student_user_id}")
+            return bookings
+            
+        except Exception as e:
+            logger.error(f"[GET_STUDENT_BOOKINGS] Error retrieving student bookings: {e}")
+            raise
+    
+    # ===================== SKILL EXCHANGE METHODS =====================
+    
+    def create_skill_exchange(
+        self, 
+        student_user_id: str, 
+        tutor_user_id: str,
+        skill_offered: str,  # JSON string
+        skill_requested: str,  # JSON string
+        frontend_exchange_id: str
+    ) -> Dict:
+        """Créer une demande d'échange de compétence sur la blockchain"""
+        try:
+            logger.info(f"[CREATE_SKILL_EXCHANGE] Student: {student_user_id}, Tutor: {tutor_user_id}")
+            
+            # Obtenir les wallets
+            student_wallet = self.get_user_wallet(student_user_id)
+            tutor_wallet = self.get_user_wallet(tutor_user_id)
+            
+            student_address = student_wallet["address"]
+            tutor_address = tutor_wallet["address"]
+            student_private_key = student_wallet["private_key"]
+            
+            # Convertir les userId en bytes32
+            student_id_bytes32 = self.uuid_to_bytes32(student_user_id)
+            tutor_id_bytes32 = self.uuid_to_bytes32(tutor_user_id)
+            frontend_id_bytes32 = self.uuid_to_bytes32(frontend_exchange_id)
+            
+            # Créer la transaction
+            nonce = self.w3.eth.get_transaction_count(student_address)
+            
+            logger.info(f"[CREATE_SKILL_EXCHANGE] studentId (bytes32): {student_id_bytes32.hex()}")
+            logger.info(f"[CREATE_SKILL_EXCHANGE] tutorId (bytes32): {tutor_id_bytes32.hex()}")
+            logger.info(f"[CREATE_SKILL_EXCHANGE] frontendId (bytes32): {frontend_id_bytes32.hex()}")
+            
+            try:
+                estimated_gas = self.skill_exchange_contract.functions.createExchange(
+                    student_id_bytes32,
+                    tutor_id_bytes32,
+                    skill_offered,
+                    skill_requested,
+                    frontend_id_bytes32
+                ).estimate_gas({'from': student_address})
+                gas_limit = int(estimated_gas * 1.2) + 50000
+            except Exception as gas_error:
+                logger.warning(f"[CREATE_SKILL_EXCHANGE] Gas estimation failed: {gas_error}")
+                gas_limit = 800000
+
+            transaction = self.skill_exchange_contract.functions.createExchange(
+                student_id_bytes32,
+                tutor_id_bytes32,
+                skill_offered,
+                skill_requested,
+                frontend_id_bytes32
+            ).build_transaction({
+                'from': student_address,
+                'nonce': nonce,
+                'gas': gas_limit,
+                'gasPrice': self.w3.eth.gas_price
+            })
+            
+            # Signer et envoyer
+            signed_txn = self.w3.eth.account.sign_transaction(transaction, student_private_key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
+            logger.info(f"[CREATE_SKILL_EXCHANGE] Transaction sent: {tx_hash.hex()}")
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+            
+            logger.info(f"[CREATE_SKILL_EXCHANGE] Receipt status: {receipt['status']}, Gas used: {receipt['gasUsed']}")
+            if receipt['status'] != 1:
+                logger.error(f"[CREATE_SKILL_EXCHANGE] Transaction failed with status {receipt['status']}")
+                logger.error(f"[CREATE_SKILL_EXCHANGE] Student: {student_address}, Tutor: {tutor_address}")
+                logger.error(f"[CREATE_SKILL_EXCHANGE] Skill offered: {skill_offered}")
+                logger.error(f"[CREATE_SKILL_EXCHANGE] Skill requested: {skill_requested}")
+                
+                # Try to get the revert reason by simulating the call
+                try:
+                    logger.info(f"[CREATE_SKILL_EXCHANGE] Attempting to simulate transaction to get revert reason...")
+                    result = self.skill_exchange_contract.functions.createExchange(
+                        student_id_bytes32,
+                        tutor_id_bytes32,
+                        skill_offered,
+                        skill_requested,
+                        frontend_id_bytes32
+                    ).call({'from': student_address})
+                    logger.info(f"[CREATE_SKILL_EXCHANGE] Call succeeded unexpectedly: {result}")
+                except Exception as call_error:
+                    error_msg = str(call_error)
+                    logger.error(f"[CREATE_SKILL_EXCHANGE] Simulated call error: {error_msg}")
+                    if "revert" in error_msg.lower():
+                        logger.error(f"[CREATE_SKILL_EXCHANGE] Contract revert reason: {error_msg}")
+                
+                raise Exception(f"Transaction failed with status {receipt['status']}")
+            
+            # Récupérer l'ID de l'échange depuis l'événement
+            exchange_id = self.skill_exchange_contract.functions.getExchangeByFrontendId(
+                frontend_id_bytes32
+            ).call()
+            
+            logger.info(f"[CREATE_SKILL_EXCHANGE] Exchange créé avec ID: {exchange_id}")
+            
+            # Créer une transaction +0 -0 pour l'historique
+            try:
+                self.transfer_tokens(
+                    from_user_id=student_user_id,
+                    to_address=student_address,  # À soi-même
+                    amount=0.0,
+                    description=f"Skill Exchange Request: {json.loads(skill_requested)['name']}"
+                )
+            except Exception as e:
+                logger.warning(f"[CREATE_SKILL_EXCHANGE] Could not create history transaction: {e}")
+            
+            return {
+                "exchangeId": exchange_id,
+                "frontendId": frontend_exchange_id,
+                "transactionHash": tx_hash.hex(),
+                "studentId": student_user_id,
+                "tutorId": tutor_user_id,
+                "skillOffered": skill_offered,
+                "skillRequested": skill_requested,
+                "status": "PENDING"
+            }
+            
+        except Exception as e:
+            logger.error(f"[CREATE_SKILL_EXCHANGE] Error: {e}")
+            raise
+    
+    def accept_skill_exchange(self, exchange_id: int, tutor_user_id: str) -> Dict:
+        """Accepter un échange de compétence"""
+        try:
+            logger.info(f"[ACCEPT_SKILL_EXCHANGE] Exchange ID: {exchange_id}, Tutor: {tutor_user_id}")
+            
+            tutor_wallet = self.get_user_wallet(tutor_user_id)
+            tutor_address = tutor_wallet["address"]
+            tutor_private_key = tutor_wallet["private_key"]
+            tutor_id_bytes32 = self.uuid_to_bytes32(tutor_user_id)
+            
+            nonce = self.w3.eth.get_transaction_count(tutor_address)
+            
+            transaction = self.skill_exchange_contract.functions.acceptExchange(
+                exchange_id,
+                tutor_id_bytes32
+            ).build_transaction({
+                'from': tutor_address,
+                'nonce': nonce,
+                'gas': 200000,
+                'gasPrice': self.w3.eth.gas_price
+            })
+            
+            signed_txn = self.w3.eth.account.sign_transaction(transaction, tutor_private_key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+            
+            if receipt['status'] != 1:
+                raise Exception("Transaction failed")
+            
+            logger.info(f"[ACCEPT_SKILL_EXCHANGE] Exchange {exchange_id} accepted")
+            
+            return {
+                "exchangeId": exchange_id,
+                "status": "ACCEPTED",
+                "transactionHash": tx_hash.hex()
+            }
+            
+        except Exception as e:
+            logger.error(f"[ACCEPT_SKILL_EXCHANGE] Error: {e}")
+            raise
+    
+    def reject_skill_exchange(self, exchange_id: int, tutor_user_id: str) -> Dict:
+        """Rejeter un échange de compétence"""
+        try:
+            logger.info(f"[REJECT_SKILL_EXCHANGE] Exchange ID: {exchange_id}, Tutor: {tutor_user_id}")
+            
+            tutor_wallet = self.get_user_wallet(tutor_user_id)
+            tutor_address = tutor_wallet["address"]
+            tutor_private_key = tutor_wallet["private_key"]
+            tutor_id_bytes32 = self.uuid_to_bytes32(tutor_user_id)
+            
+            nonce = self.w3.eth.get_transaction_count(tutor_address)
+            
+            transaction = self.skill_exchange_contract.functions.rejectExchange(
+                exchange_id,
+                tutor_id_bytes32
+            ).build_transaction({
+                'from': tutor_address,
+                'nonce': nonce,
+                'gas': 200000,
+                'gasPrice': self.w3.eth.gas_price
+            })
+            
+            signed_txn = self.w3.eth.account.sign_transaction(transaction, tutor_private_key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+            
+            if receipt['status'] != 1:
+                raise Exception("Transaction failed")
+            
+            logger.info(f"[REJECT_SKILL_EXCHANGE] Exchange {exchange_id} rejected")
+            
+            return {
+                "exchangeId": exchange_id,
+                "status": "REJECTED",
+                "transactionHash": tx_hash.hex()
+            }
+            
+        except Exception as e:
+            logger.error(f"[REJECT_SKILL_EXCHANGE] Error: {e}")
+            raise
+    
+    def complete_skill_exchange(self, exchange_id: int, user_id: str) -> Dict:
+        """Compléter un échange de compétence"""
+        try:
+            logger.info(f"[COMPLETE_SKILL_EXCHANGE] Exchange ID: {exchange_id}, User: {user_id}")
+            
+            user_wallet = self.get_user_wallet(user_id)
+            user_address = user_wallet["address"]
+            user_private_key = user_wallet["private_key"]
+            
+            nonce = self.w3.eth.get_transaction_count(user_address)
+            
+            transaction = self.skill_exchange_contract.functions.completeExchange(
+                exchange_id
+            ).build_transaction({
+                'from': user_address,
+                'nonce': nonce,
+                'gas': 200000,
+                'gasPrice': self.w3.eth.gas_price
+            })
+            
+            signed_txn = self.w3.eth.account.sign_transaction(transaction, user_private_key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+            
+            if receipt['status'] != 1:
+                raise Exception("Transaction failed")
+            
+            logger.info(f"[COMPLETE_SKILL_EXCHANGE] Exchange {exchange_id} completed")
+            
+            return {
+                "exchangeId": exchange_id,
+                "status": "COMPLETED",
+                "transactionHash": tx_hash.hex()
+            }
+            
+        except Exception as e:
+            logger.error(f"[COMPLETE_SKILL_EXCHANGE] Error: {e}")
+            raise
+    
+    def get_skill_exchange(self, exchange_id: int) -> Dict:
+        """Récupérer les détails d'un échange"""
+        try:
+            exchange_data = self.skill_exchange_contract.functions.getExchange(exchange_id).call()
+            
+            (
+                student_id_bytes32,
+                tutor_id_bytes32,
+                skill_offered,
+                skill_requested,
+                status,
+                created_at,
+                frontend_id_bytes32
+            ) = exchange_data
+            
+            # Convertir bytes32 en UUID
+            student_id = self.bytes32_to_uuid(student_id_bytes32)
+            tutor_id = self.bytes32_to_uuid(tutor_id_bytes32)
+            frontend_id = self.bytes32_to_uuid(frontend_id_bytes32)
+            
+            status_map = {0: "PENDING", 1: "ACCEPTED", 2: "REJECTED", 3: "COMPLETED"}
+            
+            return {
+                "id": exchange_id,
+                "studentId": student_id,
+                "tutorId": tutor_id,
+                "skillOffered": skill_offered,
+                "skillRequested": skill_requested,
+                "status": status_map.get(status, "UNKNOWN"),
+                "createdAt": created_at,
+                "frontendId": frontend_id
+            }
+            
+        except Exception as e:
+            logger.error(f"[GET_SKILL_EXCHANGE] Error: {e}")
+            raise
+    
+    def get_user_skill_exchanges(self, user_id: str) -> List[Dict]:
+        """Récupérer tous les échanges d'un utilisateur (as student or tutor)"""
+        try:
+            logger.info(f"[GET_USER_SKILL_EXCHANGES] User: {user_id}")
+            
+            user_id_bytes32 = self.uuid_to_bytes32(user_id)
+            exchanges = []
+            
+            # Récupérer le nombre total d'échanges
+            exchange_count = self.skill_exchange_contract.functions.getExchangeCount().call()
+            logger.info(f"[GET_USER_SKILL_EXCHANGES] Total exchanges in contract: {exchange_count}")
+            
+            # Parcourir tous les échanges
+            for exchange_id in range(1, exchange_count + 1):
+                try:
+                    exchange_data = self.skill_exchange_contract.functions.getExchange(exchange_id).call()
+                    
+                    (
+                        student_id_bytes32,
+                        tutor_id_bytes32,
+                        skill_offered,
+                        skill_requested,
+                        status,
+                        created_at,
+                        frontend_id_bytes32
+                    ) = exchange_data
+                    
+                    # Vérifier si cet utilisateur est impliqué
+                    if student_id_bytes32 == user_id_bytes32 or tutor_id_bytes32 == user_id_bytes32:
+                        student_id = self.bytes32_to_uuid(student_id_bytes32)
+                        tutor_id = self.bytes32_to_uuid(tutor_id_bytes32)
+                        frontend_id = self.bytes32_to_uuid(frontend_id_bytes32)
+                        
+                        status_map = {0: "PENDING", 1: "ACCEPTED", 2: "REJECTED", 3: "COMPLETED"}
+                        
+                        exchanges.append({
+                            "id": exchange_id,
+                            "studentId": student_id,
+                            "tutorId": tutor_id,
+                            "skillOffered": skill_offered,
+                            "skillRequested": skill_requested,
+                            "status": status_map.get(status, "UNKNOWN"),
+                            "createdAt": created_at,
+                            "frontendId": frontend_id
+                        })
+                        
+                except Exception as e:
+                    logger.debug(f"[GET_USER_SKILL_EXCHANGES] Error reading exchange {exchange_id}: {e}")
+                    continue
+            
+            logger.info(f"[GET_USER_SKILL_EXCHANGES] Found {len(exchanges)} exchanges for user {user_id}")
+            return exchanges
+            
+        except Exception as e:
+            logger.error(f"[GET_USER_SKILL_EXCHANGES] Error: {e}")
+            raise
 
 # Instance globale
 blockchain_manager = BlockchainManager()
