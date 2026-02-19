@@ -1,24 +1,52 @@
 const axios = require('axios');
 const NodeCache = require('node-cache');
+const AIConfigManager = require('../utils/AIConfigManager');
 
 class ChatbotService {
     constructor() {
-        this.apiProvider = process.env.LLM_PROVIDER || 'openrouter';
-        this.ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-        
-        if (this.apiProvider === 'openrouter') {
-            this.model = process.env.OPENROUTER_MODEL || 'deepseek/deepseek-r1-0528:free';
-        } else {
-            this.model = process.env.OLLAMA_MODEL || 'llama3';
-        }
+        // Pas de valeurs par défaut - tout vient de la DB
+        this.apiProvider = null;
+        this.model = null;
+        this.apiKey = null;
         
         this.embedModel = process.env.OLLAMA_EMBED_MODEL || 'nomic-embed-text';
         this.ragServiceUrl = process.env.RAG_SERVICE_URL || 'http://localhost:3005';
         this.cache = new NodeCache({ stdTTL: 3600 });
+        this.configManager = new AIConfigManager();
     }
 
+    /**
+     * Charge la configuration depuis la base de données
+     */
+    async ensureConfig() {
+        try {
+            // Récupérer UNIQUEMENT depuis la base de données
+            const cfg = await this.configManager.getConfig('global');
+            
+            if (!cfg) {
+                throw new Error('Configuration IA globale manquante');
+            }
+
+            this.apiProvider = cfg.provider || 'openrouter';
+            this.model = cfg.modelName;
+            this.apiKey = cfg.apiKey;
+            
+            console.log(`✅ [Chatbot] Config chargée depuis DB: ${this.model} | ${this.apiKey.slice(0, 8)}...`);
+            
+        } catch (error) {
+            console.error('❌ [Chatbot] Erreur chargement config:', error.message);
+            // Relancer l'erreur pour que le frontend voie le problème
+            throw new Error(`Configuration IA globale manquante: Veuillez configurer l'IA dans la page Admin`);
+        }
+    }
+
+    /**
+     * Traite un message du chat
+     */
     async chat(message, history = [], context = '') {
         try {
+            // ensureConfig va échouer si pas de config DB
+            await this.ensureConfig();
             const startTime = Date.now();
 
             const chatCacheKey = `chat:${this.apiProvider}:${this.model}:${message.substring(0, 200)}:${context.substring(0, 200)}`;
@@ -41,10 +69,13 @@ class ChatbotService {
 
             const intent = await this.detectIntent(message);
             console.log(`🎯 Intent détecté: ${intent.type} (${Date.now() - startTime}ms)`);
+
             
             let ragResults = null;
             if (intent.shouldSearchRag) {
-                ragResults = await this.performRagSearch(message, intent);
+                const expandedQuery = await this.expandQueryWithAI(message);
+                console.log(`🧠 Requete etendue: ${expandedQuery}`);
+                ragResults = await this.performRagSearch(expandedQuery, intent, { useRawQuery: true, originalQuery: message });
                 console.log(`📚 RAG Results: ${ragResults?.found ? ragResults.count + ' résultats' : 'Aucun résultat'} (${Date.now() - startTime}ms)`);
             }
             
@@ -71,23 +102,61 @@ class ChatbotService {
             console.error('❌ [ChatbotService] Erreur:', error.message);
             return {
                 success: false,
-                reply: "Désolé, une erreur s'est produite. Pouvez-vous reformuler votre question ?",
-                error: error.message
+                reply: "⚠️ Service IA non configuré. Veuillez contacter l'administrateur pour configurer l'IA dans la page Admin.",
+                error: error.message,
+                requiresConfig: true
             };
         }
     }
 
+    /**
+     * Génère la réponse
+     */
     async generateResponse(message, history, context, ragResults, intent) {
-        // Si pas de recherche RAG, utiliser OpenRouter normalement
         if (!intent.shouldSearchRag || !ragResults?.found) {
             const systemPrompt = this.buildSystemPrompt(context, ragResults, intent);
             return await this.callOpenRouter(message, history, systemPrompt);
         }
-        
-        // Si on a des résultats RAG, générer le format spécial
-        return this.formatTutorCards(ragResults, message);
+
+        // Réponse hybride : intro/conclusion IA, listing structuré (cartes)
+        const tutors = ragResults.tutors;
+        let tutorsSummary = tutors.map((tutor, idx) => {
+            return `Tuteur ${idx+1} :\nNom : ${tutor.name}\nMatière : ${tutor.subject}\nCompétences : ${(tutor.skills||[]).join(', ')}\nNiveau : ${tutor.level}\nTarif : ${tutor.price}\nLieu : ${tutor.location}\nMode : ${tutor.teachingMode}`;
+        }).join("\n---\n");
+
+        // On demande à l'IA une phrase d'intro et de conclusion personnalisée
+        const systemPrompt = [
+            "Tu es l'assistant IA d'EduMate, une plateforme de mise en relation élèves/tuteurs.",
+            "Voici un résumé des profils trouvés :",
+            tutorsSummary,
+            "Génère uniquement :\n- Une phrase d'introduction personnalisée pour l'utilisateur (1-2 phrases max)\n- Une phrase de conclusion ou de conseil (1-2 phrases max)\nN'inclus pas de listing, pas de détails, pas de répétition des profils. Le listing sera ajouté par le système."
+        ].join("\n\n");
+
+        const iaReply = await this.callOpenRouter(message, history, systemPrompt);
+
+        // Listing structuré (cartes)
+        let response = '';
+        if (iaReply) {
+            response += iaReply + "\n\n";
+        }
+        response += `🎯 __${tutors.length} tuteur${tutors.length > 1 ? 's' : ''} trouvé${tutors.length > 1 ? 's' : ''}__ pour "${message}"\n\n`;
+        tutors.forEach((tutor, index) => {
+            response += this.formatSingleTutorCard(tutor, index + 1);
+            if (index < tutors.length - 1) {
+                response += "\n" + "─".repeat(40) + "\n\n";
+            }
+        });
+        response += "\n📋 Prochaines étapes :\n";
+        response += "• 📅 Réserver une séance d'essai\n";
+        response += "• 💬 Contacter directement via le chat\n";
+        response += "• 🔄 Élargir la recherche avec d'autres critères\n\n";
+        response += "Dites-moi sur quel tuteur vous souhaitez plus d'informations !";
+        return response;
     }
 
+    /**
+     * Formate les cartes de tuteurs
+     */
     formatTutorCards(ragResults, originalMessage) {
         const tutors = ragResults.tutors;
         
@@ -95,18 +164,16 @@ class ChatbotService {
             return "Je n'ai trouvé aucun tuteur correspondant à votre recherche. Essayez d'élargir vos critères !";
         }
         
-        let response = `🎯 ${tutors.length} tuteur${tutors.length > 1 ? 's' : ''} trouvé${tutors.length > 1 ? 's' : ''} pour "${originalMessage}"\n\n`;
+        let response = `🎯 __${tutors.length} tuteur${tutors.length > 1 ? 's' : ''} trouvé${tutors.length > 1 ? 's' : ''}__ pour "${originalMessage}"\n\n`;
         
         tutors.forEach((tutor, index) => {
             response += this.formatSingleTutorCard(tutor, index + 1);
             
-            // Ajouter un séparateur sauf pour le dernier
             if (index < tutors.length - 1) {
                 response += "\n" + "─".repeat(40) + "\n\n";
             }
         });
         
-        // Ajouter les actions possibles
         response += "\n📋 Prochaines étapes :\n";
         response += "• 👉 Voir le profil complet (expérience, disponibilités, avis)\n";
         response += "• 📅 Réserver une séance d'essai\n";
@@ -118,23 +185,22 @@ class ChatbotService {
         return response;
     }
 
+    /**
+     * Formate une carte de tuteur
+     */
     formatSingleTutorCard(tutor, number) {
-        // Récupérer le tutorId (depuis tutor.id ou tutorId)
-        const tutorId = tutor.tutorId || tutor.id;
-        const annonceId = tutor.annonceId || '';
-        
-        // Titre sans **
-        let card = `${number}. ${tutor.name}\n`;
-        
-        // Évaluation avec étoiles
+        const tutorId = tutor.tutorId ? String(tutor.tutorId) : '';
+        const annonceIqwed = tutor.annonceId ? String(tutor.annonceId) : '';
+
+        let card = `${number}. __${tutor.name}__\n`;
+
         if (tutor.rating) {
             const stars = '⭐'.repeat(Math.round(tutor.rating));
             card += `Évaluation : ${stars} (${tutor.rating}/5)\n`;
         } else {
             card += `Nouveau tuteur\n`;
         }
-        
-        // Compétences
+
         if (tutor.skills && tutor.skills.length > 0) {
             const skillsToShow = tutor.skills.slice(0, 5);
             card += `Compétences : ${skillsToShow.join(', ')}`;
@@ -143,119 +209,40 @@ class ChatbotService {
             }
             card += `\n`;
         }
-        
-        // Détails
+
         card += `Matière : ${tutor.subject}\n`;
         if (tutor.level && tutor.level !== 'Non spécifié') {
             card += `Niveau : ${tutor.level}\n`;
         }
         card += `Tarif : ${tutor.price}\n`;
-        
+
         if (tutor.location && tutor.location !== 'Non spécifié') {
             card += `📍 ${tutor.location}\n`;
         }
-        
+
         if (tutor.teachingMode) {
             card += `Mode : ${tutor.teachingMode}\n`;
         }
-        
-        // Badge si disponible
+
         if (tutor.rating >= 4.5) {
             card += `🏆 Tuteur expert\n`;
         } else if (tutor.reviews && tutor.reviews > 10) {
             card += `🔥 Populaire (${tutor.reviews} avis)\n`;
         }
-        
-        // Lien cliquable avec le format <LINK>
-        card += `\n<LINK tutorId="${tutorId}" annonceId="${annonceId}">👉 Voir le profil complet</LINK>`;
-        
+
+        // Lien unique, jamais de doublon, même si IDs vides ou dupliqués
+        if (card.indexOf('|tuteur|') === -1 && (tutorId || annonceId)) {
+            card += `\n👉 Voir le profil complet |tuteur|${tutorId}|${annonceId}|`;
+        } else if (card.indexOf('|tuteur|') === -1) {
+            card += `\n👉 Voir le profil complet`;
+        }
+
         return card;
     }
 
-   formatTutorCards(ragResults, originalMessage) {
-    const tutors = ragResults.tutors;
-    
-    if (tutors.length === 0) {
-        return "Je n'ai trouvé aucun tuteur correspondant à votre recherche. Essayez d'élargir vos critères !";
-    }
-    
-    // Utiliser __GRAS__ pour marquer le texte à mettre en gras
-    let response = `🎯 __${tutors.length} tuteur${tutors.length > 1 ? 's' : ''} trouvé${tutors.length > 1 ? 's' : ''}__ pour "${originalMessage}"\n\n`;
-    
-    tutors.forEach((tutor, index) => {
-        response += this.formatSingleTutorCard(tutor, index + 1);
-        
-        // Ajouter un séparateur sauf pour le dernier
-        if (index < tutors.length - 1) {
-            response += "\n" + "─".repeat(40) + "\n\n";
-        }
-    });
-    
-    // Ajouter les actions possibles
-    response += "\n📋 Prochaines étapes :\n";
-    response += "• 👉 Voir le profil complet (expérience, disponibilités, avis)\n";
-    response += "• 📅 Réserver une séance d'essai\n";
-    response += "• 💬 Contacter directement via le chat\n";
-    response += "• 🔄 Élargir la recherche avec d'autres critères\n\n";
-    
-    response += "Dites-moi sur quel tuteur vous souhaitez plus d'informations !";
-    
-    return response;
-}
-
-formatSingleTutorCard(tutor, number) {
-    // Récupérer le tutorId (depuis tutor.id ou tutorId)
-    const tutorId = tutor.tutorId;
-    const annonceId = tutor.annonceId || '';
-    
-    // Mettre le nom en gras avec __texte__
-    let card = `${number}. __${tutor.name}__\n`;
-    
-    // Évaluation avec étoiles
-    if (tutor.rating) {
-        const stars = '⭐'.repeat(Math.round(tutor.rating));
-        card += `Évaluation : ${stars} (${tutor.rating}/5)\n`;
-    } else {
-        card += `Nouveau tuteur\n`;
-    }
-    
-    // Compétences
-    if (tutor.skills && tutor.skills.length > 0) {
-        const skillsToShow = tutor.skills.slice(0, 5);
-        card += `Compétences : ${skillsToShow.join(', ')}`;
-        if (tutor.skills.length > 5) {
-            card += ` et ${tutor.skills.length - 5} autres`;
-        }
-        card += `\n`;
-    }
-    
-    // Détails
-    card += `Matière : ${tutor.subject}\n`;
-    if (tutor.level && tutor.level !== 'Non spécifié') {
-        card += `Niveau : ${tutor.level}\n`;
-    }
-    card += `Tarif : ${tutor.price}\n`;
-    
-    if (tutor.location && tutor.location !== 'Non spécifié') {
-        card += `📍 ${tutor.location}\n`;
-    }
-    
-    if (tutor.teachingMode) {
-        card += `Mode : ${tutor.teachingMode}\n`;
-    }
-    
-    // Badge si disponible
-    if (tutor.rating >= 4.5) {
-        card += `🏆 Tuteur expert\n`;
-    } else if (tutor.reviews && tutor.reviews > 10) {
-        card += `🔥 Populaire (${tutor.reviews} avis)\n`;
-    }
-    
-    // Lien simple cliquable: |TEXT|tutorId|annonceId|
-    card += `\n👉 Voir le profil complet |tuteur|${tutorId}|${annonceId}|`;
-    
-    return card;
-}
+    /**
+     * Détecte l'intention du message
+     */
     async detectIntent(message) {
         const lowerMsg = message.toLowerCase();
         
@@ -299,23 +286,27 @@ formatSingleTutorCard(tutor, number) {
         };
     }
 
-    async performRagSearch(message, intent) {
+    /**
+     * Effectue une recherche RAG
+     */
+    async performRagSearch(message, intent, options = {}) {
         try {
             console.log(`🔍 Appel RAG Service: ${this.ragServiceUrl}`);
-            
-            const { subject, level, priceRange, location } = this.extractSearchParams(message);
-            
+
+            const originalQuery = options.originalQuery || message;
+            const { subject, level, priceRange, location } = this.extractSearchParams(originalQuery);
+
             const params = {
-                q: subject || message,
-                limit: 3  // Maximum 3 tuteurs pour le format carte
+                q: options.useRawQuery ? message : (subject || message),
+                limit: 2
             };
-            
+
             if (level) params.level = level;
             if (priceRange?.max) params.maxPrice = priceRange.max;
             if (location) params.location = location;
-            
+
             console.log(`🔍 Paramètres RAG:`, params);
-            
+
             const ragCacheKey = `rag:${params.q}:${params.level || ''}:${params.maxPrice || ''}:${params.location || ''}`;
             const cachedRag = this.cache.get(ragCacheKey);
             if (cachedRag) {
@@ -326,31 +317,24 @@ formatSingleTutorCard(tutor, number) {
                 `${this.ragServiceUrl}/search/semantic`,
                 {
                     params: params,
-                    timeout: 5000
+                    timeout: 1500
                 }
             );
-            
+
             console.log(`📊 Réponse RAG reçue:`, {
                 success: response.data?.success,
                 total: response.data?.data?.total,
                 resultsCount: response.data?.data?.results?.length
             });
-            
+
             if (response.data?.success && response.data?.data?.results?.length > 0) {
                 const results = response.data.data.results;
-                
-                const tutors = results.map(t => {
-                    // Extraire les compétences des sujets
-                    const skills = Array.isArray(t.subjects) ? t.subjects : 
-                                 t.subjects ? [t.subjects] : 
-                                 t.description ? this.extractSkillsFromText(t.description) : [];
-                    
-                    // Déterminer le badge
-                    let badge = 'Disponible';
-                    if (t.tutorRating >= 4.5) badge = 'Expert';
-                    if (t.tutorRating >= 4.0 && t.tutorRating < 4.5) badge = 'Populaire';
-                    if (!t.tutorRating || t.tutorRating === 0) badge = 'Nouveau';
-                    
+
+                let tutors = results.map(t => {
+                    const skills = Array.isArray(t.subjects) ? t.subjects :
+                        t.subjects ? [t.subjects] :
+                        t.description ? this.extractSkillsFromText(t.description) : [];
+
                     return {
                         id: t.annonceId || t.tutorId,
                         name: t.tutorName || 'Tuteur EduMate',
@@ -363,16 +347,14 @@ formatSingleTutorCard(tutor, number) {
                         location: this.formatLocation(t.location),
                         teachingMode: this.formatTeachingMode(t.teachingMode),
                         description: t.description || '',
-                        badge: badge,
-                        specialties: skills.slice(0, 5),
                         tutorId: t.tutorId,
                         annonceId: t.annonceId
                     };
                 });
-                
+
                 const payload = {
-                    found: true,
-                    count: results.length,
+                    found: tutors.length > 0,
+                    count: tutors.length,
                     tutors: tutors,
                     filters: { subject, level, location, priceRange }
                 };
@@ -380,14 +362,17 @@ formatSingleTutorCard(tutor, number) {
                 return payload;
             }
 
-            const emptyPayload = {
+            if (options.useRawQuery && originalQuery !== message) {
+                console.log('⚠️ Aucun resultat avec requete etendue, fallback sur requete originale');
+                return await this.performRagSearch(originalQuery, intent, { useRawQuery: false, originalQuery });
+            }
+
+            return {
                 found: false,
                 count: 0,
                 tutors: [],
                 filters: { subject, level, location, priceRange }
             };
-            this.cache.set(ragCacheKey, emptyPayload, 120);
-            return emptyPayload;
 
         } catch (error) {
             console.error('❌ Erreur RAG search:', error.message);
@@ -401,6 +386,50 @@ formatSingleTutorCard(tutor, number) {
         }
     }
 
+    async expandQueryWithAI(message) {
+        try {
+            const systemPrompt = 'Tu es un assistant qui reformule une recherche de cours. Tu dois retourner un JSON valide et concis.';
+            const userPrompt = `Reformule la demande utilisateur en une requete de recherche plus ciblée.\n\nDemande: "${message}"\n\nRetourne un JSON STRICT avec:\n{\n  "mainQuery": "...",\n  "relatedSubjects": ["...", "...", "..."]\n}\n\nRegles:\n- 1 a 3 sujets proches maximum\n- Langue: francais\n- Pas de texte hors JSON`;
+
+            const response = await axios.post(
+                'https://openrouter.ai/api/v1/chat/completions',
+                {
+                    model: this.model,
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userPrompt }
+                    ],
+                    max_tokens: 80,
+                    temperature: 0.2
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${this.apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: 1500
+                }
+            );
+
+            const raw = response.data?.choices?.[0]?.message?.content || '';
+            const jsonMatch = raw.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) return message;
+
+            const parsed = JSON.parse(jsonMatch[0]);
+            const mainQuery = parsed.mainQuery || message;
+            const related = Array.isArray(parsed.relatedSubjects) ? parsed.relatedSubjects : [];
+            const combined = [mainQuery, ...related].filter(Boolean).join(', ');
+
+            return combined || message;
+        } catch (error) {
+            console.warn('⚠️ Expansion requete IA echouee, fallback:', error.message);
+            return message;
+        }
+    }
+
+    /**
+     * Extrait les paramètres de recherche du message
+     */
     extractSearchParams(message) {
         const subjects = [
             'mathématiques', 'maths', 'français', 'anglais', 'english',
@@ -450,6 +479,9 @@ formatSingleTutorCard(tutor, number) {
         return params;
     }
 
+    /**
+     * Extrait les compétences du texte
+     */
     extractSkillsFromText(text) {
         const commonSkills = [
             'Java', 'Python', 'JavaScript', 'React', 'Node.js', 'Spring Boot', 'REST API',
@@ -489,48 +521,49 @@ formatSingleTutorCard(tutor, number) {
         const modes = {
             'online': 'En ligne',
             'in_person': 'En présentiel',
-            'both': 'En ligne & présentiel',
-            'hybrid': 'Hybride'
+            'both': 'Les deux',
+            'hybrid': 'Les deux'
         };
-        return modes[mode] || mode || 'À définir';
+        return modes[mode] || mode || 'Les deux';
     }
 
     buildSystemPrompt(context, ragResults, intent) {
-        let systemPrompt = `# CONTEXTE
-    Tu es l'assistant IA d'EduMate, une plateforme de mise en relation élèves/tuteurs.
+        return `# CONTEXTE
+Tu es l'assistant IA d'EduMate, une plateforme de mise en relation élèves/tuteurs.
 
-    ${context}
+${context}
 
-    # RÈGLES DE RÉPONSE STRICTES
-    1. Pour le formatage:
-    - JAMAIS d'astérisques * ou **
-    - Utilise UNIQUEMENT __texte__ pour le gras
-    - Pas d'italique du tout
-    - Les listes utilisent des tirets -
+# RÈGLES DE RÉPONSE STRICTES
+1. Pour le formatage:
+   - JAMAIS d'astérisques * ou **
+   - Utilise UNIQUEMENT __texte__ pour le gras
+   - Pas d'italique du tout
+   - Les listes utilisent des tirets -
 
-    2. Pour les questions générales sur EduMate :
-    - Réponse naturelle et utile
-    - Propose l'étape suivante
-    - Utilise des listes à puces si plusieurs points
+2. Pour les questions générales sur EduMate :
+   - Réponse naturelle et utile
+   - Propose l'étape suivante
+   - Utilise des listes à puces si plusieurs points
 
-    3. IMPORTANT - Exemples :
-    - INCORRECT: *texte en italique* ou **texte gras**
-    - CORRECT: __texte en gras__
-    - INCORRECT: 🔹 *Créer des algorithmes*
-    - CORRECT: - __Créer des algorithmes__
+3. IMPORTANT - Exemples :
+   - INCORRECT: *texte en italique* ou **texte gras**
+   - CORRECT: __texte en gras__
+   - INCORRECT: 🔹 *Créer des algorithmes*
+   - CORRECT: - __Créer des algorithmes__
 
-    4. Structure pour le gras:
-    - Utilise __ avant et après le texte à mettre en gras
-    - Exemple: __Cette partie est en gras__
-    - Ne JAMAIS utiliser * ou **`;
-
-        return systemPrompt;
+4. Structure pour le gras:
+   - Utilise __ avant et après le texte à mettre en gras
+   - Exemple: __Cette partie est en gras__
+   - Ne JAMAIS utiliser * ou **`;
     }
 
+    /**
+     * Appelle OpenRouter
+     */
     async callOpenRouter(message, history, systemPrompt) {
         const messages = [
             { role: 'system', content: systemPrompt },
-            ...history.slice(-2).map(m => ({ role: m.role, content: m.content })),
+            ...history.slice(-1).map(m => ({ role: m.role, content: m.content })),
             { role: 'user', content: message }
         ];
         
@@ -550,8 +583,8 @@ formatSingleTutorCard(tutor, number) {
                 {
                     model: this.model,
                     messages,
-                    max_tokens: 400,
-                    temperature: 0.5,
+                    max_tokens: 300,
+                    temperature: 0.3,
                     top_p: 0.9,
                     top_k: 40,
                     frequency_penalty: 0.1,
@@ -560,27 +593,22 @@ formatSingleTutorCard(tutor, number) {
                 },
                 {
                     headers: {
-                        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                        'Authorization': `Bearer ${this.apiKey}`,
                         'HTTP-Referer': 'http://localhost:5173',
                         'X-Title': 'EduMate Chatbot',
                         'Content-Type': 'application/json'
                     },
-                    timeout: 10000
+                    timeout: 2500
                 }
             );
             
             let reply = response.data.choices[0].message.content;
             const duration = Date.now() - startTime;
             
-            // Remplacer les astérisques d'italique par du gras avec __
-            // *texte* → __texte__
+            // Remplacer les astérisques par du gras avec __
             reply = reply.replace(/\*([^*]+?)\*/g, '__$1__');
-            
-            // Supprimer les ** (gras markdown)
-            // **texte** → __texte__
             reply = reply.replace(/\*\*([^*]+?)\*\*/g, '__$1__');
             
-            // Cache les réponses
             if (message.length < 100) {
                 this.cache.set(cacheKey, reply, 1800);
             }
@@ -598,24 +626,7 @@ formatSingleTutorCard(tutor, number) {
             throw new Error('Erreur OpenRouter: ' + (error.response?.data?.error?.message || error.message));
         }
     }
-    
-    async generateEmbedding(text) {
-        try {
-            const response = await axios.post(
-                `${this.ollamaUrl}/api/embeddings`,
-                {
-                    model: this.embedModel,
-                    prompt: text
-                },
-                { timeout: 10000 }
-            );
-            
-            return response.data.embedding;
-        } catch (error) {
-            console.error('❌ Embedding Error:', error.message);
-            return null;
-        }
-    }
+
 }
 
 module.exports = new ChatbotService();

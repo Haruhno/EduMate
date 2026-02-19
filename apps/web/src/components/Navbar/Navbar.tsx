@@ -145,8 +145,16 @@ const Navbar: React.FC = () => {
   };
 
   const handleProfileClick = () => {
+    // Si admin -> aller à /admin
+    if (currentUser?.role === 'admin') {
+      navigate('/admin');
+      setIsMenuOpen(false);
+      setIsUserMenuOpen(false);
+      return;
+    }
+
+    // Sinon, Compléter le profil pour tutor/student
     if (profileStatus?.hasProfile && !profileStatus?.isCompleted) {
-      // Rediriger vers la complétion du profil
       navigate('/completer-profil', { 
         state: { 
           role: currentUser?.role,
@@ -154,10 +162,8 @@ const Navbar: React.FC = () => {
         } 
       });
     } else if (profileStatus?.hasProfile && profileStatus?.isCompleted) {
-      // Rediriger vers la page de profil complet
       navigate('/mon-profil');
     } else {
-      // Commencer un nouveau profil
       navigate('/completer-profil', { 
         state: { 
           role: currentUser?.role,
@@ -170,7 +176,6 @@ const Navbar: React.FC = () => {
     setIsMenuOpen(false);
     setIsUserMenuOpen(false);
   };
-
   const closeMenu = () => setIsMenuOpen(false);
 
   // Fonction pour gérer le scroll vers la section
@@ -274,7 +279,7 @@ const Navbar: React.FC = () => {
                 onClick={handleProfileClick}
                 className={`${styles.profileButtonMobile} ${isMenuOpen ? styles.active : ""}`}
               >
-                Mon profil
+                {currentUser?.role === 'admin' ? 'Configuration' : 'Mon profil'}
               </button>
             </li>
             <li className={styles.mobileAuth}>
@@ -335,7 +340,11 @@ const Navbar: React.FC = () => {
                     onClick={handleProfileClick}
                     className={styles.dropdownAction} 
                   >
-                    {profileStatus?.isCompleted ? 'Voir mon profil' : 'Compléter mon profil'}
+                    {currentUser?.role === 'admin' 
+                      ? 'Configuration' 
+                      : profileStatus?.isCompleted 
+                        ? 'Voir mon profil' 
+                        : 'Compléter mon profil'}
                   </button>
                   <button 
                     onClick={handleLogout}

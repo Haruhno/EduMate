@@ -4,8 +4,10 @@ import TutorCard from '../../components/TutorCard/TutorCard';
 import SearchBar from '../../components/SearchBar/SearchBar';
 import FiltersSidebar from '../../components/FiltersSideBar/FiltersSidebar';
 import annonceService from '../../services/annonceService';
+
 import type { AnnonceFromDB } from '../../services/annonceService';
 import ragService from '../../services/rag-service';
+import { fetchTutorAISummary } from '../../services/aiSummaryService';
 
 export interface Annonce {
   id: string;
@@ -64,6 +66,8 @@ const TutorSearchPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalAnnonces, setTotalAnnonces] = useState(0);
+  const [aiSummary, setAiSummary] = useState<{ intro: string; conclusion: string } | null>(null);
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const annoncesPerPage = 9;
@@ -168,15 +172,16 @@ const TutorSearchPage: React.FC = () => {
   // Récupérer les annonces avec recherche sémantique
   const fetchAnnonces = async (page: number = 1, subject?: string) => {
     setLoading(true);
+    setAiSummary(null);
+    setAiSummaryLoading(false);
     try {
       // DÉTERMINER LE MODE DE RECHERCHE
       const hasExplicitSearch = (subject || searchQuery || '').trim().length > 0;
       const query = (subject || searchQuery || '').trim();
-      
-      if (!hasExplicitSearch) {        
+      if (!hasExplicitSearch) {
         const response = await annonceService.searchAnnonces({
           page: 1,
-          limit: 100, // Limite très haute pour tout récupérer
+          limit: 100,
           level: filters.level,
           minRating: filters.rating,
           maxPrice: filters.priceRange[1],
@@ -184,7 +189,6 @@ const TutorSearchPage: React.FC = () => {
           teachingMode: filters.teachingMode,
           location: filters.location
         });
-
         if (response.success && response.data?.annonces) {
           const dbAnnonces = response.data.annonces.map(mapAnnonceToTutor);
           setAnnonces(dbAnnonces);
@@ -192,10 +196,10 @@ const TutorSearchPage: React.FC = () => {
           setTotalAnnonces(dbAnnonces.length);
           setCurrentPage(1);
         }
+        setAiSummary(null);
       } else {
         // MODE SEARCH: Recherche sémantique RAG
         console.log('🔍 Mode SEARCH: recherche sémantique avec:', query);
-        
         const response = await ragService.semanticSearch(
           query,
           {
@@ -205,20 +209,34 @@ const TutorSearchPage: React.FC = () => {
             teachingMode: filters.teachingMode || undefined,
             location: filters.location || undefined
           },
-          annoncesPerPage // Limite normale pour la recherche
+          annoncesPerPage
         );
-
         if (response.success && response.data?.results) {
-          const dbAnnonces = response.data.results.map((result: any) => 
-            mapSemanticResultToTutor(result)
-          );
-          
-          console.log('✅ SEARCH OK:', dbAnnonces.length, 'résultats');
-          
+          const dbAnnonces = response.data.results.map((result: any) => mapSemanticResultToTutor(result));
           setAnnonces(dbAnnonces);
           setTotalPages(1);
           setTotalAnnonces(response.data.total || dbAnnonces.length);
           setCurrentPage(1);
+          // Appel IA summary si résultats
+          if (dbAnnonces.length > 0) {
+            setAiSummaryLoading(true);
+            try {
+              const aiResp = await fetchTutorAISummary(query, dbAnnonces);
+              if (aiResp && aiResp.success && (aiResp.intro || aiResp.conclusion || (aiResp.data && (aiResp.data.intro || aiResp.data.conclusion)))) {
+                // Supporte les deux formats de réponse
+                const intro = aiResp.intro || (aiResp.data && aiResp.data.intro) || '';
+                const conclusion = aiResp.conclusion || (aiResp.data && aiResp.data.conclusion) || '';
+                setAiSummary({ intro, conclusion });
+              } else {
+                setAiSummary(null);
+              }
+            } catch (e) {
+              setAiSummary(null);
+            }
+            setAiSummaryLoading(false);
+          } else {
+            setAiSummary(null);
+          }
         } else {
           // Fallback sur API traditionnelle si RAG échoue
           console.log('⚠️ RAG échoué, fallback API');
@@ -233,20 +251,22 @@ const TutorSearchPage: React.FC = () => {
             teachingMode: filters.teachingMode,
             location: filters.location
           });
-
           if (response.success && response.data?.annonces) {
             const dbAnnonces = response.data.annonces.map(mapAnnonceToTutor);
             setAnnonces(dbAnnonces);
             setTotalPages(response.data.totalPages || 1);
             setTotalAnnonces(response.data.totalAnnonces || 0);
           }
+          setAiSummary(null);
         }
       }
     } catch (error: any) {
       console.error('❌ Erreur:', error.message);
       setAnnonces([]);
+      setAiSummary(null);
     } finally {
       setLoading(false);
+      setAiSummaryLoading(false);
     }
   };
 

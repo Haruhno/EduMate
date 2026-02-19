@@ -55,6 +55,10 @@ app.get('/test', async (req, res) => {
 // Routes API principales
 app.use('/api', chatRoutes);
 
+// Nouvelle route IA pour résumé tuteurs (intro/conclusion)
+const aiTutorSummary = require('./routes/aiTutorSummary');
+app.use('/api/ai', aiTutorSummary);
+
 // Gestion des erreurs
 app.use((err, req, res, next) => {
     console.error('❌ Error:', err.message);

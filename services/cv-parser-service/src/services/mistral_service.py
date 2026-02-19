@@ -1,8 +1,7 @@
-from typing import Dict, Any, Optional
-from datetime import datetime
-from functools import lru_cache
 import json
 import logging
+from typing import Optional, Dict, Any
+from datetime import datetime
 import re
 from openai import OpenAI
 
@@ -11,146 +10,121 @@ from src.models.cv_model import CVData, PersonalInfo, Education, Experience, Ski
 
 logger = logging.getLogger(__name__)
 
-
 class MistralCVService:
-    """Service d'analyse de CV avec Mistral via OpenRouter"""
-    
-    # JSON de fallback complet
-    DEFAULT_CV_JSON = {
-        "personal": {
-            "firstName": "",
-            "lastName": "",
-            "email": [],
-            "phone": [],
-            "address": "",
-            "birthDate": "",
-            "gender": "",
-            "nationality": "",
-            "linkedin": "",
-            "github": ""
-        },
-        "education": [],
-        "experience": [],
-        "skills": {
-            "technical": [],
-            "languages": [],
-            "soft": [],
-            "tools": [],
-            "frameworks": []
-        },
-        "summary": "",
-        "certifications": [],
-        "projects": [],
-        "languages": [],
-        "validation": {
-            "quality": "EMPTY",
-            "confidence": 0.0,
-            "extractionDate": datetime.now().isoformat(),
-            "note": "Réponse vide ou non traitable de Mistral"
-        }
-    }
+    """Service d'analyse de CV avec Mistral via OpenRouter - Utilise UNIQUEMENT le .env"""
     
     def __init__(self, api_key: str = None, model: str = None):
-        """Initialiser le service Mistral"""
+        """Initialiser le service Mistral avec la config du .env"""
+        # ⭐ Utiliser les valeurs du .env via Config
         self.api_key = api_key or Config.MISTRAL_API_KEY
         self.model = model or Config.MISTRAL_MODEL
+        self.provider = 'openrouter'
+        
+        if not self.api_key:
+            logger.error("❌ MISTRAL_API_KEY non configurée dans le .env")
+            raise ValueError("MISTRAL_API_KEY manquante - Vérifiez votre fichier .env")
+        
         logger.info(f"✅ MistralCVService initialisé avec modèle: {self.model}")
     
     def analyze_cv_text(self, cv_text: str, language: str = "fr") -> CVData:
         """
         Analyser le texte d'un CV avec Mistral.
-        Méthode robuste qui ne lève jamais d'exception.
-        
-        Args:
-            cv_text: Texte brut du CV
-            language: 'fr' ou 'en'
-            
-        Returns:
-            CVData avec données extraites ou valeurs par défaut
         """
         try:
+            # Vérifier que la config est chargée
+            if not self.api_key:
+                raise ValueError("MISTRAL_API_KEY non configurée")
+
             logger.info(f"🔍 Début analyse CV ({len(cv_text)} caractères, langue: {language})")
-            
+
             # Nettoyer le texte UTF-8
             cv_text = self._clean_utf8_text(cv_text)
-            
+
             if not cv_text or len(cv_text.strip()) < 10:
                 logger.warning("⚠️ Texte CV vide après nettoyage")
-                return self._json_to_cvdata(self.DEFAULT_CV_JSON)
-            
+                return self._create_empty_cvdata("Texte CV trop court")
+
             # Générer les prompts
             system_prompt = self._get_system_prompt(language)
             user_prompt = self._get_user_prompt(cv_text, language)
-            
+
             logger.info("🤖 Envoi à Mistral pour analyse...")
-            
+
             # Appeler Mistral
             response = self._call_mistral_api(system_prompt, user_prompt)
             content = response.get("content", "").strip()
-            
+
             if not content:
                 logger.warning("⚠️ Mistral a retourné une réponse vide")
-                return self._json_to_cvdata(self.DEFAULT_CV_JSON)
-            
-            logger.debug(f"📤 Réponse brute Mistral ({len(content)} caractères): {content[:300]}...")
-            
+                return self._create_empty_cvdata("Réponse vide de l'API")
+
+            logger.debug(f"📤 Réponse brute Mistral ({len(content)} caractères)")
+
             # Nettoyer et parser le JSON
             json_content = self._clean_json_response(content)
             parsed_data = json.loads(json_content)
-            
+
             logger.info("✅ JSON parsé avec succès")
-            
+
             # Convertir en CVData
             cv_data = self._json_to_cvdata(parsed_data)
-            
+
             # Évaluer la qualité
             quality_score = self._evaluate_extraction_quality(cv_data, cv_text)
             cv_data.validation.update(quality_score)
-            
+
             logger.info(f"✅ Analyse réussie - Qualité: {quality_score['quality']} ({quality_score['confidence']:.2%})")
             return cv_data
-            
-        except json.JSONDecodeError as e:
-            logger.warning(f"⚠️ Erreur parsing JSON: {e}")
-            logger.info("🔄 Utilisation du JSON de fallback")
-            return self._json_to_cvdata(self.DEFAULT_CV_JSON)
-            
+
         except Exception as e:
             logger.error(f"❌ Erreur lors de l'analyse Mistral: {type(e).__name__}: {e}")
-            logger.info("🔄 Utilisation du JSON de fallback")
-            return self._json_to_cvdata(self.DEFAULT_CV_JSON)
+            return self._create_empty_cvdata(str(e))
     
-    def _clean_utf8_text(self, text: str) -> str:
-        """Nettoyer le texte pour enlever les caractères invalides UTF-8"""
-        try:
-            # Encoder/décoder pour nettoyer
-            if isinstance(text, bytes):
-                text = text.decode('utf-8', errors='ignore')
-            else:
-                text = text.encode('utf-8', errors='ignore').decode('utf-8')
-            
-            # Supprimer les caractères de contrôle (sauf \n, \r, \t)
-            text = ''.join(char for char in text if ord(char) >= 32 or char in '\n\r\t')
-            
-            # Normaliser les espaces multiples
-            text = re.sub(r'\s+', ' ', text)
-            
-            return text.strip()
-        except Exception as e:
-            logger.warning(f"Erreur nettoyage UTF-8: {e}")
-            return text
+    def _create_empty_cvdata(self, error_msg: str) -> CVData:
+        """Crée un CVData vide avec message d'erreur"""
+        return CVData(
+            personal=PersonalInfo(),
+            education=[],
+            experience=[],
+            skills=SkillCategory(),
+            summary="",
+            certifications=[],
+            projects=[],
+            languages=[],
+            validation={
+                "quality": "ERROR",
+                "confidence": 0.0,
+                "extractionDate": datetime.now().isoformat(),
+                "note": error_msg
+            }
+        )
     
     def _call_mistral_api(self, system_prompt: str, user_prompt: str) -> Dict[str, Any]:
         """Appeler l'API Mistral via OpenRouter"""
         errors = []
-        models_to_try = [m for m in [self.model, Config.MISTRAL_FALLBACK_MODEL] if m]
+        models_to_try = []
+        
+        # Ajouter le modèle principal
+        if self.model:
+            models_to_try.append(self.model)
+        
+        # Ajouter le modèle de fallback s'il existe
+        if hasattr(Config, 'MISTRAL_FALLBACK_MODEL') and Config.MISTRAL_FALLBACK_MODEL:
+            models_to_try.append(Config.MISTRAL_FALLBACK_MODEL)
+        
+        if not models_to_try:
+            error_msg = "Aucun modèle configuré pour l'appel API"
+            logger.error(f"❌ {error_msg}")
+            raise Exception(error_msg)
+        
+        timeout = getattr(Config, 'MISTRAL_TIMEOUT', 30)
         
         for model in models_to_try:
             try:
                 client = OpenAI(
                     api_key=self.api_key,
                     base_url="https://openrouter.ai/api/v1",
-                    timeout=Config.MISTRAL_TIMEOUT
+                    timeout=timeout
                 )
                 
                 logger.debug(f"📡 Appel API Mistral ({model})...")
@@ -176,24 +150,29 @@ class MistralCVService:
                 logger.debug(f"✅ Réponse API reçue ({len(content)} caractères) depuis {model}")
                 
                 # Si on a utilisé le modèle de fallback, mémoriser pour les prochains appels
-                self.model = model
+                if model != self.model:
+                    self.model = model
+                    logger.info(f"🔄 Modèle changé pour: {model}")
                 
                 return {
                     "content": content,
                     "model": message.model,
                     "usage": {
-                        "prompt_tokens": message.usage.prompt_tokens,
-                        "completion_tokens": message.usage.completion_tokens
+                        "prompt_tokens": message.usage.prompt_tokens if message.usage else 0,
+                        "completion_tokens": message.usage.completion_tokens if message.usage else 0
                     }
                 }
                 
             except Exception as e:
-                logger.error(f"❌ Erreur appel API Mistral ({model}): {type(e).__name__}: {e}")
-                errors.append(f"{model}: {type(e).__name__}: {e}")
+                error_detail = f"{type(e).__name__}: {str(e)}"
+                logger.error(f"❌ Erreur avec le modèle {model}: {error_detail}")
+                errors.append(f"{model}: {error_detail}")
                 continue
         
-        # Si tous les modèles échouent, re-raise avec le détail
-        raise Exception("Tous les modèles Mistral ont échoué: " + " | ".join(errors))
+        # Si tous les modèles échouent
+        error_msg = "Tous les modèles ont échoué: " + " | ".join(errors)
+        logger.error(f"❌ {error_msg}")
+        raise Exception(error_msg)
     
     def _get_system_prompt(self, language: str) -> str:
         """Générer le prompt système selon la langue"""
@@ -312,10 +291,7 @@ IMPORTANT: Retourne UNIQUEMENT le JSON valide, sans texte supplémentaire, sans 
     Ne SAUTE AUCUNE section."""
     
     def _clean_json_response(self, content: str) -> str:
-        """
-        Nettoyer la réponse JSON de Mistral.
-        Tente toujours de retourner du JSON valide.
-        """
+        """Nettoyer la réponse JSON de Mistral"""
         try:
             # Supprimer les marqueurs de code markdown
             content = re.sub(r'```json\s*', '', content)
@@ -327,71 +303,35 @@ IMPORTANT: Retourne UNIQUEMENT le JSON valide, sans texte supplémentaire, sans 
             # Vérifier si c'est du JSON valide
             try:
                 json.loads(content)
-                logger.debug("✅ JSON valide sans nettoyage")
                 return content
             except json.JSONDecodeError:
                 pass
             
             # Essayer d'extraire le JSON du texte
-            logger.warning("⚠️ JSON invalide, tentative d'extraction...")
-            
-            # Chercher le premier { et le dernier }
             start_idx = content.find('{')
             end_idx = content.rfind('}')
             
             if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
                 json_str = content[start_idx:end_idx + 1]
-                
                 try:
                     json.loads(json_str)
-                    logger.debug("✅ JSON extrait valide")
                     return json_str
                 except json.JSONDecodeError:
                     pass
             
-            # Essayer de fixer les JSON cassés courants
-            logger.warning("⚠️ Tentative de réparation du JSON...")
-            content = self._repair_json(content)
-            
-            # Vérifier une dernière fois
-            try:
-                json.loads(content)
-                logger.debug("✅ JSON réparé valide")
-                return content
-            except json.JSONDecodeError:
-                pass
-            
-            # Fallback: retourner le JSON par défaut
-            logger.warning("⚠️ Impossible de parser le JSON, utilisation du fallback")
-            return json.dumps(self.DEFAULT_CV_JSON)
+            # Fallback: retourner un JSON vide
+            logger.warning("⚠️ Impossible d'extraire du JSON valide, retour d'un JSON vide")
+            return '{"personal": {}, "education": [], "experience": [], "skills": {"technical": []}, "summary": ""}'
             
         except Exception as e:
             logger.error(f"❌ Erreur nettoyage JSON: {e}")
-            return json.dumps(self.DEFAULT_CV_JSON)
-    
-    def _repair_json(self, content: str) -> str:
-        """Réparer les JSON cassés courants"""
-        # Remplacer les guillemets simples par des guillemets doubles
-        # (attention à ne pas remplacer dans les valeurs)
-        content = content.replace("'", '"')
-        
-        # Ajouter les guillemets manquants autour des clés
-        content = re.sub(r'(\{|,)\s*([a-zA-Z_]\w*)\s*:', r'\1 "\2":', content)
-        
-        # Supprimer les virgules finales dans les objets/listes
-        content = re.sub(r',(\s*[}\]])', r'\1', content)
-        
-        return content
+            return '{"personal": {}, "education": [], "experience": [], "skills": {"technical": []}, "summary": ""}'
     
     def _json_to_cvdata(self, data: Optional[Dict[str, Any]]) -> CVData:
-        """
-        Convertir le JSON en objets CVData.
-        Robuste : ne lève jamais d'exception.
-        """
+        """Convertir le JSON en objets CVData"""
         try:
             if not data or not isinstance(data, dict):
-                logger.warning("⚠️ Données JSON invalides, utilisation des défauts")
-                data = self.DEFAULT_CV_JSON
+                data = {}
             
             # Personal Info
             personal_data = data.get('personal', {}) or {}
@@ -492,18 +432,7 @@ IMPORTANT: Retourne UNIQUEMENT le JSON valide, sans texte supplémentaire, sans 
             
         except Exception as e:
             logger.error(f"❌ Erreur conversion JSON->CVData: {e}")
-            # Retourner un CVData vide mais valide
-            return CVData(
-                personal=PersonalInfo(),
-                education=[],
-                experience=[],
-                skills=SkillCategory(),
-                summary="",
-                certifications=[],
-                projects=[],
-                languages=[],
-                validation={"quality": "ERROR", "confidence": 0.0}
-            )
+            return self._create_empty_cvdata(f"Erreur conversion JSON: {str(e)}")
     
     def _to_list(self, value: Any) -> list:
         """Convertir une valeur en liste"""
@@ -522,42 +451,55 @@ IMPORTANT: Retourne UNIQUEMENT le JSON valide, sans texte supplémentaire, sans 
         except (ValueError, TypeError):
             return None
     
+    def _clean_utf8_text(self, text: str) -> str:
+        """Nettoyer le texte pour enlever les caractères invalides UTF-8"""
+        try:
+            if isinstance(text, bytes):
+                text = text.decode('utf-8', errors='ignore')
+            else:
+                text = text.encode('utf-8', errors='ignore').decode('utf-8')
+            
+            text = ''.join(char for char in text if ord(char) >= 32 or char in '\n\r\t')
+            text = re.sub(r'\s+', ' ', text)
+            
+            return text.strip()
+        except Exception as e:
+            logger.warning(f"⚠️ Erreur nettoyage UTF-8: {e}")
+            return text
+    
     def _evaluate_extraction_quality(self, cv_data: CVData, original_text: str) -> Dict[str, Any]:
-        """
-        Évaluer la qualité de l'extraction.
-        Calcule un score basé sur les champs remplis.
-        """
+        """Évaluer la qualité de l'extraction"""
         try:
             score = 0
             max_score = 100
             
-            # Informations personnelles (20 points)
+            # Informations personnelles
             if cv_data.personal.firstName and cv_data.personal.lastName:
                 score += 15
             if cv_data.personal.email:
                 score += 5
             
-            # Contact (15 points)
+            # Contact
             if cv_data.personal.phone:
                 score += 8
             if cv_data.personal.address:
                 score += 7
             
-            # Éducation (20 points)
+            # Éducation
             if cv_data.education:
                 score += min(20, len(cv_data.education) * 5)
             
-            # Expérience (20 points)
+            # Expérience
             if cv_data.experience:
                 score += min(20, len(cv_data.experience) * 5)
             
-            # Compétences (15 points)
+            # Compétences
             if cv_data.skills.technical:
                 score += 8
             if cv_data.skills.soft or cv_data.skills.languages:
                 score += 7
             
-            # Résumé (10 points)
+            # Résumé
             if cv_data.summary and len(cv_data.summary.strip()) > 10:
                 score += 10
             

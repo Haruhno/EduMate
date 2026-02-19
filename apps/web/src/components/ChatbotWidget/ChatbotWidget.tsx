@@ -78,145 +78,126 @@ const ChatbotWidget: React.FC = () => {
         return () => window.removeEventListener("keydown", onKey);
     }, []);
 
-    // Parser les liens
+    // ⭐ Parser les liens - ÉVITE LES DOUBLONS
     const parseMessageWithLinks = (text: string) => {
-        const lines = text.split('\n');
-        const parts: React.ReactNode[] = [];
-        let keyIndex = 0;
+      const lines = text.split('\n');
+      const parts: React.ReactNode[] = [];
+      let keyIndex = 0;
 
-        lines.forEach((line, lineIndex) => {
-            if (!line.trim()) {
-            parts.push(<br key={`br-${keyIndex++}`} />);
-            return;
-            }
+      lines.forEach((line, lineIndex) => {
+        if (!line.trim()) {
+          parts.push(<br key={`br-${keyIndex++}`} />);
+          return;
+        }
 
-            // Diviser la ligne par les marqueurs de gras __texte__
-            const sections = line.split(/(__[^_]+__)/);
-            const lineParts: React.ReactNode[] = [];
+        // Diviser la ligne par les marqueurs de gras __texte__
+        const sections = line.split(/(__[^_]+__)/);
+        const lineParts: React.ReactNode[] = [];
+        
+        // ⭐ Variable pour tracker si on a déjà ajouté un lien dans cette ligne
+        let linkAddedInThisLine = false;
 
-            sections.forEach((section) => {
-            if (!section) return;
+        sections.forEach((section) => {
+          if (!section) return;
 
-            // Si c'est un marqueur de gras
-            if (section.startsWith('__') && section.endsWith('__')) {
-                const boldText = section.slice(2, -2);
-                lineParts.push(
-                <strong key={`bold-${keyIndex++}`}>{boldText}</strong>
-                );
-                return;
-            }
-
-            // Traiter les liens |tuteur|tutorId|annonceId|
-            const parts2 = section.split(/(\|tuteur\|[^|]+\|[^|]*\|)/);
-            
-            parts2.forEach((part) => {
-                if (!part) return;
-
-                // Vérifier si c'est un lien
-                const linkMatch = part.match(/^\|tuteur\|(.+?)\|(.*)?\|$/);
-                if (linkMatch) {
-                const tutorId = linkMatch[1];
-                const annonceId = linkMatch[2] || '';
-
-                lineParts.push(
-                    <a
-                    key={`link-${keyIndex++}`}
-                    href={`/tuteur/${tutorId}`}
-                   onClick={(e) => {
-                        e.preventDefault();
-                        // Récupérer les données du tuteur depuis sessionStorage
-                        const tutorKey = `tutor_data_${tutorId}`;
-                        const tutorData = sessionStorage.getItem(tutorKey);
-                        
-                        if (tutorData) {
-                            console.log('✅ Données tuteur trouvées pour navigation');
-                            const tutor = JSON.parse(tutorData);
-                            
-                            // Stocker aussi dans la clé générique pour TutorProfilePage
-                            sessionStorage.setItem('chatbot_tutor_data', JSON.stringify({
-                            ...tutor,
-                            tutorId,
-                            annonceId,
-                            fromChatbot: true
-                            }));
-                        } else {
-                            console.log('⚠️ Aucune donnée tuteur, stockage minimal');
-                            sessionStorage.setItem('chatbot_tutor_data', JSON.stringify({
-                            tutorId,
-                            annonceId,
-                            fromChatbot: true,
-                            fromSearch: true,
-                            timestamp: Date.now()
-                            }));
-                        }
-                        
-                        navigate(`/tuteur/${tutorId}`, {
-                            state: {
-                            annonceId: annonceId || undefined,
-                            fromSearch: true,
-                            tutorId: tutorId,
-                            fromChatbot: true
-                            }
-                        });
-                        }}
-                    style={{
-                        color: '#3b82f6',
-                        textDecoration: 'underline',
-                        cursor: 'pointer',
-                        fontWeight: '600'
-                    }}
-                    >
-                    👉 Voir le profil complet
-                    </a>
-                );
-                } else {
-                lineParts.push(
-                    <span key={`text-${keyIndex++}`}>{part}</span>
-                );
-                }
-            });
-            });
-
-            parts.push(
-            <div key={`line-${lineIndex}`} style={{ marginBottom: '4px' }}>
-                {lineParts}
-            </div>
+          // Si c'est un marqueur de gras
+          if (section.startsWith('__') && section.endsWith('__')) {
+            const boldText = section.slice(2, -2);
+            lineParts.push(
+              <strong key={`bold-${keyIndex++}`}>{boldText}</strong>
             );
+            return;
+          }
+
+          // Traiter les liens |tuteur|tutorId|annonceId|
+          const parts2 = section.split(/(\|tuteur\|[^|]+\|[^|]*\|)/);
+
+          parts2.forEach((part) => {
+            if (!part) return;
+
+            // Vérifier si c'est un lien
+            const linkMatch = part.match(/^\|tuteur\|(.+?)\|(.*)?\|$/);
+            if (linkMatch) {
+              // ⭐ ÉVITER LES DOUBLONS : si un lien a déjà été ajouté dans cette ligne, on ignore
+              if (linkAddedInThisLine) {
+                console.log('🚫 Doublon de lien évité');
+                return;
+              }
+              
+              const tutorId = linkMatch[1];
+              const annonceId = linkMatch[2] || '';
+
+              lineParts.push(
+                <a
+                  key={`link-${keyIndex++}`}
+                  href={`/tuteur/${tutorId}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    // Récupérer les données du tuteur depuis sessionStorage
+                    const tutorKey = `tutor_data_${tutorId}`;
+                    const tutorData = sessionStorage.getItem(tutorKey);
+
+                    if (tutorData) {
+                      console.log('Données tuteur trouvées pour navigation');
+                      const tutor = JSON.parse(tutorData);
+
+                      // Stocker aussi dans la clé générique pour TutorProfilePage
+                      sessionStorage.setItem('chatbot_tutor_data', JSON.stringify({
+                        ...tutor,
+                        tutorId,
+                        annonceId,
+                        fromChatbot: true
+                      }));
+                    } else {
+                      console.log('⚠️ Aucune donnée tuteur, stockage minimal');
+                      sessionStorage.setItem('chatbot_tutor_data', JSON.stringify({
+                        tutorId,
+                        annonceId,
+                        fromChatbot: true,
+                        fromSearch: true,
+                        timestamp: Date.now()
+                      }));
+                    }
+
+                    navigate(`/tuteur/${tutorId}`, {
+                      state: {
+                        annonceId: annonceId || undefined,
+                        fromSearch: true,
+                        tutorId: tutorId,
+                        fromChatbot: true
+                      }
+                    });
+                  }}
+                  style={{
+                    color: '#3b82f6',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    display: 'inline-block',
+                    marginTop: '4px'
+                  }}
+                >
+                  👉 Voir le profil complet
+                </a>
+              );
+              linkAddedInThisLine = true;
+            } else {
+              lineParts.push(
+                <span key={`text-${keyIndex++}`}>{part}</span>
+              );
+            }
+          });
         });
 
-        return <>{parts}</>;
+        parts.push(
+          <div key={`line-${lineIndex}`} style={{ marginBottom: '4px' }}>
+            {lineParts}
+          </div>
+        );
+      });
+
+      return <>{parts}</>;
     };
-
-  // Réponses de fallback intelligentes
-  const fallbackReply = (text: string): string => {
-    const t = text.toLowerCase();
-    
-    if (t.includes("service") || t.includes("offre")) {
-      return "📋 Nos Services :\n- 🔍 Mise en relation intelligente\n- 💻 Cours en ligne et présentiel\n- 📊 Suivi personnalisé\n- ⚖️ Comparateur intelligent\n- 🎯 Espace étudiant intuitif\n- 🛡️ Sécurité et fiabilité\n\nQuel service vous intéresse ?";
-    }
-    
-    if (t.includes("educoin") || t.includes("paiement") || t.includes("recharge")) {
-      return "💰 Système de Paiement EduCoins :\nLe paiement se fait via EduCoins :\n✅ Recharge simple par carte bancaire\n✅ Crédits sécurisés et flexibles\n✅ Libérés après la séance\n✅ Échange entre élèves et tuteurs\n\nVoulez-vous recharger vos crédits ?";
-    }
-    
-    if (t.includes("inscription") || t.includes("profil") || t.includes("créer")) {
-      return "📝 Créer votre Profil :\nInscrivez-vous en quelques clics !\n\n👨‍🎓 En tant qu'élève :\n- Indiquez votre niveau scolaire\n- Sélectionnez vos matières\n- Définissez vos objectifs\n\n👨‍🏫 En tant que tuteur :\n- Présentez votre parcours\n- Listez vos matières\n- Définissez vos disponibilités\n- Fixez votre tarif en EduCoins\n\nVous êtes élève ou tuteur ?";
-    }
-    
-    if (t.includes("comment") || t.includes("fonctionn") || t.includes("marche")) {
-      return "🎯 Comment ça Marche en 4 Étapes :\n\n1️⃣ Créez votre profil - Inscrivez-vous en quelques clics\n2️⃣ Trouvez une séance - Utilisez nos filtres ou l'IA\n3️⃣ Réservez - Payez en EduCoins sécurisés\n4️⃣ Apprenez - Progressez avec suivi personnalisé\n\nPrêt à commencer ?";
-    }
-    
-    if (t.includes("tuteur") || t.includes("professeur") || t.includes("recherche")) {
-      return "🔍 Rechercher un Tuteur :\nVous pouvez filtrer par :\n- 📚 Matière\n- 💵 Prix\n- 🌍 Localisation\n- 📅 Disponibilités\n- 🗣️ Langue\n\nChaque tuteur a sa fiche avec diplômes, expériences, notes et avis.\n\nVoulez-vous chercher un tuteur maintenant ?";
-    }
-    
-    if (t.includes("sécurité") || t.includes("confiance") || t.includes("vérif")) {
-      return "🛡️ Sécurité et Fiabilité :\n✅ Tous nos professeurs sont vérifiés\n✅ Cours de qualité garantie\n✅ Paiement sécurisé avec EduCoins\n✅ Crédits bloqués jusqu'à la fin du cours\n✅ Évaluations transparentes\n\nVotre confiance est notre priorité !";
-    }
-
-    return "Je peux répondre aux questions sur EduMate, nos services, les tuteurs, les réservations, EduCoins et bien plus. Que puis-je faire pour vous ?";
-  };
 
     const sendMessage = async () => {
         const trimmed = input.trim();
@@ -256,12 +237,12 @@ const ChatbotWidget: React.FC = () => {
 
             setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: reply || fallbackReply(trimmed) },
+            { role: "assistant", content: reply || "Une erreur est survenue. Merci de reessayer." },
             ]);
         } catch (error) {
             setMessages((prev) => [
             ...prev,
-            { role: "assistant", content: fallbackReply(trimmed) },
+            { role: "assistant", content: "Une erreur est survenue. Merci de reessayer." },
             ]);
         } finally {
             setLoading(false);

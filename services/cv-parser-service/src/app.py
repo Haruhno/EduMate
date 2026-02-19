@@ -6,6 +6,10 @@ from dotenv import load_dotenv
 from src.routes.cv_routes import cv_bp
 from src.routes.linkedin_routes import linkedin_bp
 from src.middleware.auth_middleware import auth_middleware
+from routes.cv_routes import cv_bp
+from routes.linkedin_routes import linkedin_bp
+from middleware.auth_middleware import auth_middleware
+from config import Config
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -41,20 +45,26 @@ CORS(app, resources={
 # Configuration
 app.config.update(
     MAX_CONTENT_LENGTH=10 * 1024 * 1024,  # 10MB max
-    # UPLOAD_FOLDER='uploads',  # REMOVED - Plus besoin de dossier upload
     ALLOWED_EXTENSIONS={'pdf', 'doc', 'docx', 'txt'},
     SECRET_KEY=os.getenv('FLASK_SECRET_KEY', 'dev-secret-key'),
-    MISTRAL_API_KEY=os.getenv('MISTRAL_API_KEY'),
+    MISTRAL_API_KEY=Config.MISTRAL_API_KEY,  # ⭐ Utiliser Config
     RATE_LIMIT=os.getenv('RATE_LIMIT', '100 per day'),
     LINKEDIN_CLIENT_ID=os.getenv("LINKEDIN_CLIENT_ID"),
     LINKEDIN_CLIENT_SECRET=os.getenv("LINKEDIN_CLIENT_SECRET"),
     LINKEDIN_REDIRECT_URI=os.getenv("LINKEDIN_REDIRECT_URI", "http://localhost:5001/api/linkedin/callback"),
-    # Session configuration for cross-origin (dev)
     SESSION_COOKIE_SAMESITE="None",
     SESSION_COOKIE_SECURE=False,
     SESSION_COOKIE_HTTPONLY=True,
-    PERMANENT_SESSION_LIFETIME=1800  # 30 minutes
+    PERMANENT_SESSION_LIFETIME=1800
 )
+
+# ⭐ Vérifier la configuration au démarrage
+if not Config.validate():
+    logger.warning("⚠️ Certaines configurations sont manquantes. Vérifiez votre fichier .env")
+else:
+    logger.info("✅ Configuration validée avec succès")
+    logger.info(f"📡 Modèle Mistral: {Config.MISTRAL_MODEL}")
+    logger.info(f"🔑 Clé API: {Config.MISTRAL_API_KEY[:10]}..." if Config.MISTRAL_API_KEY else "❌ Clé API manquante")
 
 # Routes
 app.register_blueprint(cv_bp, url_prefix='/api/cv')
@@ -68,7 +78,9 @@ def health_check():
         'service': 'CV Parser Service',
         'version': '1.0.0',
         'mode': 'MEMORY_ONLY',
-        'timestamp': os.getenv('TIMESTAMP', '2024-01-01T00:00:00Z')
+        'mistral_configured': bool(Config.MISTRAL_API_KEY),
+        'mistral_model': Config.MISTRAL_MODEL,
+        'timestamp': datetime.now().isoformat()
     })
 
 # Gestion des erreurs
