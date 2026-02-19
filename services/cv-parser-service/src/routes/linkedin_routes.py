@@ -6,8 +6,8 @@ import requests
 import os
 import secrets
 
-from services.linkedin_parser import LinkedInParserService
-from middleware.auth_middleware import require_auth, get_current_user
+from src.services.linkedin_parser import LinkedInParserService
+from src.middleware.auth_middleware import require_auth, get_current_user
 
 logger = logging.getLogger(__name__)
 

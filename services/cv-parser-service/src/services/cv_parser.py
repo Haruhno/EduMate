@@ -7,8 +7,8 @@ import re
 from .pdf_extractor import PDFExtractor
 from .docx_extractor import DOCXExtractor
 from .mistral_service import MistralCVService
-from models.cv_model import CVData, PersonalInfo, Education, Experience, SkillCategory
-from utils.file_utils import FileUtils
+from src.models.cv_model import CVData, PersonalInfo, Education, Experience, SkillCategory
+from src.utils.file_utils import FileUtils
 
 logger = logging.getLogger(__name__)
 

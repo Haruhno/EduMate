@@ -69,6 +69,13 @@ const SkillExchangePage: React.FC = () => {
     setExpandedSkills(newExpanded);
   };
 
+  const getExchangeStartTimeMs = (exchange: SkillExchangeRequest): number | null => {
+    const booking = exchange.bookings?.[0];
+    if (!booking?.date || !booking?.time) return null;
+    const parsed = Date.parse(`${booking.date}T${booking.time}`);
+    return Number.isNaN(parsed) ? null : parsed;
+  };
+
   useEffect(() => {
     loadExchanges();
   }, []);
@@ -183,6 +190,8 @@ const SkillExchangePage: React.FC = () => {
               exchange.description ||
               (exchange.skillRequested as any)?.description ||
               (exchange.skillOffered as any)?.description;
+            const startTimeMs = getExchangeStartTimeMs(exchange);
+            const isExpired = status === 'pending' && startTimeMs !== null && Date.now() >= startTimeMs;
             
             return (
               <div 
@@ -297,15 +306,24 @@ const SkillExchangePage: React.FC = () => {
                     <button
                       className={`${styles.actionButton} ${styles.buttonAccept}`}
                       onClick={() => handleAccept(exchange.id!)}
+                      disabled={isExpired}
+                      title={isExpired ? 'Heure depassee' : undefined}
                     >
                       Accepter
                     </button>
                     <button
                       className={`${styles.actionButton} ${styles.buttonReject}`}
                       onClick={() => handleReject(exchange.id!)}
+                      disabled={isExpired}
+                      title={isExpired ? 'Heure depassee' : undefined}
                     >
                       Refuser
                     </button>
+                    {isExpired && (
+                      <div style={{ marginTop: '8px', color: '#ef4444', fontSize: '0.85rem' }}>
+                        Heure depassee : vous ne pouvez plus accepter ou refuser.
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

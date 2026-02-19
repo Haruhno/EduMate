@@ -289,6 +289,11 @@ const ReservationsPage: React.FC = () => {
     });
   };
 
+  const isStartTimePassed = (reservation: Booking) => {
+    if (!reservation.startTime) return false;
+    return Date.now() >= reservation.startTime * 1000;
+  };
+
   const loadReservations = async (userId?: string) => {
     try {
       setLoading(true);
@@ -681,6 +686,7 @@ const ReservationsPage: React.FC = () => {
             {reservations.map((reservation) => {
               const statusConfig = getStatusConfig(reservation.status);
               const blockchainConfig = getBlockchainStatusConfig(reservation.blockchainStatus);
+              const isPendingExpired = reservation.status === 'PENDING' && isStartTimePassed(reservation);
               
               // Déterminer qui afficher : étudiant (pour tuteur) ou tuteur (pour étudiant)
               const isMyReservationAsTutor = reservation.myRole === 'tutor';
@@ -799,8 +805,9 @@ const ReservationsPage: React.FC = () => {
                           />
                           <button
                             onClick={() => handleConfirm(reservation.id)}
-                            disabled={confirmingId === reservation.id}
+                            disabled={confirmingId === reservation.id || isPendingExpired}
                             className={styles.confirmBtn}
+                            title={isPendingExpired ? "Heure depassee" : undefined}
                           >
                             {confirmingId === reservation.id ? (
                               <>
@@ -820,6 +827,8 @@ const ReservationsPage: React.FC = () => {
                             }}
                             className={styles.cancelBtn}
                             style={{ flex: 1 }}
+                            disabled={isPendingExpired}
+                            title={isPendingExpired ? "Heure depassee" : undefined}
                           >
                             Refuser
                           </button>
@@ -844,6 +853,11 @@ const ReservationsPage: React.FC = () => {
                             💬 Contacter
                           </button>
                         </div>
+                        {isPendingExpired && (
+                          <div style={{ marginTop: '8px', color: '#ef4444', fontSize: '0.85rem' }}>
+                            Heure depassee : vous ne pouvez plus accepter ou refuser.
+                          </div>
+                        )}
                       </>
                     )}
 

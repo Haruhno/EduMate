@@ -601,8 +601,20 @@ const SessionsPage: FC<SessionsPageProps> = ({ userRole = 'tutor' }) => {
       setSelectedSession(null);
     } catch (err: any) {
       console.error('❌ Erreur soumission avis:', err);
-      setReviewError(err.message || 'Erreur lors de la soumission de l\'avis');
-      throw err; // Repropager pour que le modal affiche l'erreur
+      const rawMessage = err?.response?.data?.error
+        || err?.response?.data?.message
+        || err?.message
+        || 'Erreur lors de la soumission de l\'avis';
+      const normalized = String(rawMessage).toLowerCase();
+      const alreadySubmitted = normalized.includes('deja')
+        || normalized.includes('déjà')
+        || (normalized.includes('avis') && normalized.includes('confirme'))
+        || (normalized.includes('avis') && normalized.includes('transmis'));
+      const friendlyMessage = alreadySubmitted
+        ? 'Votre avis a déjà été transmis.'
+        : rawMessage;
+      setReviewError(friendlyMessage);
+      throw new Error(friendlyMessage); // Repropager pour que le modal affiche l'erreur
     } finally {
       setReviewLoading(false);
     }
@@ -791,7 +803,7 @@ const SessionsPage: FC<SessionsPageProps> = ({ userRole = 'tutor' }) => {
             if (!isTutor) {
               // Étudiant: filtrer les échanges où je suis l'étudiant
               const acceptedExchanges = allExchanges.filter(
-                (ex: any) => ex.studentId === currentUser.id && (ex.status || '').toUpperCase() === 'ACCEPTED'
+                (ex: any) => ex.studentId === currentUser.id && ['ACCEPTED', 'COMPLETED'].includes((ex.status || '').toUpperCase())
               );
               
               console.log('🔄 [HistoriqueCours Étudiant] Échanges acceptés:', acceptedExchanges);
@@ -860,7 +872,7 @@ const SessionsPage: FC<SessionsPageProps> = ({ userRole = 'tutor' }) => {
             } else if (tutorView === 'received') {
               // Tuteur (vue reçus): filtrer les échanges où je suis le tuteur
               const acceptedExchanges = allExchanges.filter(
-                (ex: any) => ex.tutorId === currentUser.id && (ex.status || '').toUpperCase() === 'ACCEPTED'
+                (ex: any) => ex.tutorId === currentUser.id && ['ACCEPTED', 'COMPLETED'].includes((ex.status || '').toUpperCase())
               );
               
               console.log('🔄 [HistoriqueCours Tuteur] Échanges reçus:', acceptedExchanges);

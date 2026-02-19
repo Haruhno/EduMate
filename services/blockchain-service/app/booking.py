@@ -449,6 +449,15 @@ async def confirm_booking(
         except Exception as e:
             raise HTTPException(status_code=404, detail=f"Réservation non trouvée: {str(e)}")
         
+        # Bloquer la confirmation si la date du cours est depassee
+        booking_status = blockchain_manager.get_booking_status(booking_id)
+        current_time = datetime.now().timestamp()
+        if current_time >= booking_status["start_time"]:
+            raise HTTPException(
+                status_code=400,
+                detail="La date du cours est depassee, la confirmation n'est plus possible"
+            )
+
         # Confirmer sur la blockchain
         blockchain_result = blockchain_manager.confirm_booking(booking_id, tutor_user_id)
         

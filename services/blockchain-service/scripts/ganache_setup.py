@@ -64,17 +64,14 @@ class GanacheManager:
             logger.error("   OU dans le projet global: npm install -g ganache")
             return False
         
-        # Créer le dossier de données
-        self.data_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Construire la commande AVEC gas limit augmenté
+        # Construire la commande SANS persistence (mode dev - comptes frais à chaque démarrage)
         cmd = [
             ganache_path,
             "--server.host", self.host,
             "--server.port", str(self.port),
             "--wallet.totalAccounts", "20",
             "--wallet.defaultBalance", "1000",
-            "--database.dbPath", str(self.data_dir),
+            # PAS de --database.dbPath pour éviter la persistence en mode dev
             "--chain.chainId", "1337",
             "--chain.networkId", "1337",
             "--wallet.deterministic",

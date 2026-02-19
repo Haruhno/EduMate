@@ -3,11 +3,11 @@ import logging
 from datetime import datetime
 import traceback
 
-from services.cv_parser import CVParserService
-from utils.file_utils import FileUtils
-from middleware.auth_middleware import require_auth, get_current_user
-from services.pdf_extractor import PDFExtractor
-from services.docx_extractor import DOCXExtractor
+from src.services.cv_parser import CVParserService
+from src.utils.file_utils import FileUtils
+from src.middleware.auth_middleware import require_auth, get_current_user
+from src.services.pdf_extractor import PDFExtractor
+from src.services.docx_extractor import DOCXExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +126,7 @@ def parse_cv_text():
         cv_parser = CVParserService(mistral_key)
         
         # Analyser directement avec Mistral
-        from services.mistral_service import MistralCVService
+        from src.services.mistral_service import MistralCVService
         mistral_service = MistralCVService(mistral_key)
         cv_data = mistral_service.analyze_cv_text(cv_text, language)
         

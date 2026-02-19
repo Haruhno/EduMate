@@ -44,34 +44,65 @@ La monnaie interne s’appelle **educoins** et sert aux echanges, reservations e
 
 ## Lancer le projet (dev)
 Pour tout lancer d’un coup, a la racine du projet :
+
+### 🐳 Avec Docker (Recommandé)
+
+**Une ligne, c'est tout!**
+
+```bash
+# Windows
+docker-start.bat
+
+# Linux/Mac
+chmod +x docker-start.sh && ./docker-start.sh
+
+# Ou avec Makefile
+make start
+```
+
+**Résultat**: Tous les services (frontend, 4 backends, 4 databases) démarrent en 20-30 secondes.
+
+👉 **Consultez [DOCKER_README.md](DOCKER_README.md)** pour:
+- 10 différentes façons de lancer Docker
+- Configuration et variables d'environnement
+- Accès aux bases de données (PostgreSQL, MongoDB)
+- Dépannage et commandes utiles
+- Développement avec hot reload
+- Comparaison des méthodes de démarrage
+
+---
+
+### Sans Docker (npm run dev)
+
+Pour tout lancer d'un coup, a la racine du projet :
 ```bash
 npm run dev
 ```
 
 Les services et frontends se lancent aussi separement. Exemples ci-dessous.
 
-### Web (apps/web)
+#### Web (apps/web)
 ```bash
 cd apps/web
 npm install
 npm run dev
 ```
 
-### Admin (apps/admin)
+#### Admin (apps/admin)
 ```bash
 cd apps/admin
 npm install
 npm run dev
 ```
 
-### Mobile (apps/mobile)
+#### Mobile (apps/mobile)
 ```bash
 cd apps/mobile
 npm install
 npm run start
 ```
 
-### Services (exemple : auth-service)
+#### Services (exemple : auth-service)
 ```bash
 cd services/auth-service
 npm install

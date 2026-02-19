@@ -7,9 +7,11 @@ from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Recharger le .env mis à jour
-env_path = Path(__file__).parent.parent / ".env"  # selon ton chemin
-load_dotenv(dotenv_path=env_path, override=True)
+# Charger le .env SEULEMENT s'il N'existe pas encore de variables d'environnement
+# En Docker, les variables viennent du docker-compose (priorité +haute)
+# En local (npm run dev), le .env est chargé
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path, override=False)  # Ne pas overrider les variables Docker
 
 from .blockchain import blockchain_manager
 from .wallet import router as wallet_router

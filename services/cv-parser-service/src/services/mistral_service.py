@@ -6,8 +6,8 @@ import logging
 import re
 from openai import OpenAI
 
-from config import Config
-from models.cv_model import CVData, PersonalInfo, Education, Experience, SkillCategory
+from src.config import Config
+from src.models.cv_model import CVData, PersonalInfo, Education, Experience, SkillCategory
 
 logger = logging.getLogger(__name__)
 

@@ -83,7 +83,7 @@ app.use((error, req, res, next) => {
 
 const PORT = process.env.PORT || 3001;
 
-sequelize.sync({ alter: true })
+sequelize.sync({ force: false, alter: false })
   .then(() => {
     console.log('✅ Base de données connectée avec succès');
     console.log('📋 Tables disponibles:');

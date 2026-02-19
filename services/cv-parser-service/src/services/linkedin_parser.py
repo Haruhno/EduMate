@@ -2,9 +2,9 @@ import logging
 from datetime import datetime
 from typing import Dict, Any
 
-from services.mistral_service import MistralCVService
-from models.cv_model import CVData
-from services.cv_parser import CVParserService
+from src.services.mistral_service import MistralCVService
+from src.models.cv_model import CVData
+from src.services.cv_parser import CVParserService
 
 logger = logging.getLogger(__name__)
 

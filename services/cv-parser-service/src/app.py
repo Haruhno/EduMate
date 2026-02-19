@@ -3,9 +3,9 @@ from flask_cors import CORS
 import os
 import logging
 from dotenv import load_dotenv
-from routes.cv_routes import cv_bp
-from routes.linkedin_routes import linkedin_bp
-from middleware.auth_middleware import auth_middleware
+from src.routes.cv_routes import cv_bp
+from src.routes.linkedin_routes import linkedin_bp
+from src.middleware.auth_middleware import auth_middleware
 
 # Charger les variables d'environnement
 load_dotenv()

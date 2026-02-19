@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, Header, Depends
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import requests
 import jwt
@@ -11,6 +11,24 @@ from .blockchain import blockchain_manager
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+def _get_exchange_start_timestamp(exchange: Dict[str, Any]) -> Optional[float]:
+    skill_requested = exchange.get("skillRequested")
+    if isinstance(skill_requested, str):
+        try:
+            skill_requested = json.loads(skill_requested)
+        except Exception:
+            return None
+    if isinstance(skill_requested, dict):
+        date_str = skill_requested.get("date")
+        time_str = skill_requested.get("time")
+        if date_str and time_str:
+            try:
+                dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
+                return dt.timestamp()
+            except Exception:
+                return None
+    return None
 
 async def get_current_user(authorization: Optional[str] = Header(None)) -> str:
     """Extraire l'ID utilisateur du token JWT"""
@@ -260,6 +278,13 @@ async def accept_skill_exchange(
                 status_code=403,
                 detail="Seul le tuteur peut accepter cet échange"
             )
+
+        start_ts = _get_exchange_start_timestamp(exchange)
+        if start_ts is not None and datetime.now(timezone.utc).timestamp() >= start_ts:
+            raise HTTPException(
+                status_code=400,
+                detail="La date du cours est depassee, l'acceptation n'est plus possible"
+            )
         
         # Accepter sur la blockchain
         result = blockchain_manager.accept_skill_exchange(exchange_id, tutor_user_id)
@@ -286,10 +311,17 @@ async def reject_skill_exchange(
         logger.info(f"[REJECT_SKILL_EXCHANGE] Exchange: {exchange_id}, User: {user_id}")
         
         exchange = blockchain_manager.get_skill_exchange(exchange_id)
-        if user_id not in [exchange.get("studentId"), exchange.get("tutorId")]:
+        if user_id != exchange.get("tutorId"):
             raise HTTPException(
                 status_code=403,
-                detail="Vous n'êtes pas partie de cet échange"
+                detail="Seul le tuteur peut refuser cet échange"
+            )
+
+        start_ts = _get_exchange_start_timestamp(exchange)
+        if start_ts is not None and datetime.now(timezone.utc).timestamp() >= start_ts:
+            raise HTTPException(
+                status_code=400,
+                detail="La date du cours est depassee, le refus n'est plus possible"
             )
 
         if exchange.get("status") not in ["PENDING", "ACCEPTED"]:
@@ -299,7 +331,7 @@ async def reject_skill_exchange(
             )
         
         # Rejeter sur la blockchain
-        result = blockchain_manager.reject_skill_exchange(exchange_id, user_id, exchange.get("tutorId"))
+        result = blockchain_manager.reject_skill_exchange(exchange_id, exchange.get("tutorId"))
         
         return {
             "success": True,

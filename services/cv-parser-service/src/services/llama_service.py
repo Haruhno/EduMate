@@ -6,9 +6,9 @@ from functools import lru_cache
 import re
 from openai import OpenAI
 import os
-from config import Config
+from src.config import Config
 
-from models.cv_model import CVData, PersonalInfo, Education, Experience, SkillCategory
+from src.models.cv_model import CVData, PersonalInfo, Education, Experience, SkillCategory
 
 logger = logging.getLogger(__name__)
 

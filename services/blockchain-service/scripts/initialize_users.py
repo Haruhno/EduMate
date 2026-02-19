@@ -6,6 +6,7 @@ Connecte à l'API users et crée un wallet blockchain pour chacun
 
 import requests
 import sys
+import os
 from pathlib import Path
 
 # Ajouter le chemin pour les imports
@@ -16,7 +17,8 @@ from blockchain import blockchain_manager
 def get_all_users():
     """Récupérer tous les utilisateurs depuis l'API"""
     try:
-        response = requests.get("http://localhost:3001/api/users", timeout=10)
+        auth_service_url = os.getenv("AUTH_SERVICE_URL", "http://localhost:3001")
+        response = requests.get(f"{auth_service_url}/api/users", timeout=10)
         if response.status_code == 200:
             return response.json().get("data", [])
         return []

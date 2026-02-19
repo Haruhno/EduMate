@@ -1,0 +1,281 @@
+# Docker Compose Configuration for EduMate (9 Services)
+# Network: edumate-network, Volumes: Named volumes for persistence
+
+# ============================================
+# EduMate - Docker Compose Configuration
+# Multi-service orchestration
+# All services with centralized database layer
+# ============================================
+
+services:
+  # ========== DATABASES ==========
+
+  # PostgreSQL for Auth Service
+  postgres:
+    image: "postgres:16-alpine"
+    container_name: "edumate-postgres"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-edumate_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edumate_password}
+      POSTGRES_DB: ${POSTGRES_DB:-edumate}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./services/auth-service/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - edumate-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-edumate_user} -d ${POSTGRES_DB:-edumate}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # MongoDB for Message Service
+  mongodb:
+    image: "mongo:7.0"
+    container_name: "edumate-mongodb"
+    command: mongod --quiet --logpath /dev/null
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-edumate_user}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-edumate_password}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-edumate}
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - edumate-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Qdrant Vector Database for Embeddings
+  qdrant:
+    image: "qdrant/qdrant:latest"
+    container_name: "edumate-qdrant"
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+    environment:
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-qdrant_api_key}
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - edumate-network
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+
+  # Ganache - Local Ethereum Testnet for Blockchain
+  ganache:
+    image: "trufflesuite/ganache:latest"
+    container_name: "edumate-ganache"
+    ports:
+      - "${GANACHE_PORT:-8545}:8545"
+    environment:
+      MNEMONIC: "${GANACHE_MNEMONIC:-test test test test test test test test test test test junk}"
+      NETWORK_ID: 1337
+      CHAIN_ID: 1337
+      ACCOUNTS: 10
+      ACCOUNT_KEYS_PATH: /ganache/accounts.json
+      DB_PATH: /ganache/data
+      DETERMINISTIC: "true"
+      SEED: 12345
+    volumes:
+      - ganache_data:/ganache/data
+    networks:
+      - edumate-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('net').connect(8545,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ========== BACKEND SERVICES ==========
+
+  # Auth Service (Node.js / Express)
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: "edumate-auth-service"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3001
+      DB_HOST: postgres
+      DB_USER: ${POSTGRES_USER:-edumate_user}
+      DB_PASS: ${POSTGRES_PASSWORD:-edumate_password}
+      DB_NAME: ${POSTGRES_DB:-edumate}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-edumate_user}:${POSTGRES_PASSWORD:-edumate_password}@postgres:5432/${POSTGRES_DB:-edumate}
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+      JWT_EXPIRE: ${JWT_EXPIRE:-7d}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-qdrant_api_key}
+      BLOCKCHAIN_SERVICE_URL: http://blockchain-service:3003
+    ports:
+      - "${AUTH_SERVICE_PORT:-3001}:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    networks:
+      - edumate-network
+    volumes:
+      - ./services/auth-service/src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  # Blockchain Service (Python / FastAPI)
+  blockchain-service:
+    build:
+      context: ./services/blockchain-service
+      dockerfile: Dockerfile
+    container_name: "edumate-blockchain-service"
+    environment:
+      PYTHONUNBUFFERED: 1
+      PORT: 3003
+      WEB3_PROVIDER_URL: http://ganache:8545
+      AUTH_SERVICE_URL: http://auth-service:3001
+      # Clé privée du compte (0) généré par Ganache avec le mnemonic configuré
+      PRIVATE_KEY: 0xf5dba4a8ef10315d0e0f1ffe75c4144a3519a283031aeea0b41ed23196cbee6e
+      # Les adresses des contrats seront générées automatiquement au démarrage
+    ports:
+      - "${BLOCKCHAIN_SERVICE_PORT:-3003}:3003"
+    depends_on:
+      ganache:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - edumate-network
+    volumes:
+      - ./services/blockchain-service/app:/app/app:ro
+      - ./services/blockchain-service/contracts:/app/contracts:ro
+      - ./services/blockchain-service/scripts:/app/scripts:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys,urllib.request;\nurl='http://localhost:3003/health';\n\ntry:\n    urllib.request.urlopen(url, timeout=2)\nexcept Exception:\n    sys.exit(1)"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s  # Délai plus long pour le déploiement initial des contrats
+    restart: unless-stopped
+
+  # Message Service (Node.js / Express + Socket.io)
+  message-service:
+    build:
+      context: ./services/message-service
+      dockerfile: Dockerfile
+    container_name: "edumate-message-service"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3002
+      MONGODB_URI: mongodb://${MONGO_USER:-edumate_user}:${MONGO_PASSWORD:-edumate_password}@mongodb:27017/${MONGO_DB:-edumate}?authSource=admin
+      AUTH_SERVICE_URL: http://auth-service:3001
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+    ports:
+      - "${MESSAGE_SERVICE_PORT:-3002}:3002"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - edumate-network
+    volumes:
+      - ./services/message-service/src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  # CV Parser Service (Python / Flask)
+  cv-parser-service:
+    build:
+      context: ./services/cv-parser-service
+      dockerfile: Dockerfile
+    container_name: "edumate-cv-parser-service"
+    environment:
+      PYTHONUNBUFFERED: 1
+      PORT: 5001
+      FLASK_ENV: ${FLASK_ENV:-development}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-your-mistral-key}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-your-openrouter-key}
+      LINKEDIN_CLIENT_ID: ${LINKEDIN_CLIENT_ID:-}
+      LINKEDIN_CLIENT_SECRET: ${LINKEDIN_CLIENT_SECRET:-}
+    ports:
+      - "${CV_PARSER_PORT:-5001}:5001"
+    networks:
+      - edumate-network
+    volumes:
+      - ./services/cv-parser-service/src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys,urllib.request;\nurl='http://localhost:5001/health';\n\ntry:\n    urllib.request.urlopen(url, timeout=2)\nexcept Exception:\n    sys.exit(1)"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # ========== FRONTEND ==========
+
+  # Web Application (React + Nginx)
+  web-app:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: "edumate-web-app"
+    environment:
+      VITE_API_BASE_URL: http://localhost:3001
+      VITE_BLOCKCHAIN_SERVICE_URL: http://localhost:3003
+      VITE_MESSAGE_SERVICE_URL: http://localhost:3002
+      VITE_CV_PARSER_SERVICE_URL: http://localhost:5001
+    ports:
+      - "${WEB_APP_PORT:-5173}:5173"
+    depends_on:
+      - auth-service
+      - blockchain-service
+      - message-service
+    networks:
+      - edumate-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5173/"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+networks:
+  edumate-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+volumes:
+  postgres_data:
+    driver: local
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  qdrant_data:
+    driver: local
+  ganache_data:
+    driver: local

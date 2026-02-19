@@ -45,14 +45,18 @@ class DeterministicWalletGenerator:
 class BlockchainManager:
     """Gestionnaire de la blockchain - Zéro stockage local"""
     
-    def __init__(self, auth_service_url: str = "http://localhost:3001"):
-        self.w3 = Web3(HTTPProvider("http://127.0.0.1:8545"))
+    def __init__(self, auth_service_url: str = None):
+        # Utiliser la variable d'environnement WEB3_PROVIDER_URL (définie en Docker)
+        # Fallback à http://127.0.0.1:8545 pour le dev local
+        web3_provider = os.getenv("WEB3_PROVIDER_URL", "http://127.0.0.1:8545")
+        self.w3 = Web3(HTTPProvider(web3_provider))
         
         if not self.w3.is_connected():
-            raise ConnectionError("Impossible de se connecter à Ganache")
+            raise ConnectionError(f"Impossible de se connecter à Ganache sur {web3_provider}")
         
         self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
-        self.auth_service_url = auth_service_url
+        # Utiliser AUTH_SERVICE_URL de l'environnement, ou le paramètre, ou default local
+        self.auth_service_url = auth_service_url or os.getenv("AUTH_SERVICE_URL", "http://localhost:3001")
         
         # Charger les contrats depuis l'environnement
         self.load_contracts_from_env()
@@ -910,17 +914,9 @@ class BlockchainManager:
             'nonce': self.w3.eth.get_transaction_count(owner_address),
         })
         
-        # Signer avec la clé privée du owner
-        owner_private_key = os.getenv("BLOCKCHAIN_OWNER_PRIVATE_KEY")
-        if not owner_private_key:
-            raise ValueError("Clé privée du owner non configurée")
-        
-        # S'assurer que la clé privée commence par 0x
-        if not owner_private_key.startswith("0x"):
-            owner_private_key = "0x" + owner_private_key
-        
-        signed_tx = self.w3.eth.account.sign_transaction(tx, owner_private_key)
-        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+        # Utiliser send_transaction avec les comptes déverrouillés de Ganache (Docker)
+        # En local npm run dev, Ganache fournit aussi des comptes déverrouillés
+        tx_hash = self.w3.eth.send_transaction(tx)
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
         
         # Distribuer les 500 EDUcoins
@@ -956,17 +952,9 @@ class BlockchainManager:
                 'nonce': self.w3.eth.get_transaction_count(owner_address),
             })
             
-            # Signer avec la clé privée du owner
-            owner_private_key = os.getenv("BLOCKCHAIN_OWNER_PRIVATE_KEY")
-            if not owner_private_key:
-                raise ValueError("Clé privée du owner non configurée")
-            
-            # S'assurer que la clé privée commence par 0x
-            if not owner_private_key.startswith("0x"):
-                owner_private_key = "0x" + owner_private_key
-            
-            signed_tx = self.w3.eth.account.sign_transaction(tx, owner_private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+            # Utiliser send_transaction avec les comptes déverrouillés de Ganache (Docker)
+            # En local npm run dev, Ganache fournit aussi des comptes déverrouillés
+            tx_hash = self.w3.eth.send_transaction(tx)
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
             
             return tx_hash.hex()
@@ -987,10 +975,15 @@ class BlockchainManager:
             users = response.json().get("data", [])
             results = []
 
-            # Utiliser le 1er compte Ganache qui a de l'ETH
-            ganache_account_0_address = "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
-            ganache_account_0_key = "0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
-            owner_address = self.w3.to_checksum_address(ganache_account_0_address)
+            # Utiliser le 1er compte Ganache déverrouillé (dynamique, pas hardcodé)
+            # En Docker, Ganache fournit les comptes via web3.eth.accounts
+            ganache_accounts = self.w3.eth.accounts
+            if not ganache_accounts:
+                logger.error("Aucun compte Ganache disponible")
+                return []
+            
+            owner_address = self.w3.to_checksum_address(ganache_accounts[0])
+            logger.info(f"Utilisation du compte Ganache: {owner_address}")
 
             for user in users:
                 user_id = user.get("id")
@@ -1015,9 +1008,10 @@ class BlockchainManager:
                             'nonce': nonce
                         }
                         
-                        signed = self.w3.eth.account.sign_transaction(tx, ganache_account_0_key)
-                        tx_receipt = self.w3.eth.send_raw_transaction(signed.raw_transaction)
-                        self.w3.eth.wait_for_transaction_receipt(tx_receipt)
+                        # Utiliser send_transaction() qui utilise les comptes déverrouillés de Ganache
+                        # (pas besoin de clé privée en Docker)
+                        tx_hash_receipt = self.w3.eth.send_transaction(tx)
+                        self.w3.eth.wait_for_transaction_receipt(tx_hash_receipt)
 
                         results.append({
                             "user_id": user_id,

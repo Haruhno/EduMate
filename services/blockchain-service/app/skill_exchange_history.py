@@ -20,17 +20,21 @@ async def get_accepted_skill_exchanges_for_history(
     user_id: str = Depends(get_current_user),
     authorization: Optional[str] = Header(None)
 ) -> Dict[str, Any]:
-    """Récupérer les skill exchanges acceptés pour l'historique de cours du tuteur ou étudiant"""
+    """Récupérer les skill exchanges acceptés ou complétés pour l'historique de cours du tuteur ou étudiant"""
     try:
         logger.info(f"[GET_ACCEPTED_EXCHANGES_HISTORY] User: {user_id}")
         
         # Récupérer tous les échanges de l'utilisateur
         all_exchanges = blockchain_manager.get_user_skill_exchanges(user_id)
         
-        # Filtrer pour les échanges acceptés
-        accepted_exchanges = [ex for ex in all_exchanges if ex.get("status", "").upper() == "ACCEPTED"]
+        # Filtrer pour les échanges visibles dans l'historique
+        allowed_statuses = {"ACCEPTED", "COMPLETED"}
+        accepted_exchanges = [
+            ex for ex in all_exchanges
+            if ex.get("status", "").upper() in allowed_statuses
+        ]
         
-        logger.info(f"[GET_ACCEPTED_EXCHANGES_HISTORY] Found {len(accepted_exchanges)} accepted exchanges")
+        logger.info(f"[GET_ACCEPTED_EXCHANGES_HISTORY] Found {len(accepted_exchanges)} accepted/completed exchanges")
         
         # Enrichir les données  
         enriched_exchanges = []

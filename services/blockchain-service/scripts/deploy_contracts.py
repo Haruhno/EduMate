@@ -12,10 +12,9 @@ from pathlib import Path
 from web3 import Web3
 from solcx import compile_source, install_solc
 
-# Configuration
-GANACHE_URL = "http://127.0.0.1:8545"
-OWNER_PRIVATE_KEY = "0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"  # Ganache account 0
-OWNER_ADDRESS = "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"  # Corresponding address
+# Configuration - Utilise les variables d'environnement ou valeurs par défaut
+GANACHE_URL = os.getenv("WEB3_PROVIDER_URL", "http://127.0.0.1:8545")
+OWNER_PRIVATE_KEY = os.getenv("PRIVATE_KEY", "0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d")
 
 def compile_contracts():
     """Compiler les contrats Solidity ensemble"""
@@ -87,10 +86,47 @@ def deploy_contracts(compiled_contracts):
     
     print(f"[OK] Connecté à Ganache (block #{w3.eth.block_number})")
     
-    # Préparer le compte owner
-    account = w3.eth.account.from_key(OWNER_PRIVATE_KEY)
-    print(f"Compte owner: {account.address}")
-    print(f"Balance: {w3.from_wei(w3.eth.get_balance(account.address), 'ether')} ETH")
+    # Auto-détection d'un compte avec des fonds
+    owner_address = None
+    use_unlocked_account = False  # Flag pour savoir si on utilise un compte Ganache déverrouillé
+    
+    # Essayer d'abord avec la clé privée configurée
+    try:
+        account = w3.eth.account.from_key(OWNER_PRIVATE_KEY)
+        balance = w3.eth.get_balance(account.address)
+        
+        if balance >= w3.to_wei(10, 'ether'):
+            owner_address = account.address
+            print(f"Compte owner (clé privée): {owner_address}")
+            print(f"Balance: {w3.from_wei(balance, 'ether')} ETH")
+        else:
+            print(f"[WARN] Compte configuré {account.address} insuffisant ({w3.from_wei(balance, 'ether')} ETH)")
+    except Exception as e:
+        print(f"[WARN] Erreur avec clé privée: {e}")
+    
+    # Si pas de compte avec fonds, utiliser les comptes Ganache déverrouillés
+    if not owner_address:
+        print("[INFO] Recherche d'un compte Ganache avec des fonds...")
+        accounts = w3.eth.accounts
+        for acc in accounts:
+            acc_balance = w3.eth.get_balance(acc)
+            if acc_balance >= w3.to_wei(100, 'ether'):
+                owner_address = acc
+                use_unlocked_account = True
+                print(f"[OK] Compte Ganache trouvé: {owner_address}")
+                print(f"Balance: {w3.from_wei(acc_balance, 'ether')} ETH")
+                break
+        
+        if not owner_address:
+            print("[ERREUR] Aucun compte avec des fonds disponible")
+            return None
+    
+    # Préparer le compte owner pour les anciennes références
+    if not use_unlocked_account:
+        account = w3.eth.account.from_key(OWNER_PRIVATE_KEY)
+    else:
+        # Créer un objet account factice pour compatibilité
+        account = type('Account', (), {'address': owner_address})()
     
     # Déployer EduToken
     print("\n[INFO] Déploiement de EduToken...")
@@ -112,11 +148,15 @@ def deploy_contracts(compiled_contracts):
         'nonce': nonce,
     })
     
-    # Signer et envoyer
-    signed_tx = w3.eth.account.sign_transaction(tx, OWNER_PRIVATE_KEY)
-    
+    # Envoyer selon le mode (clé privée ou compte déverrouillé)
     try:
-        tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+        if use_unlocked_account:
+            # Mode dev: compte Ganache déverrouillé
+            tx_hash = w3.eth.send_transaction(tx)
+        else:
+            # Mode Docker: signer avec clé privée
+            signed_tx = w3.eth.account.sign_transaction(tx, OWNER_PRIVATE_KEY)
+            tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
     except Exception as e:
         print(f"[ERREUR] Envoi transaction échoué: {e}")
         return None
@@ -160,11 +200,13 @@ def deploy_contracts(compiled_contracts):
         'nonce': nonce,
     })
     
-    # Signer et envoyer
-    signed_tx = w3.eth.account.sign_transaction(tx, OWNER_PRIVATE_KEY)
-    
+    # Envoyer selon le mode
     try:
-        tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+        if use_unlocked_account:
+            tx_hash = w3.eth.send_transaction(tx)
+        else:
+            signed_tx = w3.eth.account.sign_transaction(tx, OWNER_PRIVATE_KEY)
+            tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
     except Exception as e:
         print(f"[ERREUR] Envoi transaction BookingEscrow échoué: {e}")
         return None
@@ -204,10 +246,13 @@ def deploy_contracts(compiled_contracts):
         'nonce': nonce,
     })
     
-    signed_tx = w3.eth.account.sign_transaction(tx, OWNER_PRIVATE_KEY)
-    
+    # Envoyer selon le mode
     try:
-        tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+        if use_unlocked_account:
+            tx_hash = w3.eth.send_transaction(tx)
+        else:
+            signed_tx = w3.eth.account.sign_transaction(tx, OWNER_PRIVATE_KEY)
+            tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
     except Exception as e:
         print(f"[ERREUR] Envoi transaction SkillExchange échoué: {e}")
         return None
