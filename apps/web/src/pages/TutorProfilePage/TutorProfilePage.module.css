@@ -1946,8 +1946,6 @@
   }
 }
 
-/* Ajoutez ces styles à votre fichier CSS existant */
-
 .disabledButton {
   opacity: 0.6;
   cursor: not-allowed !important;
@@ -1964,7 +1962,6 @@
   background-color: #ccc !important;
 }
 
-/* Styles pour les boutons spécifiques */
 .actionButtons .disabledButton {
   width: 100%;
   padding: 12px 20px;
@@ -1983,7 +1980,6 @@
   color: #999 !important;
 }
 
-/* Ajoutez à TutorProfilePage.module.css */
 .disabledButton {
   opacity: 0.5;
   cursor: not-allowed !important;
@@ -1994,5 +1990,150 @@
 .disabledButton:hover {
   transform: none !important;
   box-shadow: none !important;
+}
+
+/* Ajoutez ces styles à la fin du fichier existant */
+
+.loginNotice {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  border: 2px solid #fbbf24;
+  box-shadow: 0 4px 15px rgba(251, 191, 36, 0.2);
+}
+
+.loginNotice span {
+  font-size: 0.95rem;
+  color: #92400e;
+  font-weight: 600;
+}
+
+.loginButton {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  border: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.loginButton:hover {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+/* Styles pour les boutons désactivés */
+.disabledButton {
+  opacity: 0.6;
+  cursor: not-allowed !important;
+  background: linear-gradient(135deg, #cccccc, #aaaaaa) !important;
+  color: #666666 !important;
+  border-color: #bbbbbb !important;
+  pointer-events: none;
+}
+
+.disabledButton:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  background: linear-gradient(135deg, #cccccc, #aaaaaa) !important;
+}
+
+/* Overlay pour les cartes d'annonces quand non connecté */
+.annonceCard {
+  position: relative;
+}
+
+.annonceCard.disabled-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.annonceCard.disabled-card .reserveButton {
+  position: relative;
+  z-index: 2;
+}
+
+.contactButton.disabledButton {
+  background: linear-gradient(135deg, #cccccc, #aaaaaa) !important;
+  color: #666666 !important;
+  border-color: #bbbbbb !important;
+}
+
+.connectionRequired {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.connectionRequiredIcon {
+  font-size: 1.1rem;
+}
+
+/* Responsive pour le loginNotice */
+@media (max-width: 768px) {
+  .loginNotice {
+    position: static;
+    transform: none;
+    margin-top: 1.5rem;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: center;
+    width: 100%;
+    padding: 1rem;
+  }
+  
+  .headerContent {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .headerTitle {
+    text-align: center;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .loginNotice {
+    padding: 0.75rem;
+  }
+  
+  .loginNotice span {
+    font-size: 0.85rem;
+  }
+  
+  .loginButton {
+    padding: 0.4rem 1rem;
+    font-size: 0.85rem;
+  }
 }
 

@@ -47,6 +47,23 @@ export interface TutorSettings {
 }
 
 class TutorService {
+  private tutorCache = new Map<string, { ts: number; data: TutorFromDB }>();
+  private cacheTtlMs = 60_000;
+
+  private getCachedTutor(tutorId: string) {
+    const cached = this.tutorCache.get(tutorId);
+    if (!cached) return null;
+    if (Date.now() - cached.ts > this.cacheTtlMs) {
+      this.tutorCache.delete(tutorId);
+      return null;
+    }
+    return cached.data;
+  }
+
+  private setCachedTutor(tutorId: string, data: TutorFromDB) {
+    this.tutorCache.set(tutorId, { ts: Date.now(), data });
+  }
+
   async updateTutorSettings(settings: TutorSettings) {
     const response = await api.put('/tutor/settings', settings);
     return response.data;
@@ -117,6 +134,11 @@ class TutorService {
     existsButUnverified?: boolean;
   }> {
     try {
+      const cached = this.getCachedTutor(tutorId);
+      if (cached) {
+        return { success: true, data: cached };
+      }
+
       console.log('🔍 Tentative de récupération du tuteur:', tutorId);
       
       // Essayer d'abord l'endpoint principal (tuteurs vérifiés)
@@ -163,8 +185,7 @@ class TutorService {
             };
           }
 
-          // Le profil est vérifié mais n'était pas dans l'endpoint principal
-          console.log('✅ Tuteur vérifié trouvé via profile endpoint');
+          this.setCachedTutor(tutorId, tutorData);
           return { 
             success: true, 
             data: tutorData 
@@ -304,6 +325,32 @@ class TutorService {
 
     const response = await api.get(`/tutors/search?${params.toString()}`);
     return response.data;
+  }
+  // ...existing code...
+  async getTutorByIdPublic(tutorId: string): Promise<{
+    success: boolean;
+    data?: TutorFromDB;
+    message?: string;
+  }> {
+    try {
+      const cached = this.getCachedTutor(tutorId);
+      if (cached) {
+        return { success: true, data: cached };
+      }
+
+      const response = await api.get(`/tutors/public/${tutorId}`);
+      if (response?.data?.success && response?.data?.data) {
+        this.setCachedTutor(tutorId, response.data.data);
+      }
+      return response.data;
+    } catch (error: any) {
+      const status = error?.response?.status;
+      console.error('Erreur récupération tuteur public:', error);
+      return {
+        success: false,
+        message: status === 404 ? 'Tuteur non trouvé' : (error?.response?.data?.message || 'Erreur lors de la récupération du tuteur')
+      };
+    }
   }
 }
 

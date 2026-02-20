@@ -1,15 +1,3 @@
-.tutorSearchPage {
-  min-height: 100vh;
-  background-color: #fffaf6;
-}
-
-.container {
-  width: 100%;
-  max-width: 1200px; 
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
 /* Pour les très grands écrans */
 @media (min-width: 1400px) {
   .container {
@@ -38,34 +26,53 @@
   }
 }
 
-.mainContainer {
-  padding: 2rem 1rem;
+.tutorSearchPage {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #fffaf6 0%, #fffbeb 100%);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 4rem 2rem;
 }
 
 .searchHeader {
-  padding: 1rem;
-}
-
-.headerText {
+  padding: 3rem 1rem 0.5rem;
   text-align: center;
 }
 
-.headerText h1 {
-  font-size: 2.5rem;
-  font-weight: bold;
+.searchHeader::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
   background: linear-gradient(90deg, #facc15, #fb923c);
+}
+
+.headerText h1 {
+  margin: 0;
+  font-size: 3rem;
+  font-weight: 700;
+  color: transparent;
+  background: linear-gradient(135deg, #FFD700 0%, #FF8C00 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  color: transparent;
-  display: inline-block; 
-  margin: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Recoleta', serif;
+  text-align: center;
 }
 
 .headerText p {
-  color: #6b7280;
-  margin: 0.5rem 0 0 0;
+  margin: 8px 0 0;
+  color: #666;
+  font-size: 1.1rem;
+  text-align: center;
+  font-family: 'DMSans', sans-serif;
 }
 
 .layout {
@@ -94,25 +101,53 @@
   display: none;
 }
 
+/* CORRECTION DU PROBLÈME DE DÉCALAGE */
 .resultsHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* Aligne en haut pour éviter le décalage vertical */
   justify-content: space-between;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap; /* Permet le passage à la ligne sur mobile */
+  gap: 1rem;
+  min-height: 60px; /* Hauteur minimale fixe */
+  position: relative;
+}
+
+.resultsInfo {
+  flex: 1;
+  min-width: 250px; /* Largeur minimale pour éviter la compression */
+  overflow: hidden; /* Cache le débordement si nécessaire */
+  text-align: left; /* FORCE L'ALIGNEMENT À GAUCHE */
 }
 
 .resultsCount {
   font-size: 1.6rem;
   font-weight: bold;
   color: #fbbf24;
-  margin: 0;
+  margin: 0 0 4px 0; /* Marge seulement en bas */
   font-family: 'DMSans', sans-serif;
+  line-height: 1.2;
+  text-align: left; /* ALIGNEMENT À GAUCHE */
+  display: block;
+  width: 100%;
 }
 
 .resultsSubtitle {
   color: #6b7280;
   font-size: 0.875rem;
-  margin: 0.25rem 0 0 0;
+  margin: 0;
+  white-space: nowrap; /* Empêche le retour à la ligne */
+  overflow: hidden; /* Cache le débordement */
+  text-overflow: ellipsis; /* Ajoute "..." si trop long */
+  max-width: 100%; /* Ne dépasse pas la largeur du parent */
+  display: block;
+  text-align: left; /* ALIGNEMENT À GAUCHE */
+}
+
+.sortOptions {
+  flex-shrink: 0; /* Empêche le rétrécissement */
+  white-space: nowrap; /* Empêche le retour à la ligne */
+  margin-left: auto; /* Pousse le select à droite */
 }
 
 .sortSelect {
@@ -120,6 +155,8 @@
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
+  min-width: 200px; /* Largeur fixe pour éviter les variations */
+  text-align: left; /* Texte aligné à gauche dans le select */
 }
 
 /* GRILLE - 3 colonnes par défaut */
@@ -196,6 +233,20 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
+  }
+  
+  .resultsSubtitle {
+    white-space: normal; /* Permet le retour à la ligne sur mobile */
+  }
+  
+  .sortOptions {
+    align-self: stretch; /* Prend toute la largeur sur mobile */
+    margin-left: 0; /* Retire la marge gauche sur mobile */
+  }
+  
+  .sortSelect {
+    width: 100%;
+    min-width: unset; /* Retire la largeur minimale sur mobile */
   }
   
   .mobileFilters {

@@ -10,6 +10,9 @@ const annonceRoutes = require('./routes/annonceRoutes');
 const userRoutes = require('./routes/userRoutes');
 const reviewRoutes = require('./routes/reviews');
 const path = require('path');
+const aiConfigRoutes = require('./routes/aiConfigRoutes');
+const initializeAdmin = require('./scripts/initAdmin');
+const initializeGlobalConfig = require('./scripts/initGlobalConfig');
 
 const app = express();
 
@@ -24,6 +27,7 @@ const corsOptions = {
     'http://127.0.0.1:5174', 
     process.env.FRONTEND_URL || 'http://localhost:5173'
   ],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
@@ -42,6 +46,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/tutors', tutorRoutes);
 app.use('/api/annonces', annonceRoutes);
+app.use('/api/ai-config', aiConfigRoutes);
 app.use('/api', userRoutes);
 app.use('/api/reviews', reviewRoutes);
 
@@ -83,8 +88,11 @@ app.use((error, req, res, next) => {
 
 const PORT = process.env.PORT || 3001;
 
-sequelize.sync({ force: false, alter: false })
-  .then(() => {
+
+// Utilisation d'une IIFE async pour permettre l'utilisation de await
+(async () => {
+  try {
+    await sequelize.sync({ alter: true });
     console.log('✅ Base de données connectée avec succès');
     console.log('📋 Tables disponibles:');
     console.log('   - users');
@@ -94,15 +102,26 @@ sequelize.sync({ force: false, alter: false })
     console.log('   - experiences');
     console.log('   - annonces');
     console.log('   - reviews');
+    console.log('   - ai_configs');
+
+    // Initialiser le compte admin unique
+    await initializeAdmin();
+
+    // Initialiser la config IA globale si elle n'existe pas
+    await initializeGlobalConfig();
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
       console.log(`🌐 Environnement: ${process.env.NODE_ENV || 'development'}`);
+      console.log('');
+      console.log('🔐 Compte Admin:');
+      console.log('   📧 Email: admin@edumate.com');
+      console.log('   🔑 Mot de passe: admin');
     });
-  })
-  .catch(error => {
+  } catch (error) {
     console.error('❌ Erreur de connexion à la base de données:', error);
     process.exit(1);
-  });
-
+  }
+})();
+  
 module.exports = app;

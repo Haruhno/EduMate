@@ -4,7 +4,10 @@ import TutorCard from '../../components/TutorCard/TutorCard';
 import SearchBar from '../../components/SearchBar/SearchBar';
 import FiltersSidebar from '../../components/FiltersSideBar/FiltersSidebar';
 import annonceService from '../../services/annonceService';
+
 import type { AnnonceFromDB } from '../../services/annonceService';
+import ragService from '../../services/rag-service';
+import { fetchTutorAISummary } from '../../services/aiSummaryService';
 
 export interface Annonce {
   id: string;
@@ -24,6 +27,7 @@ export interface Annonce {
       firstName: string;
       lastName: string;
       email: string;
+      skillsToLearn?: string[];
     };
     rating: number;
     reviewsCount: number;
@@ -62,6 +66,8 @@ const TutorSearchPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalAnnonces, setTotalAnnonces] = useState(0);
+  const [aiSummary, setAiSummary] = useState<{ intro: string; conclusion: string } | null>(null);
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const annoncesPerPage = 9;
@@ -93,33 +99,36 @@ const TutorSearchPage: React.FC = () => {
 
   // Fonction pour mapper les annonces vers le format Tutor
   const mapAnnonceToTutor = (annonce: AnnonceFromDB): any => {
-    // Utiliser le tableau subjects pour les spécialités
     const specialties = annonce.subjects && annonce.subjects.length > 0 
       ? annonce.subjects 
       : ['Tutorat général'];
 
     const primarySubject = specialties[0];
 
+    // Extraire les skillsToLearn du user
+    const skillsToLearn = annonce.tutor?.user?.skillsToLearn || [];
+
     return {
-      id: annonce.tutor?.id || annonce.tutorId,
+      id: annonce.id,
       tutorId: annonce.tutorId,
       name: `${annonce.tutor?.user?.firstName || ''} ${annonce.tutor?.user?.lastName || ''}`.trim() || 'Tuteur Expert',
       annonceId: annonce.id,
-      subject: primarySubject, // Sujet principal pour l'affichage
-      subjects: specialties, // Tableau complet des matières
+      subject: primarySubject,
+      subjects: specialties,
       rating: annonce.tutor?.rating || 4,
       reviews: annonce.tutor?.reviewsCount || 0,
       price: `🪙${annonce.hourlyRate || 30}`,
       emoji: "👨‍🏫",
       status: "Disponible",
       badge: getBadgeFromRating(annonce.tutor?.rating || 4),
-      specialties: specialties, // Utiliser le tableau complet des matières
+      specialties: specialties,
       gradient: getGradientFromSubject(primarySubject),
       bio: annonce.tutor?.bio,
       experience: annonce.tutor?.experience,
       educationLevel: annonce.level,
       profilePicture: annonce.tutor?.profilePicture,
-      // Données supplémentaires de l'annonce
+      // Ajouter les compétences recherchées depuis user
+      skillsToLearn: Array.isArray(skillsToLearn) ? skillsToLearn : [],
       annonceData: {
         title: annonce.title,
         description: annonce.description,
@@ -160,67 +169,142 @@ const TutorSearchPage: React.FC = () => {
     return gradients[Math.floor(Math.random() * gradients.length)];
   };
 
-  // Récupérer les annonces avec pagination et filtres
+  // Récupérer les annonces avec recherche sémantique
   const fetchAnnonces = async (page: number = 1, subject?: string) => {
     setLoading(true);
+    setAiSummary(null);
+    setAiSummaryLoading(false);
     try {
-      const response = await annonceService.searchAnnonces({
-        page,
-        limit: annoncesPerPage,
-        subject: subject || searchQuery,
-        level: filters.level,
-        minRating: filters.rating,
-        maxPrice: filters.priceRange[1],
-        minPrice: filters.priceRange[0],
-        teachingMode: filters.teachingMode,
-        location: filters.location
-      });
-
-      if (response.success) {
-        const dbAnnonces = response.data.annonces.map(mapAnnonceToTutor);
-        
-        console.log('Annonces from DB:', dbAnnonces);
-        
-        setAnnonces(dbAnnonces);
-        setTotalPages(response.data.totalPages || 1);
-        setTotalAnnonces(response.data.totalAnnonces || 0);
-        setCurrentPage(page);
+      // DÉTERMINER LE MODE DE RECHERCHE
+      const hasExplicitSearch = (subject || searchQuery || '').trim().length > 0;
+      const query = (subject || searchQuery || '').trim();
+      if (!hasExplicitSearch) {
+        const response = await annonceService.searchAnnonces({
+          page: 1,
+          limit: 100,
+          level: filters.level,
+          minRating: filters.rating,
+          maxPrice: filters.priceRange[1],
+          minPrice: filters.priceRange[0],
+          teachingMode: filters.teachingMode,
+          location: filters.location
+        });
+        if (response.success && response.data?.annonces) {
+          const dbAnnonces = response.data.annonces.map(mapAnnonceToTutor);
+          setAnnonces(dbAnnonces);
+          setTotalPages(1);
+          setTotalAnnonces(dbAnnonces.length);
+          setCurrentPage(1);
+        }
+        setAiSummary(null);
+      } else {
+        // MODE SEARCH: Recherche sémantique RAG
+        console.log('🔍 Mode SEARCH: recherche sémantique avec:', query);
+        const response = await ragService.semanticSearch(
+          query,
+          {
+            level: filters.level || undefined,
+            minPrice: filters.priceRange[0],
+            maxPrice: filters.priceRange[1],
+            teachingMode: filters.teachingMode || undefined,
+            location: filters.location || undefined
+          },
+          annoncesPerPage
+        );
+        if (response.success && response.data?.results) {
+          const dbAnnonces = response.data.results.map((result: any) => mapSemanticResultToTutor(result));
+          setAnnonces(dbAnnonces);
+          setTotalPages(1);
+          setTotalAnnonces(response.data.total || dbAnnonces.length);
+          setCurrentPage(1);
+          // Appel IA summary si résultats
+          if (dbAnnonces.length > 0) {
+            setAiSummaryLoading(true);
+            try {
+              const aiResp = await fetchTutorAISummary(query, dbAnnonces);
+              if (aiResp && aiResp.success && (aiResp.intro || aiResp.conclusion || (aiResp.data && (aiResp.data.intro || aiResp.data.conclusion)))) {
+                // Supporte les deux formats de réponse
+                const intro = aiResp.intro || (aiResp.data && aiResp.data.intro) || '';
+                const conclusion = aiResp.conclusion || (aiResp.data && aiResp.data.conclusion) || '';
+                setAiSummary({ intro, conclusion });
+              } else {
+                setAiSummary(null);
+              }
+            } catch (e) {
+              setAiSummary(null);
+            }
+            setAiSummaryLoading(false);
+          } else {
+            setAiSummary(null);
+          }
+        } else {
+          // Fallback sur API traditionnelle si RAG échoue
+          console.log('⚠️ RAG échoué, fallback API');
+          const response = await annonceService.searchAnnonces({
+            page: 1,
+            limit: annoncesPerPage,
+            subject: query,
+            level: filters.level,
+            minRating: filters.rating,
+            maxPrice: filters.priceRange[1],
+            minPrice: filters.priceRange[0],
+            teachingMode: filters.teachingMode,
+            location: filters.location
+          });
+          if (response.success && response.data?.annonces) {
+            const dbAnnonces = response.data.annonces.map(mapAnnonceToTutor);
+            setAnnonces(dbAnnonces);
+            setTotalPages(response.data.totalPages || 1);
+            setTotalAnnonces(response.data.totalAnnonces || 0);
+          }
+          setAiSummary(null);
+        }
       }
-    } catch (error) {
-      console.error('Erreur lors de la récupération des annonces:', error);
+    } catch (error: any) {
+      console.error('❌ Erreur:', error.message);
       setAnnonces([]);
-      setTotalPages(1);
-      setTotalAnnonces(0);
-      setCurrentPage(1);
+      setAiSummary(null);
     } finally {
       setLoading(false);
+      setAiSummaryLoading(false);
     }
   };
 
-  // Gestion des suggestions de recherche
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredSubjects(allSubjects.slice(0, 8));
-      setShowSuggestions(false);
-    } else {
-      const filtered = allSubjects.filter(subject =>
-        subject.toLowerCase().startsWith(searchQuery.toLowerCase())
-      );
-      setFilteredSubjects(filtered.slice(0, 10));
-      setShowSuggestions(true);
-    }
-  }, [searchQuery]);
+  // Helper pour transformer résultats RAG en format TutorCard
+  const mapSemanticResultToTutor = (result: any): any => {
+    const specialties = result.subjects && result.subjects.length > 0 
+      ? result.subjects 
+      : ['Tutorat général'];
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchInputRef.current && !searchInputRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
+    const primarySubject = specialties[0];
+
+    return {
+      id: result.annonceId,
+      tutorId: result.tutorId,
+      name: result.tutorName || 'Tuteur Expert',
+      annonceId: result.annonceId,
+      subject: primarySubject,
+      subjects: specialties,
+      rating: result.tutorRating || 4,
+      reviews: 0,
+      price: `🪙${result.hourlyRate || 30}`,
+      emoji: "👨‍🏫",
+      status: "Disponible",
+      badge: getBadgeFromRating(result.tutorRating || 4),
+      specialties: specialties,
+      gradient: getGradientFromSubject(primarySubject),
+      educationLevel: result.level,
+      profilePicture: result.profilePicture || '', 
+      skillsToLearn: Array.isArray(result.tutorSkillsToLearn) ? result.tutorSkillsToLearn : [],
+      relevanceScore: result.relevanceScore,
+      annonceData: {
+        title: result.title,
+        description: result.description,
+        teachingMode: result.teachingMode,
+        location: result.location
       }
     };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  };
 
   // Recherche principale
   const handleSearch = async (): Promise<void> => {
@@ -388,7 +472,7 @@ const TutorSearchPage: React.FC = () => {
               <>
                 <div className={styles.tutorsGrid}>
                   {annonces.map((annonce: any) => (
-                    <TutorCard key={annonce.id} tutor={annonce} />
+                    <TutorCard key={annonce.annonceId} tutor={annonce} />
                   ))}
                 </div>
 

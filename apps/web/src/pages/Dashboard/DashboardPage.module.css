@@ -21,6 +21,14 @@
   font-family: 'Recoleta', serif;
 }
 
+.welcomeTitle span {
+  color: transparent;
+  background: linear-gradient(135deg, #FFD700 0%, #FF8C00 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 .welcomeSubtitle {
   font-size: 1.1rem;
   color: #666;

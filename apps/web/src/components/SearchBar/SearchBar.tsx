@@ -11,7 +11,7 @@ interface SearchBarProps {
   handleSubjectSelect: (subject: string) => void;
   handleQuickSearch: () => void;
   handleKeyPress: (e: React.KeyboardEvent) => void;
-  searchInputRef: React.RefObject<HTMLInputElement | null>;
+  searchInputRef: React.RefObject<HTMLInputElement>;
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({
@@ -28,8 +28,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
   return (
     <div className={styles.quickSearch}>
       <div className={styles.searchWithSuggestions}>
-        <div className={styles.searchInputWrapper} ref={searchInputRef}>
+        <div className={styles.searchInputWrapper}>
           <input
+            ref={searchInputRef}
             type="text"
             placeholder="Rechercher une matière (ex: Mathématiques, Physique...)"
             value={searchQuery}

@@ -23,6 +23,7 @@ export interface AnnonceFromDB {
       firstName: string;
       lastName: string;
       email: string;
+      skillsToLearn?: string[];
     };
     rating: number;
     reviewsCount: number;
@@ -177,6 +178,19 @@ class AnnonceService {
   async toggleAnnonce(annonceId: string, isActive: boolean) {
     const response = await api.patch(`/annonces/${annonceId}/toggle`, { isActive });
     return response.data;
+  }
+  // ...existing code...
+  async getAnnoncesByTutorPublic(tutorId: string) {
+    try {
+      const response = await api.get(`/tutors/public/${tutorId}/annonces`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur récupération annonces publiques tuteur:', error);
+      return {
+        success: false,
+        message: error?.response?.data?.message || 'Erreur lors de la récupération des annonces'
+      };
+    }
   }
 }
 

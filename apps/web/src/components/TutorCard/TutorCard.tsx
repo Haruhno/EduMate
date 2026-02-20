@@ -23,6 +23,7 @@ interface Tutor {
     teachingMode?: string;
     description?: string;
   };
+  skillsToLearn?: string[];
 }
 
 interface TutorCardProps {
@@ -31,6 +32,8 @@ interface TutorCardProps {
 
 const TutorCard: React.FC<TutorCardProps> = ({ tutor }) => {
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
+  const [showAllSpecialties, setShowAllSpecialties] = useState<boolean>(false);
+  const [showAllLearningSkills, setShowAllLearningSkills] = useState<boolean>(false);
   const navigate = useNavigate();
 
   const getBadgeClass = (badge: string): string => {
@@ -51,10 +54,21 @@ const TutorCard: React.FC<TutorCardProps> = ({ tutor }) => {
         annonceId: tutor.annonceId || undefined, 
         fromSearch: true,
         annonceData: tutor.annonceData,
-        tutorId: tutor.tutorId || tutor.id
+        tutorId: tutor.tutorId || tutor.id,
+        skillsToLearn: tutor.skillsToLearn
       }
     });
   };
+
+  // Compétences enseignées à afficher
+  const displayedSpecialties = showAllSpecialties 
+    ? tutor.specialties 
+    : tutor.specialties.slice(0, 3);
+
+  // Compétences à apprendre à afficher
+  const displayedLearningSkills = showAllLearningSkills
+    ? tutor.skillsToLearn || []
+    : (tutor.skillsToLearn || []).slice(0, 3);
 
   return (
     <div className={styles.tutorCard}>
@@ -76,6 +90,9 @@ const TutorCard: React.FC<TutorCardProps> = ({ tutor }) => {
               src={tutor.profilePicture} 
               alt={tutor.name}
               className={styles.avatarImage}
+              onError={(e) => {
+                e.currentTarget.src = '/default-avatar.png';
+              }}
             />
           </div>
         </div>
@@ -99,14 +116,78 @@ const TutorCard: React.FC<TutorCardProps> = ({ tutor }) => {
           <span className={styles.reviewsCount}>({tutor.reviews} avis)</span>
         </div>
 
+        {/* Compétences enseignées */}
         <div className={styles.tutorSpecialties}>
-          {tutor.specialties.slice(0, 3).map((specialty: string, i: number) => (
-            <span key={i} className={styles.specialtyTag}>{specialty}</span>
-          ))}
-          {tutor.specialties.length > 3 && (
-            <span className={styles.moreSpecialties}>+{tutor.specialties.length - 3}</span>
-          )}
+          <div className={styles.skillsSection}>
+            <label className={styles.skillsLabel}>Compétences enseignées</label>
+            <div className={styles.skillsContainer}>
+              {displayedSpecialties.map((specialty: string, i: number) => (
+                <span key={i} className={styles.specialtyTag}>{specialty}</span>
+              ))}
+              
+              {/* Bouton +X pour montrer plus */}
+              {tutor.specialties.length > 3 && !showAllSpecialties && (
+                <button 
+                  onClick={() => setShowAllSpecialties(true)}
+                  className={styles.moreSpecialtiesButton}
+                  title="Voir toutes les compétences"
+                >
+                  +{tutor.specialties.length - 3}
+                </button>
+              )}
+              
+              {/* Bouton - pour réduire */}
+              {showAllSpecialties && (
+                <button 
+                  onClick={() => setShowAllSpecialties(false)}
+                  className={styles.lessSpecialtiesButton}
+                  title="Voir moins"
+                >
+                  −
+                </button>
+              )}
+            </div>
+          </div>
         </div>
+
+        {/* Compétences recherchées (si disponibles) */}
+        {tutor.skillsToLearn && tutor.skillsToLearn.length > 0 && (
+          <div className={styles.learningSkillsSection}>
+            <div className={styles.skillsHeader}>
+              <label className={styles.skillsLabel}>Recherche aussi à apprendre</label>
+            </div>
+            
+            <div className={styles.learningSkillsContainer}>
+              {displayedLearningSkills.map((skill: string, i: number) => (
+                <span key={i} className={`${styles.skillTag} ${styles.learningSkill}`}>
+                  {skill}
+                </span>
+              ))}
+              
+              {/* Bouton +X pour les compétences à apprendre */}
+              {tutor.skillsToLearn.length > 3 && !showAllLearningSkills && (
+                <button 
+                  onClick={() => setShowAllLearningSkills(true)}
+                  className={styles.moreLearningSkillsButton}
+                  title="Voir toutes les compétences"
+                >
+                  +{tutor.skillsToLearn.length - 3}
+                </button>
+              )}
+              
+              {/* Bouton - pour réduire */}
+              {showAllLearningSkills && (
+                <button 
+                  onClick={() => setShowAllLearningSkills(false)}
+                  className={styles.lessLearningSkillsButton}
+                  title="Voir moins"
+                >
+                  −
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className={styles.tutorFooter}>
           <div className={styles.tutorPrice}>

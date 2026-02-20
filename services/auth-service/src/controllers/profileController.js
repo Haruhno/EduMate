@@ -17,6 +17,15 @@ class ProfileController {
   async saveProfile(req, res) {
     try {
       const user = req.user;
+
+      // ⚠️ Les admins n'ont pas besoin de profil
+      if (user.role === 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Les administrateurs ne peuvent pas créer/modifier de profil. Utilisez la page /admin pour gérer les configurations IA.'
+        });
+      }
+
       const { profileData, currentStep } = req.body;
 
       console.log('📥 Données reçues dans saveProfile:');
@@ -67,13 +76,22 @@ class ProfileController {
       });
     }
   }
-
   /**
    * Récupérer le profil utilisateur
    */
   async getProfile(req, res) {
     try {
-      const user = req.user;
+          const user = req.user;
+
+      //Les admins n'ont pas de profil
+      if (user.role === 'admin') {
+        return res.status(200).json({
+          success: true,
+          data: null,
+          message: 'Admin - pas de profil'
+        });
+      }
+
       const profile = await profileService.getProfile(user.id, user.role);
 
       // Récupérer les informations de disponibilité depuis le profil tuteur
@@ -156,6 +174,19 @@ class ProfileController {
     try {
       const user = req.user;
       const hasProfile = await profileService.profileExists(user.id, user.role);
+   
+      // Les admins n'ont pas besoin de statut de profil
+      if (user.role === 'admin') {
+        return res.status(200).json({
+          success: true,
+          data: {
+            isCompleted: true,
+            completionPercentage: 100,
+            currentStep: null
+          },
+          message: 'Admin'
+        });
+      }
 
       let profile = null;
       if (hasProfile) {

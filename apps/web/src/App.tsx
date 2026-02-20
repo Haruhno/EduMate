@@ -26,6 +26,8 @@ import AvailabilityPage from "./pages/AvailabilityPage/AvailabilityPage";
 import ContactPage from "./pages/Contact/ContactPage";
 import SkillExchangePage from "./pages/SkillExchange/SkillExchangePage";
 import CreateSkillExchange from "./pages/SkillExchange/CreateSkillExchange";
+import ChatbotWidget from "./components/ChatbotWidget/ChatbotWidget";
+import AdminPage from "./pages/Admin/AdminPage";
 
 // Routes accessibles UNIQUEMENT si NON connecté
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -162,9 +164,18 @@ const App: React.FC = () => {
             } 
           />
           <Route path="/contact" element={<ContactPage />} />
+          <Route 
+            path="/admin" 
+            element={
+              <PrivateRoute>
+                <AdminPage />
+              </PrivateRoute>
+            } 
+          />
           {/* Fallback route */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <ChatbotWidget />
       </div>
     </Router>
   );

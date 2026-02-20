@@ -12,6 +12,9 @@ router.get('/hybrid-search', annonceController.hybridSearch);
 // Routes publiques
 router.get('/:id', annonceController.getAnnonce);
 
+router.get('/rag-search', annonceController.searchWithRAG); 
+router.get('/rag-search', annonceController.searchWithRAG);
+
 // Routes protégées
 router.use(authMiddleware);
 router.post('/from-text', annonceController.createAnnonceFromText);
@@ -23,6 +26,9 @@ router.get('/tutor/:id', annonceController.getAnnoncesByTutorId);
 router.put('/:id', annonceController.updateAnnonce);
 router.delete('/:id', annonceController.deleteAnnonce);
 router.patch('/:id/toggle', annonceController.toggleAnnonce);
+
+// ROUTE /:id 
+router.get('/:id', annonceController.getAnnonce);
 
 // Route admin
 router.post('/migrate-embeddings', annonceController.migrateEmbeddings);

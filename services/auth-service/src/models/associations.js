@@ -6,6 +6,7 @@ const Experience = require('./Experience');
 const Annonce = require('./Annonce');
 const AnnonceEmbedding = require('./AnnonceEmbedding');
 const Review = require('./Review');
+const AIConfig = require('./AIConfig');
 
 // Associations User - Profil
 User.hasOne(ProfileTutor, { 
@@ -101,6 +102,17 @@ Review.belongsTo(User, {
   as: 'target'
 });
 
+// Association pour tracer qui a modifié
+User.hasMany(AIConfig, {
+  foreignKey: 'lastModifiedBy',
+  as: 'aiConfigs'
+});
+
+AIConfig.belongsTo(User, {
+  foreignKey: 'lastModifiedBy',
+  as: 'modifiedByUser'
+});
+
 module.exports = {
   User,
   ProfileTutor,
@@ -109,5 +121,6 @@ module.exports = {
   Experience,
   Annonce,
   AnnonceEmbedding,
+  AIConfig,
   Review
 };

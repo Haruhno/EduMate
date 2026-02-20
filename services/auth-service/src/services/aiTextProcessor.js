@@ -1,22 +1,43 @@
 const axios = require('axios');
-require('dotenv').config();
 
 class AITextProcessor {
-  constructor() {
-    this.apiKey = process.env.OPENROUTER_API_KEY;
-    if (!this.apiKey) {
-      throw new Error('OPENROUTER_API_KEY n\'est pas définie dans .env');
+    constructor() {
+        this.apiKey = null;
+        this.model = null;
+        this.configCache = null;
+        this.cacheExpiry = 5 * 60 * 1000; // 5 minutes
+        this.lastFetch = 0;
     }
-  }
 
-  // MÉTHODE EXISTANTE : Générer une offre COMPLÈTE
-  async generateOfferFromSkills(skills, rawText = '') {    
-    try {
-      const skillsList = Array.isArray(skills) ? skills : [skills];
-      
-      console.log('🚀 Appel IA pour générer offre avec skills:', skillsList);
-      
-      const prompt = `Tu es un expert en rédaction d'annonces de cours. 
+    /**
+     * Récupère la configuration OpenRouter depuis les variables d'environnement
+     * @returns {Promise<Object>} Configuration avec apiKey et model
+     */
+    async getOpenRouterConfig() {
+        const apiKey = process.env.OPENROUTER_API_KEY;
+        const model = process.env.OPENROUTER_MODEL || 'qwen/qwen3.5-397b-a17b';
+        
+        if (!apiKey) {
+            throw new Error('OPENROUTER_API_KEY manquante dans .env');
+        }
+        
+        console.log(`🔧 [AITextProcessor] Config .env chargée: ${model} | ${apiKey.slice(0, 10)}...`);
+        
+        return { apiKey, model };
+    }
+
+
+
+    /**
+     * Génère une offre complète (titre + description) à partir de compétences
+     */
+    async generateOfferFromSkills(skills, rawText = '') {    
+        try {
+            const skillsList = Array.isArray(skills) ? skills : [skills];
+            
+            console.log('🤖 Appel IA pour générer offre avec skills:', skillsList);
+            
+            const prompt = `Tu es un expert en rédaction d'annonces de cours. 
 
 COMPÉTENCES À ENSEIGNER : ${skillsList.join(', ')}
 
@@ -26,7 +47,6 @@ INSTRUCTIONS TRÈS IMPORTANTES :
    - Professionnel et accrocheur
    - Commencer par "Cours de...", "Formation en...", "Atelier de..."
    - JAMAIS utiliser "Professeur de...", "Enseignant de...", "Tuteur de..."
-   - Exemple : "Atelier complet de cuisine"
 
 2. **DESCRIPTION DÉTAILLÉE** (OBLIGATOIRE - 6-8 phrases minimum) :
    - DÉBUT par expliquer CE QUE l'étudiant apprendra
@@ -44,10 +64,16 @@ RÉPONSE EN JSON :
   "description": "La description détaillée ici (minimum 6 phrases)"
 }`;
 
+            const { apiKey, model } = await this.getOpenRouterConfig();
+
+            if (!apiKey) {
+                throw new Error('Clé API manquante dans la configuration');
+            }
+
       const response = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
         {
-          model: process.env.OPENROUTER_MODEL,
+          model: 'qwen/qwen3-coder',
           messages: [
             {
               role: 'system',
@@ -71,55 +97,59 @@ RÉPONSE EN JSON :
         }
       );
 
-      console.log('✅ Réponse IA reçue');
-      
-      const aiText = response.data.choices[0].message.content;
-      
-      if (!this.isCompleteJSON(aiText)) {
-        console.log('⚠️ JSON incomplet, réparation...');
-        const fixedJson = this.fixIncompleteJSON(aiText);
-        return this.parseOfferResponse(fixedJson, skillsList);
-      }
-      
-      const result = this.parseOfferResponse(aiText, skillsList);
-      
-      // Vérification que la description est assez longue
-      if (!result.description || result.description.length < 150) {
-        console.warn('⚠️ Description trop courte, nouvel appel IA...');
-        return await this.regenerateDescription(skillsList, result.title);
-      }
-      
-      return result;
+            console.log('✅ Réponse IA reçue');
+            console.log('Structure réponse:', JSON.stringify(response.data, null, 2).substring(0, 500));
+            
+            if (!response.data.choices || !response.data.choices[0]) {
+                console.error('❌ Pas de choices dans la réponse:', response.data);
+                throw new Error('Réponse API invalide: pas de choices');
+            }
+            
+            const aiText = this.getMessageText(response.data.choices[0].message);
+            
+            if (!aiText) {
+                console.error('❌ Contenu vide. Réponse complète:', JSON.stringify(response.data));
+                throw new Error('Réponse API vide');
+            }
+            
+            console.log('Texte IA reçu (200 premiers chars):', aiText.substring(0, 200));
+            
+            const result = this.parseOfferResponse(aiText, skillsList);
+            
+            // Vérification que la description est assez longue
+            if (!result.description || result.description.length < 200) {
+                console.warn('⚠️ Description trop courte, nouvel appel IA...');
+                return await this.regenerateDescription(skillsList, result.title);
+            }
+            
+            return result;
 
-    } catch (error) {
-      console.error('❌ Erreur API:', error.message);
-      throw new Error(`Échec génération IA: ${error.message}`);
+        } catch (error) {
+            console.error('❌ Erreur API:', error.message);
+            throw new Error(`Échec génération IA: ${error.message}`);
+        }
     }
-  }
 
-  async analyzeTextWithAI(text) {
-    try {      
-      // Échapper les guillemets dans le texte
-      const escapedText = text.replace(/"/g, '\\"').replace(/\n/g, '\\n');
-      
-      const prompt = `Analyse ce texte et extrais les compétences mentionnées :
+    /**
+     * Analyse un texte pour en extraire les compétences
+     */
+    async analyzeTextWithAI(text) {
+        try {      
+            const escapedText = text.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+            
+            const prompt = `Analyse ce texte et extrais les compétences mentionnées :
 
 TEXTE : "${escapedText}"
 
 Tu dois :
-1. Identifier les compétences/cours/programmes mentionnés, souvent les mots-clés
+1. Identifier les compétences/cours/programmes mentionnés
 2. Générer un titre professionnel pour une annonce de cours
 3. Créer une description détaillée de l'offre
-4. RETOURNER UNIQUEMENT UN OBJET JSON VALIDE SANS TEXTE SUPPLÉMENTAIRE
+4. RETOURNER UNIQUEMENT UN OBJET JSON VALIDE
 
 IMPORTANT POUR LE TITRE :
 - DOIT commencer par "Cours de...", "Formation en...", "Atelier de..."
 - JAMAIS utiliser "Professeur de...", "Enseignant de..."
-
-EXEMPLES :
-- "Enseignant en Deep Learning" → "Cours de Deep Learning et Intelligence Artificielle"
-- "Professeur de Python" → "Formation Python avancée"
-- "Tuteur en cuisine" → "Atelier de cuisine pratique"
 
 FORMAT DE RÉPONSE OBLIGATOIRE :
 {
@@ -128,10 +158,16 @@ FORMAT DE RÉPONSE OBLIGATOIRE :
   "skills": ["compétence1", "compétence2", "etc"]
 }`;
 
+            const { apiKey, model } = await this.getOpenRouterConfig();
+
+            if (!apiKey) {
+                throw new Error('Clé API manquante dans la configuration');
+            }
+
       const response = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
         {
-          model: process.env.OPENROUTER_MODEL,
+          model: 'qwen/qwen3-coder',
           messages: [
             {
               role: 'system',
@@ -159,52 +195,38 @@ TRÈS IMPORTANT : Le titre DOIT commencer par "Cours de...", "Formation en...". 
         }
       );
 
-      const aiText = response.data.choices[0].message.content.trim();
-      
-      // Nettoyer la réponse avant parsing
-      const cleanedText = this.cleanJSONResponse(aiText);
-      
-      try {
-        const result = JSON.parse(cleanedText);
-        
-        // Valider le format
-        if (!result.title || !result.description || !Array.isArray(result.skills)) {
-          throw new Error('Format JSON invalide - champs manquants');
+            const aiText = this.getMessageText(response.data.choices[0].message).trim();
+            const cleanedText = this.cleanJSONResponse(aiText);
+            
+            try {
+                const result = JSON.parse(cleanedText);
+                
+                if (!result.title || !result.description || !Array.isArray(result.skills)) {
+                    throw new Error('Format JSON invalide - champs manquants');
+                }
+                
+                return result;
+                
+            } catch (parseError) {
+                console.error('❌ Erreur parsing JSON:', parseError.message);
+                const repairedJSON = this.repairJSON(cleanedText);
+                return JSON.parse(repairedJSON);
+            }
+            
+        } catch (error) {
+            console.error('❌ Erreur analyse IA:', error.message);
+            throw new Error(`Échec analyse IA: ${error.message}`);
         }
-        
-        return result;
-        
-      } catch (parseError) {
-        console.error('Erreur parsing JSON:', parseError.message);
-        console.error('Texte problématique (premiers 300 caractères):', cleanedText.substring(0, 300));
-        
-        // Essayer de réparer le JSON
-        const repairedJSON = this.repairJSON(cleanedText);
-        const finalResult = JSON.parse(repairedJSON);
-        
-        // S'assurer que les champs requis existent
-        if (!finalResult.title) finalResult.title = "Cours personnalisé";
-        if (!finalResult.description) finalResult.description = "Cours adapté à vos besoins spécifiques.";
-        if (!Array.isArray(finalResult.skills)) finalResult.skills = [];
-        
-        return finalResult;
-      }
-      
-    } catch (error) {
-      console.error('❌ Erreur analyse IA:', error.message);
-      if (error.response) {
-        console.error('Réponse API:', error.response.data);
-      }
-      throw new Error(`Échec analyse IA: ${error.message}`);
     }
-  }
 
-  // MÉTHODE : Générer uniquement un titre
-  async generateTitleOnly(skills) {
-    try {
-      const skillsList = Array.isArray(skills) ? skills : [skills];
-      
-      const prompt = `Crée un titre professionnel pour un cours enseignant ces compétences : ${skillsList.join(', ')}
+    /**
+     * Génère uniquement un titre
+     */
+    async generateTitleOnly(skills) {
+        try {
+            const skillsList = Array.isArray(skills) ? skills : [skills];
+            
+            const prompt = `Crée un titre professionnel pour un cours enseignant ces compétences : ${skillsList.join(', ')}
 
 Le titre doit être :
 - Accrocheur (max 60 caractères)
@@ -213,15 +235,18 @@ Le titre doit être :
 - DOIT commencer par "Cours de...", "Formation en...", "Atelier de..."
 - JAMAIS utiliser "Professeur de...", "Enseignant de..."
 
-Exemples :
-- ["Python", "Data"] → "Formation Python pour l'analyse de données"
-
 Réponds uniquement avec le titre.`;
+
+            const { apiKey, model } = await this.getOpenRouterConfig();
+
+            if (!apiKey) {
+                throw new Error('Clé API manquante dans la configuration');
+            }
 
       const response = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
         {
-          model: process.env.OPENROUTER_MODEL,
+          model: 'qwen/qwen3-coder',
           messages: [
             {
               role: 'system',
@@ -244,31 +269,27 @@ Réponds uniquement avec le titre.`;
         }
       );
 
-      const title = response.data.choices[0].message.content.trim();
-      
-      return {
-        title: title || `Cours de ${skillsList[0]}`,
-        description: '',
-        skills: skillsList
-      };
+            const rawText = this.getMessageText(response.data.choices[0].message).trim();
+            const title = this.extractTitleFromText(rawText);
+            
+            return {
+                title: title || `Cours de ${skillsList[0]}`,
+                description: '',
+                skills: skillsList
+            };
 
-    } catch (error) {
-      console.error('❌ Erreur génération titre:', error.message);
-      throw error;
+        } catch (error) {
+            console.error('❌ Erreur génération titre:', error.message);
+            throw error;
+        }
     }
-  }
 
-  // MÉTHODE : generateTitleFromSkills (pour compatibilité)
-  async generateTitleFromSkills(skills) {
-    // Appelle simplement generateTitleOnly mais retourne le même format attendu
-    const result = await this.generateTitleOnly(skills);
-    return result;
-  }
-
-  // Méthode de secours si la description est trop courte
-  async regenerateDescription(skills, title) {
-    try {
-      const prompt = `Génère une description DÉTAILLÉE pour ce cours :
+    /**
+     * Régénère une description si trop courte
+     */
+    async regenerateDescription(skills, title) {
+        try {
+            const prompt = `Génère une description DÉTAILLÉE pour ce cours :
 
 Titre : "${title}"
 Compétences : ${Array.isArray(skills) ? skills.join(', ') : skills}
@@ -280,12 +301,18 @@ Crée une description de 6-8 phrases qui :
 4. Mentionne les bénéfices
 5. Sois concret et spécifique
 
-Réponds uniquement avec la description, sans titre ni JSON.`;
+Réponds uniquement avec la description.`;
+
+            const { apiKey, model } = await this.getOpenRouterConfig();
+
+            if (!apiKey) {
+                throw new Error('Clé API manquante dans la configuration');
+            }
 
       const response = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
         {
-          model: process.env.OPENROUTER_MODEL,
+          model: 'qwen/qwen3-coder',
           messages: [
             {
               role: 'system',
@@ -308,169 +335,145 @@ Réponds uniquement avec la description, sans titre ni JSON.`;
         }
       );
 
-      const description = response.data.choices[0].message.content.trim();
-      
-      return {
-        title: title,
-        description: description,
-        skills: Array.isArray(skills) ? skills : [skills]
-      };
-      
-    } catch (error) {
-      console.error('❌ Erreur régénération description:', error.message);
-      throw error;
+            const rawText = this.getMessageText(response.data.choices[0].message).trim();
+            const description = this.extractDescriptionFromText(rawText);
+            
+            return {
+                title: title,
+                description: description,
+                skills: Array.isArray(skills) ? skills : [skills]
+            };
+            
+        } catch (error) {
+            console.error('❌ Erreur régénération description:', error.message);
+            throw error;
+        }
     }
-  }
 
-  // NOUVELLE MÉTHODE : Nettoyer la réponse JSON
-  cleanJSONResponse(text) {
-    let cleaned = text.trim();
-    
-    // 1. Trouver le début et la fin du JSON
-    const jsonStart = cleaned.indexOf('{');
-    const jsonEnd = cleaned.lastIndexOf('}');
-    
-    if (jsonStart >= 0 && jsonEnd > jsonStart) {
-      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
-    } else {
-      // Si pas de JSON trouvé, créer un JSON par défaut
-      return '{"title": "Cours personnalisé", "description": "Cours adapté à vos besoins.", "skills": []}';
+    // Méthodes utilitaires
+    getMessageText(message) {
+        if (!message) return '';
+        if (message.content && message.content.trim().length > 0) {
+            return message.content;
+        }
+        if (message.reasoning && message.reasoning.trim().length > 0) {
+            return message.reasoning;
+        }
+        return '';
     }
-    
-    // 2. Échapper les guillemets non échappés dans les chaînes
-    // Chercher les chaînes entre guillemets
-    const stringRegex = /"([^"\\]*(?:\\.[^"\\]*)*)"/g;
-    let match;
-    const strings = [];
-    
-    while ((match = stringRegex.exec(cleaned)) !== null) {
-      strings.push(match[1]);
-    }
-    
-    // Échapper chaque chaîne
-    strings.forEach(str => {
-      const escapedStr = str
-        .replace(/"/g, '\\"')  // Échapper les guillemets
-        .replace(/\n/g, '\\n') // Échapper les nouvelles lignes
-        .replace(/\r/g, '\\r') // Échapper les retours chariot
-        .replace(/\t/g, '\\t'); // Échapper les tabulations
-      
-      cleaned = cleaned.replace(`"${str}"`, `"${escapedStr}"`);
-    });
-    
-    // 3. Remplacer les guillemets simples par des guillemets doubles pour les clés (si nécessaire)
-    cleaned = cleaned.replace(/'([^']+)':/g, '"$1":');
-    
-    // 4. Supprimer les trailing commas
-    cleaned = cleaned.replace(/,\s*}/g, '}').replace(/,\s*\]/g, ']');
-    
-    // 5. Échapper les backslashes non échappés
-    cleaned = cleaned.replace(/(?<!\\)\\(?!["\\/bfnrt])/g, '\\\\');
-    
-    return cleaned;
-  }
 
-  // NOUVELLE MÉTHODE : Réparer les JSON cassés
-  repairJSON(brokenJSON) {
-    try {
-      // Essayer de parser d'abord
-      return JSON.parse(brokenJSON);
-    } catch (e) {
-      console.log('🛠️ Tentative de réparation JSON...');
-      
-      let repaired = brokenJSON;
-      
-      // 1. Compter les guillemets
-      const quoteCount = (repaired.match(/"/g) || []).length;
-      if (quoteCount % 2 !== 0) {
-        // Ajouter un guillemet à la fin si impair
-        repaired += '"';
-      }
-      
-      // 2. Fermer les objets et tableaux
-      const openBraces = (repaired.match(/\{/g) || []).length;
-      const closeBraces = (repaired.match(/\}/g) || []).length;
-      for (let i = 0; i < openBraces - closeBraces; i++) {
-        repaired += '}';
-      }
-      
-      const openBrackets = (repaired.match(/\[/g) || []).length;
-      const closeBrackets = (repaired.match(/\]/g) || []).length;
-      for (let i = 0; i < openBrackets - closeBrackets; i++) {
-        repaired += ']';
-      }
-      
-      // 3. Remplacer les virgules orphelines
-      repaired = repaired.replace(/,\s*,/g, ',');
-      repaired = repaired.replace(/,\s*$/g, '');
-      
-      // 4. Ajouter des valeurs manquantes pour les clés sans valeur
-      repaired = repaired.replace(/:\s*,/g, ': "",');
-      repaired = repaired.replace(/:\s*$/g, ': ""');
-      
-      // 5. S'assurer que c'est un objet JSON valide
-      if (!repaired.startsWith('{')) {
-        repaired = '{' + repaired;
-      }
-      if (!repaired.endsWith('}')) {
-        repaired = repaired + '}';
-      }
-      
-      console.log('🛠️ JSON réparé (premiers 300 caractères):', repaired.substring(0, 300));
-      
-      try {
-        return JSON.parse(repaired);
-      } catch (finalError) {
-        console.error('❌ Réparation JSON échouée:', finalError.message);
-        // Retourner un JSON minimal valide
-        return {
-          title: "Cours personnalisé",
-          description: "Cours adapté à vos besoins spécifiques.",
-          skills: []
-        };
-      }
+    extractTitleFromText(text) {
+        if (!text) return '';
+        const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+        const titleLine = lines.find(line => /^(Cours|Formation|Atelier)\b/i.test(line));
+        return (titleLine || lines[lines.length - 1] || '').replace(/^"|"$/g, '');
     }
-  }
 
-  // Parser simple pour la réponse
-  parseOfferResponse(aiText, skills) {
-    try {
-      const parsed = JSON.parse(aiText);
-      
-      return {
-        title: parsed.title || `Cours de ${skills[0]}`,
-        description: parsed.description || '',
-        skills: skills
-      };
-    } catch (error) {
-      console.error('❌ Parse JSON échoué:', error.message);
-      throw new Error('Format de réponse IA invalide');
+    extractDescriptionFromText(text) {
+        if (!text) return '';
+        const cleaned = text.replace(/\*\*.*?\*\*/g, '').trim();
+        const parts = cleaned.split('\n').map(line => line.trim()).filter(Boolean);
+        return parts[parts.length - 1] || cleaned;
     }
-  }
 
-  // Méthodes utilitaires
-  isCompleteJSON(text) {
-    try {
-      JSON.parse(text);
-      return true;
-    } catch {
-      return false;
+    cleanJSONResponse(text) {
+        let cleaned = text.trim();
+        
+        // Supprimer les balises <think>...</think> du modèle deepseek-r1
+        cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
+        
+        const jsonStart = cleaned.indexOf('{');
+        const jsonEnd = cleaned.lastIndexOf('}');
+        
+        if (jsonStart >= 0 && jsonEnd > jsonStart) {
+            cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+        } else {
+            return '{"title": "Cours personnalisé", "description": "Cours adapté à vos besoins.", "skills": []}';
+        }
+        
+        return cleaned;
     }
-  }
 
-  fixIncompleteJSON(incompleteJson) {
-    let fixed = incompleteJson.trim();
-    
-    const openBraces = (fixed.match(/\{/g) || []).length;
-    const closeBraces = (fixed.match(/\}/g) || []).length;
-    
-    for (let i = 0; i < openBraces - closeBraces; i++) {
-      fixed += '}';
+    repairJSON(brokenJSON) {
+        try {
+            return JSON.parse(brokenJSON);
+        } catch (e) {
+            console.log('🛠️ Tentative de réparation JSON...');
+            
+            let repaired = brokenJSON;
+            
+            const quoteCount = (repaired.match(/"/g) || []).length;
+            if (quoteCount % 2 !== 0) {
+                repaired += '"';
+            }
+            
+            const openBraces = (repaired.match(/\{/g) || []).length;
+            const closeBraces = (repaired.match(/\}/g) || []).length;
+            for (let i = 0; i < openBraces - closeBraces; i++) {
+                repaired += '}';
+            }
+            
+            try {
+                return JSON.parse(repaired);
+            } catch (finalError) {
+                return {
+                    title: "Cours personnalisé",
+                    description: "Cours adapté à vos besoins spécifiques.",
+                    skills: []
+                };
+            }
+        }
     }
-    
-    return fixed;
-  }
-  
+
+    parseOfferResponse(aiText, skills) {
+        try {
+            // Nettoyer les balises <think> du modèle deepseek-r1
+            let cleanedText = aiText.trim();
+            
+            // Supprimer les balises <think>...</think>
+            cleanedText = cleanedText.replace(/<think>[\s\S]*?<\/think>/gi, '');
+            
+            // Extraire le JSON entre accolades
+            const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                cleanedText = jsonMatch[0];
+            }
+            
+            const parsed = JSON.parse(cleanedText);
+            
+            return {
+                title: parsed.title || `Cours de ${skills[0]}`,
+                description: parsed.description || '',
+                skills: skills
+            };
+        } catch (error) {
+            console.error('❌ Parse JSON échoué:', error.message);
+            console.error('Texte brut IA:', aiText.substring(0, 200));
+            throw new Error('Format de réponse IA invalide');
+        }
+    }
+
+    isCompleteJSON(text) {
+        try {
+            JSON.parse(text);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    fixIncompleteJSON(incompleteJson) {
+        let fixed = incompleteJson.trim();
+        
+        const openBraces = (fixed.match(/\{/g) || []).length;
+        const closeBraces = (fixed.match(/\}/g) || []).length;
+        
+        for (let i = 0; i < openBraces - closeBraces; i++) {
+            fixed += '}';
+        }
+        
+        return fixed;
+    }
 }
 
 module.exports = new AITextProcessor();

@@ -120,7 +120,7 @@ const DashboardPage: React.FC = () => {
       {/* En-tête de bienvenue */}
       <div className={styles.welcomeSection}>
         <h1 className={styles.welcomeTitle}>
-          Bonjour, {user?.firstName} {user?.lastName}
+          Bonjour, <span>{user?.firstName} {user?.lastName}</span>
         </h1>
         <p className={styles.welcomeSubtitle}>
           Bienvenue sur votre tableau de bord {isTutor ? 'Tuteur' : 'Étudiant'}

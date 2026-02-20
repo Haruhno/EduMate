@@ -263,9 +263,6 @@ const SkillWithActions: React.FC<SkillWithActionsProps> = ({
   onAssignToOffer,
   onRemove,
   offers,
-  assignedOffers,
-  isFromAI = false,
-  isManualSkill = false,
   isProfileSkill = false
 }) => {
   const [showOfferModal, setShowOfferModal] = useState(false);
@@ -967,7 +964,6 @@ interface SkillsInputWithAutocompleteProps {
 }
 
 const SkillsInputWithAutocomplete: React.FC<SkillsInputWithAutocompleteProps> = ({ 
-  initialSkills, 
   onSkillsChange, 
   rawText, 
   onRawTextChange, 
@@ -982,7 +978,6 @@ const SkillsInputWithAutocomplete: React.FC<SkillsInputWithAutocompleteProps> = 
   onCreateOfferFromAll,
   onSaveSkillsOnly,
   aiSkills = [],
-  aiAnalysis,
   onAssignSkillFromOffer,
   onRemoveSkillFromOffer,
   onRemoveSkill,
@@ -1710,7 +1705,6 @@ const ConfirmationStep: React.FC<{
 };
 
 const TransformSkillToAnnonceModal: React.FC<TransformSkillToAnnonceModalProps> = ({
-  skills,
   onClose,
   onCreated,
   profileData
@@ -1838,7 +1832,7 @@ const TransformSkillToAnnonceModal: React.FC<TransformSkillToAnnonceModalProps> 
   };
 
   const analyzeTextWithAI = async () => {
-    if (formData.rawText.length < 30) {
+    if (formData.rawText.length < 10) {
       setError('Le texte doit contenir au moins 30 caractères pour l\'analyse IA');
       return;
     }
@@ -2600,16 +2594,6 @@ const TransformSkillToAnnonceModal: React.FC<TransformSkillToAnnonceModalProps> 
         if ([...new Set(allSkills)].length === 0) {
           setError('Veuillez ajouter au moins une compétence.');
           return;
-        }
-        
-        const allAssignedSkills = competenceAssignments
-          .filter(a => a.offerIds.length > 0)
-          .map(a => a.skill);
-        
-        if (allAssignedSkills.length === 0) {
-          setError('Veuillez assigner au moins une compétence à une offre en cliquant sur le bouton "+" à côté des compétences.');
-        } else {
-          setError(null);
         }
       }
     }
