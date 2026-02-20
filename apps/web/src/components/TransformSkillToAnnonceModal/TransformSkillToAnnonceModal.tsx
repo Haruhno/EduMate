@@ -1838,7 +1838,7 @@ const TransformSkillToAnnonceModal: React.FC<TransformSkillToAnnonceModalProps> 
   };
 
   const analyzeTextWithAI = async () => {
-    if (formData.rawText.length < 30) {
+    if (formData.rawText.length < 10) {
       setError('Le texte doit contenir au moins 30 caractères pour l\'analyse IA');
       return;
     }

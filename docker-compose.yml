@@ -1,5 +1,8 @@
-# Docker Compose Configuration for EduMate (9 Services)
+# Docker Compose Configuration for EduMate (10 Services)
 # Network: edumate-network, Volumes: Named volumes for persistence
+# Version: 3.8
+
+version: "3.8"
 
 # ============================================
 # EduMate - Docker Compose Configuration
@@ -7,9 +10,8 @@
 # All services with centralized database layer
 # ============================================
 
-services:
-  # ========== DATABASES ==========
 
+services:
   # PostgreSQL for Auth Service
   postgres:
     image: "postgres:16-alpine"
@@ -30,30 +32,6 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-edumate_user} -d ${POSTGRES_DB:-edumate}"]
       interval: 10s
       timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  # MongoDB for Message Service
-  mongodb:
-    image: "mongo:7.0"
-    container_name: "edumate-mongodb"
-    command: mongod --quiet --logpath /dev/null
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-edumate_user}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-edumate_password}
-      MONGO_INITDB_DATABASE: ${MONGO_DB:-edumate}
-    ports:
-      - "${MONGO_PORT:-27017}:27017"
-    volumes:
-      - mongodb_data:/data/db
-      - mongodb_config:/data/configdb
-    networks:
-      - edumate-network
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     restart: unless-stopped
 
   # Qdrant Vector Database for Embeddings
@@ -150,9 +128,7 @@ services:
       PORT: 3003
       WEB3_PROVIDER_URL: http://ganache:8545
       AUTH_SERVICE_URL: http://auth-service:3001
-      # Clé privée du compte (0) généré par Ganache avec le mnemonic configuré
       PRIVATE_KEY: 0xf5dba4a8ef10315d0e0f1ffe75c4144a3519a283031aeea0b41ed23196cbee6e
-      # Les adresses des contrats seront générées automatiquement au démarrage
     ports:
       - "${BLOCKCHAIN_SERVICE_PORT:-3003}:3003"
     depends_on:
@@ -171,7 +147,7 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
-      start_period: 60s  # Délai plus long pour le déploiement initial des contrats
+      start_period: 60s
     restart: unless-stopped
 
   # Message Service (Node.js / Express + Socket.io)
@@ -219,8 +195,12 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-your-openrouter-key}
       LINKEDIN_CLIENT_ID: ${LINKEDIN_CLIENT_ID:-}
       LINKEDIN_CLIENT_SECRET: ${LINKEDIN_CLIENT_SECRET:-}
+      AUTH_SERVICE_URL: http://auth-service:3001
     ports:
       - "${CV_PARSER_PORT:-5001}:5001"
+    depends_on:
+      auth-service:
+        condition: service_healthy
     networks:
       - edumate-network
     volumes:
@@ -230,6 +210,41 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
+    restart: unless-stopped
+
+  # RAG Service (Node.js)
+  rag-service:
+    build:
+      context: ./services/rag-service
+      dockerfile: Dockerfile
+    container_name: "edumate-rag-service"
+    ports:
+      - "${RAG_SERVICE_PORT:-3005}:3005"
+    env_file:
+      - ./services/rag-service/.env
+    environment:
+      POSTGRES_HOST: postgres
+      DB_HOST: postgres
+      DB_USER: ${POSTGRES_USER:-edumate_user}
+      DB_PASS: ${POSTGRES_PASSWORD:-edumate_password}
+      DB_NAME: ${POSTGRES_DB:-edumate}
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-qdrant_api_key}
+      OLLAMA_URL: http://host.docker.internal:11434
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      AUTH_SERVICE_URL: http://auth-service:3001
+    depends_on:
+      qdrant:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - edumate-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
   # ========== FRONTEND ==========
@@ -245,12 +260,20 @@ services:
       VITE_BLOCKCHAIN_SERVICE_URL: http://localhost:3003
       VITE_MESSAGE_SERVICE_URL: http://localhost:3002
       VITE_CV_PARSER_SERVICE_URL: http://localhost:5001
+      VITE_RAG_SERVICE_URL: http://localhost:3005
     ports:
       - "${WEB_APP_PORT:-5173}:5173"
     depends_on:
-      - auth-service
-      - blockchain-service
-      - message-service
+      auth-service:
+        condition: service_healthy
+      blockchain-service:
+        condition: service_healthy
+      message-service:
+        condition: service_healthy
+      cv-parser-service:
+        condition: service_healthy
+      rag-service:
+        condition: service_started
     networks:
       - edumate-network
     healthcheck:
@@ -261,6 +284,7 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+# ========== NETWORKS ==========
 networks:
   edumate-network:
     driver: bridge
@@ -268,6 +292,7 @@ networks:
       config:
         - subnet: 172.25.0.0/16
 
+# ========== VOLUMES ==========
 volumes:
   postgres_data:
     driver: local

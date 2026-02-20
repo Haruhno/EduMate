@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import styles from './TutorProfilePage.module.css';
 import tutorService from '../../services/tutorService';
@@ -77,6 +77,11 @@ const TutorProfilePage: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showExchangeModal, setShowExchangeModal] = useState(false);
   const [tutorSkillsToLearn, setTutorSkillsToLearn] = useState<Array<{id?: string; name: string; level?: string}>>([]);
+  const [showMainTooltip, setShowMainTooltip] = useState(false);
+  const [hoveredAnnonceId, setHoveredAnnonceId] = useState<string | null>(null);
+  const hasFetchedRef = useRef(false);
+
+  const isLoggedIn = !!localStorage.getItem('token') || !!user;
 
   const annonceIdFromState = location.state?.annonceId;
 
@@ -121,9 +126,7 @@ const TutorProfilePage: React.FC = () => {
   };
 
   // Vérifier le nombre d'éléments
-  const hasMultipleDiplomas = diplomas.length > 1;
   const hasSingleDiploma = diplomas.length === 1;
-  const hasMultipleExperiences = experiences.length > 1;
   const hasSingleExperience = experiences.length === 1;
   const hasDiplomas = diplomas.length > 0;
   const hasExperiences = experiences.length > 0;
@@ -224,96 +227,71 @@ const TutorProfilePage: React.FC = () => {
   useEffect(() => {
     const fetchTutorData = async () => {
       if (!id) return;
-      
+      if (hasFetchedRef.current) return;
+      hasFetchedRef.current = true;
       try {
         setLoading(true);
         setErrorType(null);
-        
         const tutorResponse = await tutorService.getTutorById(id);
-        
+        console.log('Debug - Réponse du tuteur:', tutorResponse);
         if (tutorResponse.success && tutorResponse.data) {
-          
           const profileTutorId = tutorResponse.data.id;
-          
-          // Charger les annonces
-          const annoncesResponse = await annonceService.getAnnoncesByTutor(profileTutorId);
-
+          const hasToken = !!localStorage.getItem('token');
+          const annoncesResponse = hasToken
+            ? await annonceService.getAnnoncesByTutor(profileTutorId)
+            : await annonceService.getAnnoncesByTutorPublic(profileTutorId);
           let calculatedMinPrice = 30;
-          
           if (annoncesResponse.success && annoncesResponse.data.length > 0) {
             setAnnonces(annoncesResponse.data);
             const prices = annoncesResponse.data.map((a: AnnonceFromDB) => a.hourlyRate);
             calculatedMinPrice = Math.min(...prices);
           }
-          
           setMinPrice(calculatedMinPrice);
-          
-          // Mapper le tuteur
           const mappedTutor = mapTutorFromDB(tutorResponse.data);
           mappedTutor.price = `À partir de ${calculatedMinPrice}`;
-          
           setTutor(mappedTutor);
-          
-          // Charger les diplômes et expériences depuis la réponse du tuteur
           const tutorData = tutorResponse.data as any;
-          
           if (tutorData.diplomas && Array.isArray(tutorData.diplomas)) {
             setDiplomas(tutorData.diplomas);
           } else {
             setDiplomas([]);
           }
-          
           if (tutorData.experiences && Array.isArray(tutorData.experiences)) {
             setExperiences(tutorData.experiences);
           } else {
             setExperiences([]);
           }
-          
           // Charger les compétences que le tuteur veut apprendre
-
-          
-          // Essayer tous les cas possibles (ProfileTutor et User, singulier et pluriel)
           let skillsToLearn = [];
-          
           if (tutorData.user?.skillsToLearn && Array.isArray(tutorData.user.skillsToLearn) && tutorData.user.skillsToLearn.length > 0) {
-
             skillsToLearn = tutorData.user.skillsToLearn;
           } else if (tutorData.user?.skillToLearn && Array.isArray(tutorData.user.skillToLearn) && tutorData.user.skillToLearn.length > 0) {
-
             skillsToLearn = tutorData.user.skillToLearn;
           } else if (tutorData.skillToLearn && Array.isArray(tutorData.skillToLearn) && tutorData.skillToLearn.length > 0) {
-
             skillsToLearn = tutorData.skillToLearn;
           } else if (tutorData.skillsToLearn && Array.isArray(tutorData.skillsToLearn) && tutorData.skillsToLearn.length > 0) {
-
             skillsToLearn = tutorData.skillsToLearn;
-          } else {
-
           }
-          
-
           setTutorSkillsToLearn(skillsToLearn);
-          
         } else {
-
           setTutor(null);
-          if (tutorResponse.existsButUnverified) {
-            setErrorType('unverified');
-          } else {
-            setErrorType('not_found');
-          }
+          setErrorType('not_found');
         }
       } catch (error) {
-
         setTutor(null);
         setErrorType('not_found');
       } finally {
         setLoading(false);
       }
     };
-
     fetchTutorData();
   }, [id]);
+
+  // Vérifier si l'utilisateur est le tuteur
+  const isSelf = isCurrentUserTutor();
+  // Gestion du bouton réservation et tooltip
+  const isReserveDisabled = isSelf;
+  const reserveTooltip = isSelf ? "Vous ne pouvez pas réserver vos propres annonces." : "";
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -361,7 +339,7 @@ const TutorProfilePage: React.FC = () => {
 
   const handleBookSession = (annonceId?: string) => {
     if (isCurrentUserTutor()) {
-
+      console.log('❌ Impossible de réserver avec soi-même');
       return;
     }
 
@@ -377,7 +355,7 @@ const TutorProfilePage: React.FC = () => {
         }
       });
     } else {
-
+      console.warn('Aucun id de profil tuteur disponible pour la réservation');
     }
   };
 
@@ -440,8 +418,7 @@ const TutorProfilePage: React.FC = () => {
     );
   }
 
-  // Vérifier si l'utilisateur est le tuteur
-  const isSelf = isCurrentUserTutor();
+
   const reviewsCount = reviews.length > 0 ? reviews.length : tutor.reviews;
 
 
@@ -502,13 +479,39 @@ const TutorProfilePage: React.FC = () => {
               </div>
               
               <div className={styles.actionButtons}>
-                <button 
-                  onClick={() => handleBookSession()}
-                  className={`${styles.primaryButton} ${isSelf ? styles.disabledButton : ''}`}
-                  disabled={isSelf}
+                <span
+                  onMouseEnter={() => setShowMainTooltip(true)}
+                  onMouseLeave={() => setShowMainTooltip(false)}
+                  style={{ position: 'relative', display: 'inline-block' }}
                 >
-                  Réserver un cours
-                </button>
+                  {isReserveDisabled && showMainTooltip && reserveTooltip && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: '#111827',
+                        color: '#fff',
+                        padding: '6px 10px',
+                        borderRadius: 6,
+                        fontSize: '0.75rem',
+                        whiteSpace: 'nowrap',
+                        marginBottom: 8,
+                        zIndex: 20
+                      }}
+                    >
+                      {reserveTooltip}
+                    </span>
+                  )}
+                  <button 
+                    onClick={() => handleBookSession()}
+                    className={`${styles.primaryButton} ${isReserveDisabled ? styles.disabledButton : ''}`}
+                    disabled={isReserveDisabled}
+                  >
+                    Réserver un cours
+                  </button>
+                </span>
                 <button 
                   onClick={handleContact}
                   className={styles.secondaryButton}
@@ -867,7 +870,7 @@ const TutorProfilePage: React.FC = () => {
                             <div className={styles.annonceTitleSection}>
                               <h4 className={styles.annonceTitle}>Cours de <span className={styles.subjectHighlight}>{annonce.subject}</span></h4>
                             </div>
-                            <div className={annonce.hourlyRate > 50 ? styles.annoncePricePremium : styles.annoncePrice}>
+                            <div className={ annonce.hourlyRate > 50 ? styles.annoncePricePremium : styles.annoncePrice}>
                               <span className={styles.priceValue}>{annonce.hourlyRate}</span>
                               <span className={styles.priceCurrency}>🪙/heure</span>
                             </div>
@@ -904,15 +907,41 @@ const TutorProfilePage: React.FC = () => {
                             </div>
                           </div>
 
-                          <button 
-                            onClick={() => handleBookSession(annonce.id)}
-                            className={`${styles.reserveButton} ${isSelf ? styles.disabledButton : ''}`}
-                            disabled={isSelf}
+                          <span
+                            onMouseEnter={() => setHoveredAnnonceId(annonce.id)}
+                            onMouseLeave={() => setHoveredAnnonceId(null)}
+                            style={{ position: 'relative', display: 'inline-block' }}
                           >
-                            <span className={styles.buttonText}>
-                              {isSelf ? 'Mon annonce' : 'Réserver ce cours →'}
-                            </span>
-                          </button>
+                            {isReserveDisabled && hoveredAnnonceId === annonce.id && reserveTooltip && (
+                              <span
+                                style={{
+                                  position: 'absolute',
+                                  bottom: '100%',
+                                  left: '50%',
+                                  transform: 'translateX(-50%)',
+                                  background: '#111827',
+                                  color: '#fff',
+                                  padding: '6px 10px',
+                                  borderRadius: 6,
+                                  fontSize: '0.75rem',
+                                  whiteSpace: 'nowrap',
+                                  marginBottom: 8,
+                                  zIndex: 20
+                                }}
+                              >
+                                {reserveTooltip}
+                              </span>
+                            )}
+                            <button 
+                              onClick={() => handleBookSession(annonce.id)}
+                              className={`${styles.reserveButton} ${isReserveDisabled ? styles.disabledButton : ''}`}
+                              disabled={isReserveDisabled}
+                            >
+                              <span className={styles.buttonText}>
+                                {isSelf ? 'Mon annonce' : 'Réserver ce cours →'}
+                              </span>
+                            </button>
+                          </span>
                         </div>
                       ))}
                     </div>

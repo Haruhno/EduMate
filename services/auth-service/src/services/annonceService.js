@@ -116,11 +116,8 @@ class AnnonceService {
         };
       }
 
-      if (location) {
-        whereClause['$location.city$'] = {
-          [Op.iLike]: `%${location}%`
-        };
-      }
+      // Solution simple : retirer le filtre location pour l'instant
+      // (on peut l'implémenter plus tard)
 
       const count = await Annonce.count({
         where: whereClause,
@@ -156,7 +153,7 @@ class AnnonceService {
           include: [{
             model: User,
             as: 'user',
-            attributes: ['id', 'firstName', 'lastName', 'email']
+            attributes: ['id', 'firstName', 'lastName', 'email', 'skillsToLearn'] // Ajouter skillsToLearn
           }]
         }],
         limit: limitNum,
@@ -175,6 +172,7 @@ class AnnonceService {
         hasPrev: pageNum > 1
       };
     } catch (error) {
+      console.error('❌ Erreur détaillée dans searchAnnonces:', error);
       throw new Error(`Erreur lors de la recherche des annonces: ${error.message}`);
     }
   }
@@ -289,6 +287,45 @@ class AnnonceService {
     } catch (error) {
       console.error('❌ Erreur création annonce depuis texte:', error);
       throw new Error(`Erreur lors de la création de l'annonce depuis texte: ${error.message}`);
+    }
+  }
+
+  /**
+   * Recherche hybride (sémantique + textuelle)
+   */
+  async hybridSearchAnnonces(query, filters = {}) {
+    try {
+      const axios = require('axios');
+      
+      // Appeler RAG pour recherche sémantique
+      const ragResponse = await axios.get('http://localhost:3005/search/semantic', {
+        params: {
+          q: query,
+          level: filters.level,
+          minPrice: filters.minPrice,
+          maxPrice: filters.maxPrice,
+          teachingMode: filters.teachingMode,
+          limit: 12
+        },
+        timeout: 5000
+      });
+      
+      if (ragResponse.data.success && ragResponse.data.data?.results?.length > 0) {
+        return {
+          annonces: ragResponse.data.data.results,
+          totalAnnonces: ragResponse.data.data.results.length,
+          totalPages: 1,
+          currentPage: 1,
+          searchType: 'semantic'
+        };
+      }
+      
+      // Fallback à recherche textuelle
+      return this.searchAnnonces({ ...filters, subject: query });
+    } catch (error) {
+      console.error('❌ Erreur recherche hybride:', error.message);
+      // Fallback final
+      return this.searchAnnonces({ ...filters, subject: query });
     }
   }
 }

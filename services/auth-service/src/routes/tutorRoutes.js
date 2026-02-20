@@ -3,6 +3,7 @@ const { Op, Sequelize } = require('sequelize');
 const router = express.Router();
 const { ProfileTutor, User } = require('../models/associations');
 const authMiddleware = require('../middlewares/authMiddleware');
+const annonceService = require('../services/annonceService');
 
 router.post('/seed', authMiddleware, async (req, res) => {
   try {
@@ -463,17 +464,122 @@ router.get('/:id', authMiddleware, async (req, res) => {
 
     console.log('✅ Tuteur récupéré avec succès');
     
-    res.json({
+    return res.json({
       success: true,
       message: 'Tuteur récupéré avec succès',
       data: tutorData
     });
   } catch (error) {
     console.error('❌ Erreur lors de la récupération du tuteur:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération du tuteur',
       error: error.message
+    });
+  }
+}); // ✅ fermer la route ici
+
+// ✅ Route publique (hors du handler précédent)
+router.get('/public/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const tutor = await ProfileTutor.findOne({
+      where: { id },
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['id', 'firstName', 'lastName', 'email']
+      }]
+    });
+
+    if (!tutor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tuteur non trouvé'
+      });
+    }
+
+    const { Diploma, Experience } = require('../models/associations');
+
+    const diplomas = await Diploma.findAll({
+      where: { userId: tutor.userId, profileType: 'tutor' },
+      order: [['isCurrent', 'DESC'], ['startYear', 'DESC']]
+    });
+
+    const experiences = await Experience.findAll({
+      where: { userId: tutor.userId, profileType: 'tutor' },
+      order: [['isCurrent', 'DESC'], ['startYear', 'DESC'], ['startMonth', 'DESC']]
+    });
+
+    const tutorData = tutor.toJSON();
+
+    tutorData.diplomas = diplomas.map(diploma => {
+      const diplomaObj = {
+        id: diploma.id,
+        educationLevel: diploma.educationLevel,
+        field: diploma.field,
+        school: diploma.school,
+        country: diploma.country,
+        startYear: diploma.startYear,
+        endYear: diploma.endYear,
+        isCurrent: diploma.isCurrent
+      };
+
+      if (diploma.fileName) {
+        diplomaObj.diplomaFile = {
+          name: diploma.fileName,
+          path: diploma.filePath,
+          size: diploma.fileSize
+        };
+      }
+
+      return diplomaObj;
+    });
+
+    tutorData.experiences = experiences.map(experience => ({
+      id: experience.id,
+      jobTitle: experience.jobTitle,
+      employmentType: experience.employmentType,
+      company: experience.company,
+      location: experience.location,
+      startMonth: experience.startMonth,
+      startYear: experience.startYear,
+      endMonth: experience.endMonth,
+      endYear: experience.endYear,
+      isCurrent: experience.isCurrent,
+      description: experience.description
+    }));
+
+    return res.json({
+      success: true,
+      message: 'Tuteur récupéré avec succès',
+      data: tutorData
+    });
+  } catch (error) {
+    console.error('Erreur route publique tuteur:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération du tuteur'
+    });
+  }
+});
+
+// ✅ PUBLIC: annonces d’un tuteur (sans auth)
+router.get('/public/:id/annonces', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const annonces = await annonceService.getAnnoncesByTutor(id);
+
+    return res.json({
+      success: true,
+      data: annonces
+    });
+  } catch (error) {
+    console.error('Erreur annonces publiques tuteur:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des annonces'
     });
   }
 });

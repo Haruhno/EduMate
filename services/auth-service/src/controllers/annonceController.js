@@ -9,6 +9,37 @@ class AnnonceController {
     }
     return true;
   }
+  // Fonction d'extraction de mots-clés
+  static extractKeywords(query) {
+    // Enlever les mots vides et phrases courantes
+    const stopWords = [
+      'je', 'cherche', 'un', 'une', 'des', 'le', 'la', 'les', 'de', 'du', 'des',
+      'pour', 'avec', 'sur', 'dans', 'par', 'au', 'aux', 'en', 'cours', 'cours de',
+      'annonce', 'annonces', 'tutorat', 'tuteur', 'professeur', 'enseignant'
+    ];
+    
+    let cleaned = query.toLowerCase();
+    
+    // Enlever les stop words
+    stopWords.forEach(word => {
+      const regex = new RegExp(`\\b${word}\\b`, 'gi');
+      cleaned = cleaned.replace(regex, '');
+    });
+    
+    // Nettoyer les espaces multiples
+    cleaned = cleaned.replace(/\s+/g, ' ').trim();
+    
+    // Si vide après nettoyage, utiliser l'original
+    if (cleaned.length === 0) {
+      cleaned = query.toLowerCase();
+    }
+    
+    // Prendre les 3 premiers mots-clés max
+    const keywords = cleaned.split(' ').filter(k => k.length > 2).slice(0, 3);
+    
+    return keywords.join(' ');
+  }
+
   async createAnnonce(req, res) {
     try {
       const user = req.user;
@@ -67,20 +98,111 @@ class AnnonceController {
     try {
       const filters = req.query;
       const isPublic = !req.headers.authorization;
-
-      const result = await annonceService.searchAnnonces({
-        ...filters,
-        isPublic
-      });
-
-      res.json({
+      const axios = require('axios');
+      
+      // SI recherche textuelle (pas vide), utiliser RAG
+      if (filters.subject && filters.subject.trim().length > 0) {
+        try {
+          // 1. Nettoyer la requête
+          const cleanedQuery = AnnonceController.extractKeywords(filters.subject);
+          console.log('🔍 Requête nettoyée:', cleanedQuery, '← Original:', filters.subject);
+          
+          // 2. Appeler RAG avec la bonne URL
+          const ragResponse = await axios.get('http://localhost:3005/search/semantic', {
+            params: {
+              q: cleanedQuery,
+              level: filters.level,
+              minPrice: filters.minPrice,
+              maxPrice: filters.maxPrice,
+              teachingMode: filters.teachingMode,
+              limit: 12
+            },
+            timeout: 5000
+          });
+          
+          console.log('📊 Réponse RAG:', {
+            success: ragResponse.data.success,
+            results: ragResponse.data.data?.results?.length || 0
+          });
+          
+          // 3. Traiter les résultats RAG
+          if (ragResponse.data.success && ragResponse.data.data?.results?.length > 0) {
+            const cleanedQueryLower = cleanedQuery.toLowerCase();
+            const relevantResults = ragResponse.data.data.results.filter((ragResult) => {
+              const hasPythonInQuery = cleanedQueryLower.includes('python');
+              const hasQueryInSubjects = ragResult.subjects?.some((subject) => 
+                subject.toLowerCase().includes(cleanedQueryLower)
+              );
+              
+              if (hasPythonInQuery) {
+                return ragResult.subjects?.some((s) => s.toLowerCase().includes('python'));
+              }
+              
+              return hasQueryInSubjects || ragResult.title.toLowerCase().includes(cleanedQueryLower);
+            });
+            
+            console.log(`🎯 Résultats pertinents: ${relevantResults.length} sur ${ragResponse.data.data.results.length}`);
+            
+            const annonces = relevantResults.map((ragResult) => ({
+              id: ragResult.annonceId,
+              tutorId: ragResult.tutorId,
+              title: ragResult.title,
+              description: ragResult.description,
+              subjects: ragResult.subjects || [],
+              subject: ragResult.subjects?.[0] || '',
+              level: ragResult.level,
+              hourlyRate: parseFloat(ragResult.hourlyRate) || 30,
+              teachingMode: ragResult.teachingMode,
+              location: ragResult.location,
+              tutor: {
+                id: ragResult.tutorId,
+                user: {
+                  id: ragResult.tutorId,
+                  firstName: ragResult.tutorName?.split(' ')[0] || '',
+                  lastName: ragResult.tutorName?.split(' ').slice(1).join(' ') || '',
+                  email: '',
+                  skillsToLearn: ragResult.tutorSkillsToLearn || []
+                },
+                rating: parseFloat(ragResult.tutorRating) || 4.0,
+                reviewsCount: 0,
+                profilePicture: '',
+                bio: '',
+                experience: '',
+                specialties: ragResult.subjects || []
+              },
+              relevanceScore: ragResult.relevanceScore || 0
+            })).sort((a, b) => b.relevanceScore - a.relevanceScore);
+            
+            const topAnnonces = annonces.slice(0, 6);
+            
+            return res.json({
+              success: true,
+              message: 'Recherche sémantique effectuée',
+              data: {
+                annonces: topAnnonces,
+                totalAnnonces: topAnnonces.length,
+                totalPages: 1,
+                currentPage: 1
+              }
+            });
+          }
+        } catch (ragError) {
+          console.error('⚠️ Erreur RAG, fallback à recherche normale:', ragError.message);
+          // Continue avec la recherche normale
+        }
+      }
+      
+      // Recherche normale si pas de RAG ou RAG échoue
+      const result = await annonceService.searchAnnonces(filters, isPublic);
+      
+      return res.json({
         success: true,
-        message: 'Annonces trouvées avec succès',
         data: result
       });
+      
     } catch (error) {
-      console.error('Erreur recherche annonces:', error);
-      res.status(400).json({
+      console.error('❌ Erreur recherche annonces:', error);
+      return res.status(500).json({
         success: false,
         message: error.message
       });
@@ -332,10 +454,7 @@ class AnnonceController {
   async testExtraction(req, res) {
     try {
       const { text } = req.body;
-      
-      console.log('🧪 Test extraction IA avec texte:', text?.substring(0, 200) + '...');
-      console.log('📏 Longueur du texte:', text?.length);
-      
+            
       if (!text || text.trim().length < 10) {
         return res.status(400).json({
           success: false,
@@ -345,17 +464,8 @@ class AnnonceController {
       
       const AITextProcessor = require('../services/aiTextProcessor');
       
-      console.log('🚀 Appel à analyzeTextWithAI...');
       const analysis = await AITextProcessor.analyzeTextWithAI(text);
-      
-      console.log('✅ Analyse IA terminée');
-      console.log('🎯 Titre:', analysis.title);
-      console.log('🔧 Compétences détectées:', analysis.skills);
-      console.log('📊 Nombre de compétences:', analysis.skills?.length);
-      console.log('🎚️ Niveaux:', analysis.levels);
-      console.log('🏆 Confidence:', analysis.extractionMetadata?.confidence);
-      console.log('💬 Méthode extraction:', analysis.extractionMetadata?.extractionMethod);
-      
+
       res.json({
         success: true,
         data: analysis
@@ -369,6 +479,74 @@ class AnnonceController {
         message: error.message || 'Erreur lors de l\'analyse du texte',
         error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
+    }
+  }
+
+  /**
+   * Recherche avec RAG
+   */
+  async searchWithRAG(req, res) {
+    try {
+      const { q: query, ...filters } = req.query;
+      
+      if (!query || query.trim().length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: 'La requête doit contenir au moins 2 caractères'
+        });
+      }
+      
+      // Appeler le service RAG
+      const ragService = require('../../rag-service/src/services/RagService');
+      const results = await ragService.semanticSearch(query, filters, 12);
+      
+      // Transformer les résultats RAG en format compatible
+      const annonces = results.map(ragResult => ({
+        id: ragResult.annonceId,
+        tutorId: ragResult.tutorId,
+        title: ragResult.title,
+        description: ragResult.description,
+        subjects: ragResult.subjects || [],
+        subject: ragResult.subjects?.[0] || '',
+        level: ragResult.level,
+        hourlyRate: parseFloat(ragResult.hourlyRate) || 30,
+        teachingMode: ragResult.teachingMode,
+        location: ragResult.location,
+        tutor: {
+          id: ragResult.tutorId,
+          user: {
+            id: ragResult.tutorId,
+            firstName: ragResult.tutorName?.split(' ')[0] || '',
+            lastName: ragResult.tutorName?.split(' ').slice(1).join(' ') || '',
+            email: '',
+            skillsToLearn: ragResult.tutorSkillsToLearn || []
+          },
+          rating: parseFloat(ragResult.tutorRating) || 4.0,
+          reviewsCount: 0,
+          profilePicture: '',
+          bio: '',
+          experience: '',
+          specialties: ragResult.subjects || []
+        },
+        relevanceScore: ragResult.relevanceScore || 0
+      }));
+      
+      res.json({
+        success: true,
+        message: 'Recherche sémantique effectuée',
+        data: {
+          annonces,
+          totalAnnonces: annonces.length,
+          totalPages: 1,
+          currentPage: 1
+        }
+      });
+      
+    } catch (error) {
+      console.error('❌ Erreur recherche RAG:', error);
+      
+      // Fallback à la recherche normale
+      return this.searchAnnonces(req, res);
     }
   }
 }

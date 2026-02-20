@@ -9,12 +9,12 @@ class AITextProcessor {
     }
   }
 
-  // MÉTHODE EXISTANTE : Générer une offre COMPLÈTE
+  // Générer une offre COMPLÈTE
   async generateOfferFromSkills(skills, rawText = '') {    
     try {
       const skillsList = Array.isArray(skills) ? skills : [skills];
       
-      console.log('🚀 Appel IA pour générer offre avec skills:', skillsList);
+      console.log('Appel IA pour générer offre avec skills:', skillsList);
       
       const prompt = `Tu es un expert en rédaction d'annonces de cours. 
 
@@ -71,12 +71,12 @@ RÉPONSE EN JSON :
         }
       );
 
-      console.log('✅ Réponse IA reçue');
+      console.log('Réponse IA reçue');
       
       const aiText = response.data.choices[0].message.content;
       
       if (!this.isCompleteJSON(aiText)) {
-        console.log('⚠️ JSON incomplet, réparation...');
+        console.log('JSON incomplet, réparation...');
         const fixedJson = this.fixIncompleteJSON(aiText);
         return this.parseOfferResponse(fixedJson, skillsList);
       }
@@ -84,15 +84,15 @@ RÉPONSE EN JSON :
       const result = this.parseOfferResponse(aiText, skillsList);
       
       // Vérification que la description est assez longue
-      if (!result.description || result.description.length < 150) {
-        console.warn('⚠️ Description trop courte, nouvel appel IA...');
+      if (!result.description || result.description.length < 200) {
+        console.warn('Description trop courte, nouvel appel IA...');
         return await this.regenerateDescription(skillsList, result.title);
       }
       
       return result;
 
     } catch (error) {
-      console.error('❌ Erreur API:', error.message);
+      console.error('Erreur API:', error.message);
       throw new Error(`Échec génération IA: ${error.message}`);
     }
   }
@@ -191,7 +191,7 @@ TRÈS IMPORTANT : Le titre DOIT commencer par "Cours de...", "Formation en...". 
       }
       
     } catch (error) {
-      console.error('❌ Erreur analyse IA:', error.message);
+      console.error('Erreur analyse IA:', error.message);
       if (error.response) {
         console.error('Réponse API:', error.response.data);
       }
@@ -370,7 +370,7 @@ Réponds uniquement avec la description, sans titre ni JSON.`;
     return cleaned;
   }
 
-  // NOUVELLE MÉTHODE : Réparer les JSON cassés
+  // Réparer les JSON cassés
   repairJSON(brokenJSON) {
     try {
       // Essayer de parser d'abord
@@ -380,14 +380,14 @@ Réponds uniquement avec la description, sans titre ni JSON.`;
       
       let repaired = brokenJSON;
       
-      // 1. Compter les guillemets
+      // Compter les guillemets
       const quoteCount = (repaired.match(/"/g) || []).length;
       if (quoteCount % 2 !== 0) {
         // Ajouter un guillemet à la fin si impair
         repaired += '"';
       }
       
-      // 2. Fermer les objets et tableaux
+      // Fermer les objets et tableaux
       const openBraces = (repaired.match(/\{/g) || []).length;
       const closeBraces = (repaired.match(/\}/g) || []).length;
       for (let i = 0; i < openBraces - closeBraces; i++) {
@@ -400,15 +400,15 @@ Réponds uniquement avec la description, sans titre ni JSON.`;
         repaired += ']';
       }
       
-      // 3. Remplacer les virgules orphelines
+      // Remplacer les virgules orphelines
       repaired = repaired.replace(/,\s*,/g, ',');
       repaired = repaired.replace(/,\s*$/g, '');
       
-      // 4. Ajouter des valeurs manquantes pour les clés sans valeur
+      // Ajouter des valeurs manquantes pour les clés sans valeur
       repaired = repaired.replace(/:\s*,/g, ': "",');
       repaired = repaired.replace(/:\s*$/g, ': ""');
       
-      // 5. S'assurer que c'est un objet JSON valide
+      // S'assurer que c'est un objet JSON valide
       if (!repaired.startsWith('{')) {
         repaired = '{' + repaired;
       }
@@ -416,12 +416,12 @@ Réponds uniquement avec la description, sans titre ni JSON.`;
         repaired = repaired + '}';
       }
       
-      console.log('🛠️ JSON réparé (premiers 300 caractères):', repaired.substring(0, 300));
+      console.log('JSON réparé (premiers 300 caractères):', repaired.substring(0, 300));
       
       try {
         return JSON.parse(repaired);
       } catch (finalError) {
-        console.error('❌ Réparation JSON échouée:', finalError.message);
+        console.error('Réparation JSON échouée:', finalError.message);
         // Retourner un JSON minimal valide
         return {
           title: "Cours personnalisé",
@@ -443,7 +443,7 @@ Réponds uniquement avec la description, sans titre ni JSON.`;
         skills: skills
       };
     } catch (error) {
-      console.error('❌ Parse JSON échoué:', error.message);
+      console.error('Parse JSON échoué:', error.message);
       throw new Error('Format de réponse IA invalide');
     }
   }

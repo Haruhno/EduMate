@@ -1,238 +1,453 @@
+/* TutorCard.module.css */
+
 .tutorCard {
   background: white;
-  border-radius: 0.75rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-  transition: box-shadow 0.2s;
+  border-radius: 16px;
   overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #fef3c7;
+  transition: all 0.3s ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 450px;
+  height: auto;
 }
 
 .tutorCard:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(251, 191, 36, 0.15);
+  border-color: #fbbf24;
 }
 
 .tutorCardHeader {
   position: relative;
+  height: 120px;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .tutorBadge {
   position: absolute;
-  top: 1rem;
-  left: 1rem;
+  top: 12px;
+  left: 12px;
   z-index: 10;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
-.badgeFree {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.badgePopular {
-  background: #f3e8ff;
-  color: #7c3aed;
-}
-
-.badgeNew {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.badgeEconomy {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.badgeExpert {
-  background: #fce7f3;
-  color: #be185d;
-}
-
-.badgeMentor {
-  background: #ecfdf5;
-  color: #047857;
-}
+.badgeFree { background: #dcfce7; color: #166534; }
+.badgePopular { background: #f3e8ff; color: #7c3aed; }
+.badgeNew { background: #dbeafe; color: #1e40af; }
+.badgeEconomy { background: #fef3c7; color: #92400e; }
+.badgeExpert { background: #fce7f3; color: #be185d; }
+.badgeMentor { background: #ecfdf5; color: #047857; }
 
 .favoriteButton {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  top: 12px;
+  right: 12px;
   z-index: 10;
   background: white;
   border: none;
   border-radius: 50%;
-  padding: 0.5rem;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.2s;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  font-size: 1rem;
 }
 
 .favoriteButton:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.tutorAvatar {
-  height: 12rem;
-  background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
+  transform: scale(1.05);
 }
 
 .avatarCircle {
-  width: 6rem;
-  height: 6rem;
+  width: 80px;
+  height: 80px;
   background: white;
-  border-radius: 50%; 
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: 2px solid #e5e7eb;
-  overflow: hidden; 
-  position: relative;
   border: 3px solid #fbbf24;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
 }
 
 .avatarImage {
   width: 100%;
   height: 100%;
-  object-fit: cover; 
-  object-position: center; 
-  border-radius: 50%; 
+  object-fit: cover;
 }
 
-.avatarFallback {
-  font-size: 2rem;
-  font-weight: bold;
-  color: #6b7280;
-}
 .tutorCardContent {
-  padding: 1.5rem;
+  padding: 1.2rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .tutorInfo {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
   margin-bottom: 0.75rem;
+  min-height: 50px;
 }
 
 .tutorName {
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  color: #111827;
-  margin: 0;
+  color: #1f2937;
+  margin: 0 0 0.25rem 0;
+  line-height: 1.2;
 }
 
 .tutorSubject {
-  color: #6b7280;
-  font-size: 0.875rem;
-  margin: 0.25rem 0 0 0;
+  color: #f59e0b;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
 }
 
 .tutorStatus {
-  background: #dcfce7;
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
   color: #166534;
-  font-size: 0.75rem;
-  padding: 0.375rem 0.75rem; 
-  border-radius: 9999px;
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-size: 0.7rem;
   font-weight: 600;
-  white-space: nowrap; 
+  display: inline-block;
+  margin-top: 0.25rem;
 }
 
 .tutorRating {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .ratingStarsStatic {
   display: flex;
+  gap: 2px;
 }
 
 .ratingStarsStatic .star {
   color: #fbbf24;
+  font-size: 1rem;
 }
 
 .reviewsCount {
-  font-size: 0.875rem;
   color: #6b7280;
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
+/* Section Compétences enseignées */
 .tutorSpecialties {
+  margin-bottom: 0.5rem;
+}
+
+.skillsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.skillsLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.skillsContainer {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: 0.4rem;
+  align-items: center;
+  transition: all 0.3s ease;
 }
 
 .specialtyTag {
-  background: #f3f4f6;
-  color: #374151;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
+  background: #fef3c7;
+  color: #92400e;
+  padding: 4px 10px;
+  border-radius: 8px;
   font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  line-height: 1.2;
+  height: fit-content;
+  display: inline-flex;
+  align-items: center;
 }
 
-.moreSpecialties {
-  color: #6b7280;
-  font-size: 0.75rem;
-  align-self: center;
+.specialtyTag:hover {
+  background: #fde68a;
+  transform: translateY(-1px);
+}
+
+/* Bouton +X pour spécialités */
+.moreSpecialtiesButton {
+  background: #fef3c7;
+  color: #f59e0b;
+  border: 1px solid #fde68a;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1.2;
+  height: fit-content;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.25rem;
+}
+
+.moreSpecialtiesButton:hover {
+  background: #fde68a;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+}
+
+/* Bouton - pour réduire spécialités */
+.lessSpecialtiesButton {
+  background: #fef3c7;
+  color: #f59e0b;
+  border: 1px solid #fde68a;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1.2;
+  height: fit-content;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.25rem;
+}
+
+.lessSpecialtiesButton:hover {
+  background: #fde68a;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(146, 64, 14, 0.2);
+}
+
+/* Section Compétences recherchées */
+.learningSkillsSection {
+  margin-bottom: 0.75rem;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 0.75rem;
+}
+
+.skillsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.learningSkillsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.learningSkill {
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Bouton +X pour compétences à apprendre */
+.moreLearningSkillsButton {
+  background: #e0f2fe;
+  color: #0284c7;
+  border: 1px solid #bae6fd;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1.2;
+  height: fit-content;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.25rem;
+}
+
+.moreLearningSkillsButton:hover {
+  background: #bae6fd;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(2, 132, 199, 0.2);
+}
+
+/* Bouton - pour réduire compétences à apprendre */
+.lessLearningSkillsButton {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1.2;
+  height: fit-content;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.25rem;
+}
+
+.lessLearningSkillsButton:hover {
+  background: #bae6fd;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(3, 105, 161, 0.2);
 }
 
 .tutorFooter {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  min-height: 3rem; 
+  padding-top: 0.75rem;
+  border-top: 1px solid #f3f4f6;
+  margin-top: auto;
+  gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 .tutorPrice {
   font-size: 1.5rem;
-  font-weight: 700;
-  color: #111827;
+  font-weight: 800;
+  color: #1f2937;
+  line-height: 1;
   white-space: nowrap;
-  flex-shrink: 0;
-  line-height: 1.2;
 }
 
 .priceUnit {
-  color: #6b7280;
-  font-size: 0.875rem;
   display: block;
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 500;
+  margin-top: 0.1rem;
 }
 
 .profileButton {
-  background: #fbbf24;
+  background: linear-gradient(135deg, #fbbf24, #fb923c);
   color: white;
   border: none;
-  border-radius: 0.5rem;
-  padding: 0.625rem 1.25rem;
-  font-size: 0.875rem;
+  padding: 8px 16px;
+  font-size: 0.9rem;
   font-weight: 600;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.3s ease;
+  box-shadow: 0 3px 10px rgba(251, 191, 36, 0.2);
   white-space: nowrap;
-  min-width: 120px;
+  min-width: 95px;
   text-align: center;
-  flex-shrink: 0;
   height: fit-content;
 }
 
 .profileButton:hover {
-  background: #f59e0b;
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 15px rgba(251, 191, 36, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .tutorCard {
+    min-height: 440px;
+  }
+  
+  .tutorName {
+    font-size: 1.1rem;
+  }
+  
+  .profileButton {
+    padding: 7px 14px;
+    font-size: 0.85rem;
+    min-width: 90px;
+  }
+}
+
+@media (max-width: 768px) {
+  .tutorCard {
+    min-height: 420px;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  
+  .tutorCardHeader {
+    height: 110px;
+  }
+  
+  .avatarCircle {
+    width: 65px;
+    height: 65px;
+  }
+  
+  .tutorCardContent {
+    padding: 1rem;
+  }
+  
+  .tutorName {
+    font-size: 1.15rem;
+  }
+  
+  .tutorPrice {
+    font-size: 1.35rem;
+  }
+  
+  .profileButton {
+    padding: 7px 14px;
+    font-size: 0.85rem;
+    min-width: 85px;
+  }
 }
 
 @media (max-width: 480px) {
-  .tutorFooter {
-    gap: 0.75rem;
+  .tutorCard {
+    min-height: 400px;
+  }
+  
+  .tutorCardHeader {
+    height: 100px;
+  }
+  
+  .avatarCircle {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .tutorName {
+    font-size: 1.05rem;
   }
   
   .tutorPrice {
@@ -240,48 +455,22 @@
   }
   
   .profileButton {
-    min-width: 100px;
-    padding: 0.5rem 1rem;
+    padding: 6px 12px;
     font-size: 0.8rem;
-  }
-}
-
-@media (max-width: 380px) {
-  .tutorCardContent {
-    padding: 1.25rem;
-  }
-  
-  .tutorFooter {
-    gap: 0.5rem;
-  }
-  
-  .tutorPrice {
-    font-size: 1.125rem;
-  }
-  
-  .profileButton {
-    min-width: 90px;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.75rem;
-  }
-}
-
-@media (max-width: 320px) {
-  .tutorFooter {
-    flex-wrap: nowrap; /* Empêche le passage à la ligne */
-  }
-  
-  .tutorPrice {
-    font-size: 1rem;
-  }
-  
-  .priceUnit {
-    font-size: 0.75rem;
-  }
-  
-  .profileButton {
     min-width: 80px;
-    padding: 0.4rem 0.6rem;
+  }
+  
+  .specialtyTag,
+  .learningSkill,
+  .moreSpecialtiesButton,
+  .moreLearningSkillsButton {
+    padding: 3px 8px;
     font-size: 0.7rem;
+  }
+  
+  .lessSpecialtiesButton,
+  .lessLearningSkillsButton {
+    padding: 3px 8px;
+    font-size: 0.75rem;
   }
 }
